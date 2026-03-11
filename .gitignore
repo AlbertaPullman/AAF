@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+data/sqlite/*.db
+data/sqlite/*.sqlite
+data/backups/*
+!data/backups/.gitkeep
+data/uploads/*
+!data/uploads/.gitkeep
+!data/uploads/avatars/.gitkeep
+!data/uploads/maps/.gitkeep
+!data/uploads/audio/.gitkeep

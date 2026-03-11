@@ -1,0 +1,41 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  background: #f5f7fb;
+  color: #1f2937;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid #d4d7dd;
+  font-weight: 700;
+  background: #ffffff;
+}
+
+.app-main {
+  padding: 20px 24px;
+}
+
+.world-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.world-card {
+  background: #ffffff;
+  border: 1px solid #d4d7dd;
+  border-radius: 8px;
+  padding: 12px;
+}

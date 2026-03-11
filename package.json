@@ -1,0 +1,18 @@
+{
+  "name": "aaf-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w server && npm run build -w client",
+    "lint": "echo \"lint is not configured yet\"",
+    "format": "echo \"format is not configured yet\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

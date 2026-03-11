@@ -1,0 +1,48 @@
+{
+  "version": "0.1.0",
+  "apiBase": "/api",
+  "apiEndpoints": [
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/api/health",
+      "owner": "system"
+    },
+    {
+      "name": "tavernStatus",
+      "method": "GET",
+      "path": "/api/tavern/status",
+      "owner": "tavern"
+    }
+  ],
+  "socketEvents": [
+    {
+      "name": "system:connection-ack",
+      "direction": "server->client",
+      "owner": "system"
+    },
+    {
+      "name": "global:message:send",
+      "direction": "client->server",
+      "owner": "chat"
+    },
+    {
+      "name": "global:message:new",
+      "direction": "server->client",
+      "owner": "chat"
+    },
+    {
+      "name": "world:join",
+      "direction": "client->server",
+      "owner": "world"
+    },
+    {
+      "name": "scene:token:move",
+      "direction": "client->server",
+      "owner": "scene"
+    }
+  ],
+  "platformRoles": ["MASTER", "ADMIN", "PLAYER"],
+  "worldRoles": ["GM", "PLAYER", "OBSERVER", "ASSISTANT"],
+  "namingRulesRef": "docs/naming-convention.md"
+}
