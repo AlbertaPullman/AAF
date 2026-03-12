@@ -9,6 +9,48 @@
       "owner": "system"
     },
     {
+      "name": "authRegister",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "owner": "auth"
+    },
+    {
+      "name": "authLogin",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "owner": "auth"
+    },
+    {
+      "name": "authMe",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "owner": "auth"
+    },
+    {
+      "name": "worldList",
+      "method": "GET",
+      "path": "/api/worlds",
+      "owner": "world"
+    },
+    {
+      "name": "worldCreate",
+      "method": "POST",
+      "path": "/api/worlds",
+      "owner": "world"
+    },
+    {
+      "name": "worldGetDetail",
+      "method": "GET",
+      "path": "/api/worlds/:worldId",
+      "owner": "world"
+    },
+    {
+      "name": "worldJoin",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/join",
+      "owner": "world"
+    },
+    {
       "name": "tavernStatus",
       "method": "GET",
       "path": "/api/tavern/status",

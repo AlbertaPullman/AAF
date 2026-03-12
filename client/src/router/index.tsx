@@ -5,6 +5,7 @@ import RegisterPage from "../pages/auth/RegisterPage";
 import LobbyPage from "../pages/lobby/LobbyPage";
 import WorldPage from "../pages/world/WorldPage";
 import NotFoundPage from "../pages/system/NotFoundPage";
+import RequireAuth from "./RequireAuth";
 
 export const router = createBrowserRouter([
   {
@@ -13,8 +14,13 @@ export const router = createBrowserRouter([
     children: [
       { path: "login", element: <LoginPage /> },
       { path: "register", element: <RegisterPage /> },
-      { path: "lobby", element: <LobbyPage /> },
-      { path: "world/:worldId", element: <WorldPage /> },
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: "lobby", element: <LobbyPage /> },
+          { path: "world/:worldId", element: <WorldPage /> }
+        ]
+      },
       { path: "*", element: <NotFoundPage /> }
     ]
   }

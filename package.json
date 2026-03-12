@@ -9,6 +9,10 @@
   "scripts": {
     "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w server && npm run build -w client",
+    "db:generate": "npm run prisma:generate -w server",
+    "db:migrate": "npm run prisma:migrate -w server",
+    "db:migrate:init": "npm run prisma:migrate -w server -- --name init",
+    "db:seed": "npm run prisma:seed -w server",
     "lint": "echo \"lint is not configured yet\"",
     "format": "echo \"format is not configured yet\""
   },

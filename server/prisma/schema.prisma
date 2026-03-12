@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  MASTER
+  ADMIN
+  PLAYER
+}
+
+enum WorldVisibility {
+  PUBLIC
+  PASSWORD
+  FRIENDS
+  PRIVATE
+}
+
+enum WorldRole {
+  GM
+  PLAYER
+  OBSERVER
+  ASSISTANT
+}
+
+enum WorldMemberStatus {
+  ACTIVE
+  INVITED
+  REMOVED
+}
+
+enum CharacterType {
+  PC
+  NPC
+}
+
+enum MessageType {
+  GLOBAL
+  WORLD
+  PRIVATE
+  SYSTEM
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  BLOCKED
+}
+
+model User {
+  id                String        @id @default(cuid())
+  username          String        @unique
+  passwordHash      String
+  displayName       String?
+  avatarUrl         String?
+  platformRole      PlatformRole  @default(PLAYER)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  ownedWorlds       World[]       @relation("WorldOwner")
+  worldMemberships  WorldMember[]
+  characters        Character[]
+  sentMessages      Message[]     @relation("MessageSender")
+  privateMessages   Message[]     @relation("MessageRecipient")
+  aiSessions        AiSession[]
+  friendRequestsSent     Friend[] @relation("FriendRequester")
+  friendRequestsReceived Friend[] @relation("FriendAddressee")
+}
+
+model World {
+  id              String          @id @default(cuid())
+  name            String
+  description     String?
+  ownerId         String
+  visibility      WorldVisibility @default(PUBLIC)
+  passwordHash    String?
+  inviteCode      String?         @unique
+  inviteExpiresAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  owner           User            @relation("WorldOwner", fields: [ownerId], references: [id])
+  members         WorldMember[]
+  scenes          Scene[]
+  characters      Character[]
+  messages        Message[]
+  aiSessions      AiSession[]
+
+  @@index([ownerId])
+  @@index([visibility])
+}
+
+model WorldMember {
+  id        String            @id @default(cuid())
+  worldId   String
+  userId    String
+  role      WorldRole         @default(PLAYER)
+  status    WorldMemberStatus @default(ACTIVE)
+  joinedAt  DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  world     World             @relation(fields: [worldId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
+
+  @@unique([worldId, userId])
+  @@index([userId])
+}
+
+model Scene {
+  id                 String   @id @default(cuid())
+  worldId            String
+  name               String
+  backgroundImageUrl String?
+  gridSize           Int?
+  sortOrder          Int      @default(0)
+  canvasState        Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  world              World    @relation(fields: [worldId], references: [id])
+
+  @@unique([worldId, sortOrder])
+}
+
+model Character {
+  id          String        @id @default(cuid())
+  worldId     String
+  userId      String?
+  name        String
+  avatarUrl   String?
+  type        CharacterType @default(PC)
+  stats       Json?
+  snapshot    Json?
+  aiConfig    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  world       World         @relation(fields: [worldId], references: [id])
+  user        User?         @relation(fields: [userId], references: [id])
+  aiSessions  AiSession[]
+
+  @@index([worldId])
+  @@index([userId])
+}
+
+model Message {
+  id         String      @id @default(cuid())
+  type       MessageType
+  worldId    String?
+  channelKey String?
+  fromUserId String
+  toUserId   String?
+  content    String
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+  world      World?      @relation(fields: [worldId], references: [id])
+  fromUser   User        @relation("MessageSender", fields: [fromUserId], references: [id])
+  toUser     User?       @relation("MessageRecipient", fields: [toUserId], references: [id])
+
+  @@index([type, createdAt])
+  @@index([worldId, createdAt])
+  @@index([fromUserId])
+  @@index([toUserId])
+}
+
+model Friend {
+  id          String       @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  requester   User         @relation("FriendRequester", fields: [requesterId], references: [id])
+  addressee   User         @relation("FriendAddressee", fields: [addresseeId], references: [id])
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+}
+
+model AiSession {
+  id        String   @id @default(cuid())
+  worldId   String
+  npcId     String
+  userId    String
+  messages  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  world     World    @relation(fields: [worldId], references: [id])
+  npc       Character @relation(fields: [npcId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([worldId])
+  @@index([npcId])
+  @@index([userId])
+}

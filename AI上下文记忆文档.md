@@ -83,11 +83,11 @@ MVP 首先必须跑通以下流程：
 
 ### 3.2 当前所处阶段
 
-当前处于：阶段 1，工程骨架已完成并通过构建验证。
+当前处于：阶段 4，大厅与世界管理核心链路已完成，并通过创建世界、查询世界、加入世界的联调验证。
 
 ### 3.3 当前最近目标
 
-下一步应进入：阶段 2，数据库与后端基础设施（Prisma + SQLite 建模）。
+下一步应进入：阶段 5，全局聊天与基础 WebSocket 架构。
 
 ---
 
@@ -188,8 +188,6 @@ AAF/
 
 涉及文件：
 1.
-2.
-3.
 
 新增接口：
 1.
@@ -200,10 +198,6 @@ AAF/
 2.
 
 新增 Socket 事件：
-1.
-2.
-
-当前可运行结果：
 1.
 2.
 
@@ -222,26 +216,25 @@ AAF/
 
 ### 8.1 最高优先级
 
-1. 初始化 client 与 server 目录。
-2. 建立前端 React 基础工程。
-3. 建立后端 Express 基础工程。
-4. 接入 Prisma 与 SQLite。
-5. 建立基础环境变量模板。
+1. 建立 Socket 连接鉴权（token 校验）。
+2. 建立全局聊天消息发送与广播。
+3. 建立世界房间 join/leave 基础机制。
+4. 统一聊天消息入库与读取边界。
 
 ### 8.2 第二优先级
 
-1. 注册/登录接口。
-2. 登录页和注册页。
-3. 鉴权中间件。
-4. 大厅页与世界列表。
+1. 大厅页接入基础聊天入口或消息提示。
+2. 世界页接入世界详情 API。
+3. 统一 Socket 事件命名与 payload 结构。
+4. 增加基本消息长度与频率限制。
 
 ### 8.3 第三优先级
 
-1. 创建世界。
-2. 加入世界。
-3. 全局聊天室。
-4. 最小 VTT 页面。
-5. Token 同步。
+1. 角色卡与 token 绑定。
+2. 世界内多频道聊天。
+3. 最小 VTT 同步链路。
+4. AI 酒馆模块预留事件边界。
+5. GM 助手接口预留。
 
 ---
 
@@ -265,28 +258,133 @@ AAF/
 
 如果下一次要直接开始写代码，应该从以下目标开始：
 
-目标：建立 monorepo 基础骨架。
+目标：进入阶段 5，打通全局聊天与基础 WebSocket 实时链路。
 
 最小任务顺序：
 
-1. 新建 client 和 server 目录。
-2. 初始化前端 React 结构。
-3. 初始化后端 Express 结构。
-4. 新建 .env.example。
-5. 建立 Prisma 基础配置。
-6. 补充 README 运行说明。
+1. 定义并实现 socket 身份校验中间件。
+2. 实现 global 消息发送与广播事件。
+3. 实现世界房间 join 事件与在线成员映射。
+4. 同步写入 Message 表，保留最小历史查询接口。
+5. 前端接入实时消息监听与发送。
+6. 同步更新接口注册表、变更日志和记忆文档。
 
 不要一开始就做：
 
-1. 好友系统。
-2. 复杂场景编辑。
-3. BGM 上传。
-4. AI 酒馆。
-5. GM 助手。
+1. 好友系统全量功能。
+2. 复杂场景编辑器。
+3. AI 酒馆业务逻辑。
+4. GM 助手流程。
+5. 高级部署优化。
 
 ---
 
 ## 11. 变更记录
+
+## [2026-03-12 06:40] 阶段 4 大厅与世界管理核心链路完成
+
+阶段：阶段 4
+
+本次完成：
+1. 后端实现世界创建、世界列表、加入世界、世界详情接口。
+2. 世界创建时自动创建 GM 成员和默认场景。
+3. 支持 PUBLIC/PASSWORD 创建与加入，PASSWORD 使用 bcrypt 哈希和校验。
+4. 前端大厅页完成真实业务接入：创建世界、查看我的世界、查看公开世界、加入并进入世界。
+5. 前端新增受保护路由守卫，未登录用户自动跳转登录页。
+6. 前端请求层新增 token 自动附带与 401 清理登录态。
+7. 完成端到端联调：创建世界 -> 查询我的世界 -> 其他账号加入世界。
+
+涉及文件：
+1. server/src/services/world.service.ts
+2. server/src/controllers/world.controller.ts
+3. server/src/routes/world.routes.ts
+4. server/src/routes/index.ts
+5. client/src/pages/lobby/LobbyPage.tsx
+6. client/src/router/RequireAuth.tsx
+7. client/src/router/index.tsx
+8. client/src/lib/http.ts
+9. docs/api-contract.md
+10. docs/interface-registry.json
+11. docs/change-log.md
+12. 阶段4执行任务清单.md
+
+新增接口：
+1. GET /api/worlds
+2. POST /api/worlds
+3. GET /api/worlds/:worldId
+4. POST /api/worlds/:worldId/join
+
+新增数据模型或字段：
+1. 无新增数据模型；复用 World、WorldMember、Scene。
+
+新增 Socket 事件：
+1. 无（阶段 5 开始实现）。
+
+当前可运行结果：
+1. 用户登录后可在大厅创建世界。
+2. 创建世界后可立即在“我的世界”看到该世界，且角色为 GM。
+3. 其他用户可在“公开世界”中看到并加入该世界。
+4. 构建通过：server/client 均可成功执行 npm run build。
+
+未解决问题：
+1. FRIENDS/PRIVATE 的准入策略仍是占位逻辑。
+2. 世界页仍未接入世界详情 API 展示。
+
+下一步：
+1. 进入阶段 5，构建全局聊天与 WebSocket 基础链路。
+2. 增加 socket token 鉴权与消息广播事件。
+
+## [2026-03-12 00:00] 阶段 2 基础设施完成
+
+阶段：阶段 2
+
+本次完成：
+1. 接入 Prisma 与 SQLite，并建立首版业务数据模型。
+2. 生成并应用首个迁移，补充种子数据与 data 目录占位结构。
+3. 升级健康检查为应用与数据库双探针，并完成构建与运行验证。
+
+涉及文件：
+1. package.json
+2. server/package.json
+3. server/prisma/schema.prisma
+4. server/prisma/seed.ts
+5. server/src/lib/prisma.ts
+6. server/src/services/health.service.ts
+7. server/src/controllers/health.controller.ts
+8. README.md
+9. docs/api-contract.md
+10. docs/change-log.md
+11. AI上下文记忆文档.md
+
+新增接口：
+1. 无新增接口，沿用 GET /api/health 并扩展数据库状态返回。
+
+新增数据模型或字段：
+1. User。
+2. World。
+3. WorldMember。
+4. Scene。
+5. Character。
+6. Message。
+7. Friend。
+8. AiSession。
+
+新增 Socket 事件：
+1. 无。
+
+当前可运行结果：
+1. 已成功执行 Prisma 迁移并生成 SQLite 数据库文件。
+2. 已成功执行种子脚本并写入最小验证数据。
+3. 前后端构建通过。
+4. GET /api/health 返回 api=ok、database=ok。
+
+未解决问题：
+1. 认证模块尚未开始施工。
+2. User 模型目前仅用于基础设施准备，尚未接入注册登录流程。
+
+下一步：
+1. 进入阶段 3，实现注册、登录与当前用户接口。
+2. 前端登录页和注册页接入真实认证链路。
 
 ## [2026-03-11 00:00] 初始规划文档建立
 

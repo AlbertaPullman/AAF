@@ -1,13 +1,13 @@
 import type { Request, Response } from "express";
+import { getHealthSnapshot } from "../services/health.service";
 
-export function getHealth(_req: Request, res: Response) {
-  res.status(200).json({
+export async function getHealth(req: Request, res: Response) {
+  const snapshot = await getHealthSnapshot();
+
+  res.status(snapshot.status === "ok" ? 200 : 503).json({
     success: true,
-    data: {
-      status: "ok",
-      timestamp: new Date().toISOString()
-    },
+    data: snapshot,
     error: null,
-    requestId: _req.requestId
+    requestId: req.requestId
   });
 }
