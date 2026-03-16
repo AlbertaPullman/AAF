@@ -159,6 +159,12 @@
       "owner": "story-event"
     },
     {
+      "name": "worldStoryEventSearch",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/story-events/search",
+      "owner": "story-event"
+    },
+    {
       "name": "worldStoryEventCreate",
       "method": "POST",
       "path": "/api/worlds/:worldId/story-events",
@@ -207,6 +213,18 @@
       "owner": "story-event"
     },
     {
+      "name": "worldAssistantContextGet",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/assistant/context",
+      "owner": "assistant"
+    },
+    {
+      "name": "worldAssistantRespond",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/assistant/respond",
+      "owner": "assistant"
+    },
+    {
       "name": "chatGlobalRecent",
       "method": "GET",
       "path": "/api/chat/global/recent",
@@ -216,6 +234,12 @@
       "name": "chatWorldRecent",
       "method": "GET",
       "path": "/api/chat/worlds/:worldId/recent",
+      "owner": "chat"
+    },
+    {
+      "name": "chatWorldMessageGet",
+      "method": "GET",
+      "path": "/api/chat/worlds/:worldId/messages/:messageId",
       "owner": "chat"
     },
     {

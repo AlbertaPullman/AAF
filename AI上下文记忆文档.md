@@ -279,6 +279,296 @@ AAF/
 
 ## 11. 变更记录
 
+## [2026-03-16 11:35] 阶段 8 体验对齐：迁移 OLD AAF 登录主题与入场动效
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 将旧项目登录视觉资源迁移到新前端（`loginbg.jpg`、`logoae.gif`、`login.png`）。
+2. 新增统一认证页组件，登录页与注册页复用同一“点击按钮后再选择登录/注册”的交互模式。
+3. 复刻旧版登录入场节奏：背景层 + 粒子下落 + Logo 入场 + 按钮延迟坠落。
+4. 新增鉴权页全屏模式，在 `/login` 与 `/register` 隐藏全局 Header，确保沉浸式开场。
+5. 补齐前端静态资源类型声明，修复图片资源导入的 TypeScript 报错。
+
+涉及文件：
+1. client/src/pages/auth/AuthCinematicPage.tsx
+2. client/src/pages/auth/LoginPage.tsx
+3. client/src/pages/auth/RegisterPage.tsx
+4. client/src/styles/index.css
+5. client/src/App.tsx
+6. client/src/vite-env.d.ts
+7. client/src/types/assets.d.ts
+8. client/src/assets/auth/loginbg.jpg
+9. client/src/assets/auth/logoae.gif
+10. client/src/assets/auth/login.png
+11. docs/change-log.md
+12. AI上下文记忆文档.md
+
+新增接口：
+1. 无。
+
+新增数据模型或字段：
+1. 无。
+
+新增 Socket 事件：
+1. 无。
+
+验证结果：
+1. 前端构建通过：`npm run build -w client`。
+
+未解决问题：
+1. 目前仍为“最小复刻版”开场，尚未加入旧站 CloudGate 云层转场特效。
+
+下一步：
+1. 继续把旧站其他核心页面（大厅/世界）主题色系统化迁移到新站变量体系。
+2. 视需要再补“可跳过开场动画”显式按钮与动画时长配置项。
+
+## [2026-03-16 13:05] 工程修复：server 启动脚本移除 dotenv-cli 依赖
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 修复 `aaf-server` 的 `dev/start/prisma` 脚本，移除对 `dotenv-cli` 命令的硬依赖。
+2. 统一改为依赖 `server/src/config/env.ts` 自动加载根目录 `.env`。
+3. 避免 Windows 环境下出现 `'dotenv' 不是内部或外部命令` 的启动失败。
+
+涉及文件：
+1. server/package.json
+2. docs/change-log.md
+3. AI上下文记忆文档.md
+
+新增接口：
+1. 无。
+
+新增数据模型或字段：
+1. 无。
+
+新增 Socket 事件：
+1. 无。
+
+未解决问题：
+1. 当前环境仍需补齐依赖安装，缺少 `@prisma/client` 时 server 无法继续启动。
+
+下一步：
+1. 完成依赖安装后重新验证 `npm run dev -w server`。
+
+## [2026-03-16 12:50] 阶段 8 核心推进：AI 助手受控生成与聊天回写闭环
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 新增受控生成接口：`POST /api/worlds/:worldId/assistant/respond`。
+2. 接口会先读取 `assistant/context`，再生成一条 AI 助手草案消息写回世界 SYSTEM 频道。
+3. tavern 模块新增本地 fallback 草案生成逻辑，用于真实模型接入前的最小闭环验证。
+4. 世界页新增最小触发入口，可直接生成 AI 助手草案并回显到聊天区。
+
+涉及文件：
+1. server/src/modules/tavern/tavern.service.ts
+2. server/src/modules/tavern/tavern.service.test.ts
+3. server/src/services/assistant-response.service.ts
+4. server/src/controllers/assistant-response.controller.ts
+5. server/src/routes/world.routes.ts
+6. client/src/pages/world/WorldPage.tsx
+7. docs/api-contract.md
+8. docs/interface-registry.json
+9. docs/change-log.md
+10. AI上下文记忆文档.md
+
+新增接口：
+1. POST /api/worlds/:worldId/assistant/respond
+
+新增数据模型或字段：
+1. 无新增表；复用 Message.metadata.aiAssistantContextTag 存储草案生成来源信息。
+
+新增 Socket 事件：
+1. 无。
+
+未解决问题：
+1. 当前为本地 fallback 草案模式，尚未调用真实 tavern adapter / 模型 API。
+2. 生成结果目前通过 HTTP 回写聊天，尚未补充独立的 assistant 事件流。
+
+下一步：
+1. 将 fallback 生成边界替换为真实 tavern adapter 调用。
+2. 视需要增加 AI 助手草案审核/应用流，与后续世界书写回衔接。
+
+## [2026-03-16 12:25] 阶段 8 核心推进：AI 助手上下文读取接口（事件卡优先）
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 新增世界级 AI 助手上下文接口：`GET /api/worlds/:worldId/assistant/context`。
+2. 上下文聚合策略明确为“先事件结算卡片，再最近聊天消息”。
+3. 支持 sceneId 过滤与 hours/cardLimit/messageLimit 参数，便于控制读取范围。
+4. 返回结构包含 policy、storyEventCards、recentMessages、hints，供后续 AI 接入直接消费。
+
+涉及文件：
+1. server/src/services/assistant-context.service.ts
+2. server/src/controllers/assistant-context.controller.ts
+3. server/src/routes/world.routes.ts
+4. docs/api-contract.md
+5. docs/interface-registry.json
+6. docs/change-log.md
+7. AI上下文记忆文档.md
+
+新增接口：
+1. GET /api/worlds/:worldId/assistant/context
+
+新增数据模型或字段：
+1. 无。
+
+新增 Socket 事件：
+1. 无。
+
+未解决问题：
+1. 当前仅完成“读取上下文”接口，尚未接入 tavern adapter 实际模型调用链。
+
+下一步：
+1. 以该接口为输入，接入最小 AI 生成链路（受控触发 + 回写世界聊天）。
+
+## [2026-03-16 12:00] 项目治理：新增优化池文档并冻结核心优先策略
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 新增《项目优化文档》，集中登记核心功能之外的优化项。
+2. 明确“核心功能优先”执行规则：核心未闭环前不插入优化开发。
+3. 建立优化项准入机制（里程碑验收后再排期，按 P1/P2/P3 管理）。
+4. 将当前若干体验增强项（如聊天上下文分页、高级动效）统一归档为延期项。
+
+涉及文件：
+1. 项目优化文档.md
+2. AI上下文记忆文档.md
+
+新增接口：
+1. 无。
+
+新增数据模型或字段：
+1. 无。
+
+新增 Socket 事件：
+1. 无。
+
+未解决问题：
+1. 优化项具体排期需在当前核心里程碑验收后再统一评估。
+
+下一步：
+1. 严格按阶段 8 核心功能推进（剧情事件主链路、造物系统、AI助手读取链路）。
+
+## [2026-03-16 11:40] 阶段 8 剧情扮演增强：精确消息定位与事件自动滚动
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 新增世界聊天精确读取接口：`GET /api/chat/worlds/:worldId/messages/:messageId`。
+2. 世界页“定位到聊天区”改为先按 messageId 精确读取目标消息，再拉取 recent 并合并展示。
+3. 聊天定位支持超出 recent 100 窗口的历史消息，不再仅依赖最近窗口。
+4. 若目标消息所在场景与当前场景不一致，前端会自动切换到目标场景后再定位。
+5. 事件定位增强：目标事件卡片自动滚动到视口可见区域并高亮提示。
+
+涉及文件：
+1. server/src/services/chat.service.ts
+2. server/src/controllers/chat.controller.ts
+3. server/src/routes/chat.routes.ts
+4. client/src/pages/world/WorldPage.tsx
+5. client/src/world/components/StoryEventPanel.tsx
+6. docs/api-contract.md
+7. docs/interface-registry.json
+8. docs/change-log.md
+
+新增接口：
+1. GET /api/chat/worlds/:worldId/messages/:messageId
+
+新增数据模型或字段：
+1. 无。
+
+新增 Socket 事件：
+1. 无。
+
+未解决问题：
+1. 聊天定位目前为“精确消息 + recent窗口合并”，尚未提供按目标消息前后文分页浏览能力。
+
+下一步：
+1. 如需更完整回看体验，可新增“按锚点加载前后文”接口与前端上下翻页能力。
+
+## [2026-03-16 11:10] 阶段 8 剧情扮演增强：检索筛选与消息定位
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 双向检索新增结构化筛选参数：eventStatus、channelKey、hours。
+2. 前端检索表单新增状态/频道/时间筛选输入，并透传到检索接口。
+3. 检索结果中的聊天命中项支持“一键定位到聊天区”。
+4. 聊天区新增目标消息高亮，便于快速回看上下文。
+5. 检索结果中的事件命中项支持“一键定位到事件区”并高亮卡片。
+6. 新增后端检索纯函数自动化测试，覆盖参数校验与关联提取规则。
+
+涉及文件：
+1. server/src/services/story-event.service.ts
+2. server/src/controllers/story-event.controller.ts
+3. client/src/world/components/StoryEventPanel.tsx
+4. client/src/pages/world/WorldPage.tsx
+5. docs/api-contract.md
+6. docs/change-log.md
+
+新增接口：
+1. 无新增路径；扩展 GET /api/worlds/:worldId/story-events/search 查询参数。
+
+新增数据模型或字段：
+1. 无。
+
+新增 Socket 事件：
+1. 无。
+
+未解决问题：
+1. 当前定位依赖“最近100条聊天”窗口，超出窗口需进一步增强分页定位。
+2. 事件定位目前为高亮模式，尚未自动滚动到视口中心。
+
+下一步：
+1. 增强聊天定位能力（超窗口分页定位/按 messageId 精确查询）。
+2. 增加事件定位自动滚动与更明显的高亮动效。
+
+验证结果：
+1. 新增 `server/src/services/story-event.search.test.ts` 纯函数测试文件。
+2. 定向测试通过：`npx.cmd tsx --test --test-reporter=spec server/src/services/story-event.search.test.ts`（7 passed）。
+3. 前端构建通过（npm.cmd run build -w client）。
+
+## [2026-03-16 10:30] 阶段 8 剧情扮演增强：事件与聊天双向检索
+
+阶段：阶段 8（迭代 B 实施中）
+
+本次完成：
+1. 新增剧情事件与世界聊天双向检索接口，支持关键词与场景过滤。
+2. 检索结果支持双向关联：事件命中可反查关联聊天，聊天命中可反补关联事件。
+3. 世界页剧情事件面板新增检索输入、结果摘要与命中明细展示。
+4. 同步更新 API 契约、接口注册表与变更日志。
+
+涉及文件：
+1. server/src/services/story-event.service.ts
+2. server/src/controllers/story-event.controller.ts
+3. server/src/routes/world.routes.ts
+4. client/src/world/components/StoryEventPanel.tsx
+5. client/src/pages/world/WorldPage.tsx
+6. docs/api-contract.md
+7. docs/interface-registry.json
+8. docs/change-log.md
+
+新增接口：
+1. GET /api/worlds/:worldId/story-events/search
+
+新增数据模型或字段：
+1. 无新增数据库字段；复用 Message.metadata 中剧情事件标签实现关联检索。
+
+新增 Socket 事件：
+1. 无。
+
+未解决问题：
+1. 检索目前以关键词为主，尚未支持结构化过滤（状态、提案状态、时间范围）。
+2. 前端结果区为最小展示，尚未提供跳转定位到聊天消息能力。
+
+下一步：
+1. 为双向检索补充后端自动化测试覆盖。
+2. 增加前端筛选器（事件状态、频道、时间范围）与快速定位能力。
+
 ## [2026-03-15 07:55] 阶段 8 剧情扮演增强：物语点提案审核流
 
 阶段：阶段 8（迭代 B 实施中）

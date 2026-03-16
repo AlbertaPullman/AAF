@@ -15,6 +15,80 @@ Authorization: Bearer <token>
 - 说明：
   - 返回当前用户可见的剧情事件列表（GM 全量；玩家按作用域过滤）。
 
+## GET /api/worlds/:worldId/story-events/search?q=关键词&sceneId=场景ID&limit=20
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 剧情事件与世界聊天双向检索入口。
+  - `q` 必填，按关键词匹配事件标题/描述/选项/提案文本与聊天文本。
+  - `sceneId` 可选，传入后仅检索对应场景上下文。
+  - `eventStatus` 可选：`ALL` / `DRAFT` / `OPEN` / `RESOLVED` / `CLOSED`。
+  - `channelKey` 可选：`ALL` / `OOC` / `IC` / `SYSTEM`。
+  - `hours` 可选：仅检索近 N 小时聊天（最大 720）。
+  - 返回结构包含 `events` 与 `messages` 两组结果：
+    - 事件命中后会关联返回引用这些事件的聊天。
+    - 聊天命中后若 metadata 关联剧情事件，也会反向补齐到 `events`。
+
+## GET /api/chat/worlds/:worldId/messages/:messageId
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 按 `messageId` 精确读取世界聊天消息，支持“超出最近窗口”的历史消息定位。
+  - 仅世界 ACTIVE 成员可读取。
+  - 返回结构与世界聊天 recent 列表的单条消息结构一致。
+
+## GET /api/worlds/:worldId/assistant/context?sceneId=场景ID&hours=24&cardLimit=8&messageLimit=40
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 为 AI 助手生成世界上下文快照。
+  - 读取策略固定为“事件结算卡片优先，再补最近聊天消息”。
+  - `sceneId` 可选：按场景过滤，避免跨场景串线。
+  - `hours` 可选：限制读取近 N 小时数据（最大 720）。
+  - `cardLimit` 可选：事件卡片上限（默认 8，最大 30）。
+  - `messageLimit` 可选：最近聊天上限（默认 40，最大 120）。
+  - 返回 `policy`、`storyEventCards`、`recentMessages` 与 `hints`，供后续 AI 调用链直接消费。
+
+## POST /api/worlds/:worldId/assistant/respond
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "sceneId": "scene_cuid",
+  "hours": 24,
+  "cardLimit": 8,
+  "messageLimit": 40,
+  "instruction": "总结当前场景冲突与结果"
+}
+```
+
+- 说明：
+  - 仅世界 `GM` / `ASSISTANT` 可触发。
+  - 受控读取 `assistant/context` 的结果，生成一条 AI 助手草案消息并写回世界 `SYSTEM` 频道。
+  - 当前为本地 fallback 草案模式，后续可替换为 tavern adapter 的真实模型调用。
+
 ## POST /api/worlds/:worldId/story-events
 
 - Headers

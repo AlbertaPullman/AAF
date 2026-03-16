@@ -19,6 +19,7 @@ type AuthState = {
   clearAuth: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  updateUser: (patch: Partial<User>) => void;
 };
 
 export const useAuthStore = create<AuthState>()(persist(
@@ -30,7 +31,11 @@ export const useAuthStore = create<AuthState>()(persist(
     setAuth: (token, user) => set({ token, user, error: null }),
     clearAuth: () => set({ token: null, user: null }),
     setLoading: (isLoading) => set({ isLoading }),
-    setError: (error) => set({ error })
+    setError: (error) => set({ error }),
+    updateUser: (patch) =>
+      set((state) => ({
+        user: state.user ? { ...state.user, ...patch } : state.user
+      }))
   }),
   {
     name: "auth-storage"

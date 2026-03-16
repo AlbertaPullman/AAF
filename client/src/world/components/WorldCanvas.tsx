@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type TokenItem = {
   tokenId: string;
@@ -12,45 +12,142 @@ type TokenItem = {
 type WorldCanvasProps = {
   tokens: TokenItem[];
   onMoveToken: (tokenId: string, x: number, y: number, ownerUserId?: string | null, characterId?: string | null) => void;
+  gridEnabled?: boolean;
+  gridUnitFeet?: number;
 };
 
-const BOARD_WIDTH = 640;
-const BOARD_HEIGHT = 360;
-const TOKEN_SIZE = 40;
+const BOARD_WIDTH = 1120;
+const BOARD_HEIGHT = 640;
+const TOKEN_SIZE = 44;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-export function WorldCanvas({ tokens, onMoveToken }: WorldCanvasProps) {
-  const handleTokenDrag = (event: MouseEvent<HTMLButtonElement>, tokenId: string) => {
-    const board = event.currentTarget.parentElement;
+type DragState = {
+  tokenId: string;
+  ownerUserId?: string | null;
+  characterId?: string | null;
+};
+
+export function WorldCanvas({ tokens, onMoveToken, gridEnabled = true, gridUnitFeet = 5 }: WorldCanvasProps) {
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const [dragging, setDragging] = useState<DragState | null>(null);
+  const [draftPositions, setDraftPositions] = useState<Record<string, { x: number; y: number }>>({});
+
+  useEffect(() => {
+    const next: Record<string, { x: number; y: number }> = {};
+    for (const token of tokens) {
+      next[token.tokenId] = { x: token.x, y: token.y };
+    }
+    setDraftPositions(next);
+  }, [tokens]);
+
+  const gridCellSize = useMemo(() => clamp(Math.round(gridUnitFeet * 7.2), 24, 72), [gridUnitFeet]);
+
+  const getClampedPosition = (clientX: number, clientY: number) => {
+    const board = boardRef.current;
     if (!board) {
-      return;
+      return null;
     }
 
     const rect = board.getBoundingClientRect();
-    const x = clamp(event.clientX - rect.left - TOKEN_SIZE / 2, 0, BOARD_WIDTH - TOKEN_SIZE);
-    const y = clamp(event.clientY - rect.top - TOKEN_SIZE / 2, 0, BOARD_HEIGHT - TOKEN_SIZE);
-    const token = tokens.find((item) => item.tokenId === tokenId);
-    onMoveToken(tokenId, Math.round(x), Math.round(y), token?.ownerUserId, token?.characterId);
+    const xRatio = BOARD_WIDTH / rect.width;
+    const yRatio = BOARD_HEIGHT / rect.height;
+    const x = clamp((clientX - rect.left) * xRatio - TOKEN_SIZE / 2, 0, BOARD_WIDTH - TOKEN_SIZE);
+    const y = clamp((clientY - rect.top) * yRatio - TOKEN_SIZE / 2, 0, BOARD_HEIGHT - TOKEN_SIZE);
+
+    return { x: Math.round(x), y: Math.round(y) };
   };
 
+  useEffect(() => {
+    if (!dragging) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const position = getClampedPosition(event.clientX, event.clientY);
+      if (!position) {
+        return;
+      }
+
+      setDraftPositions((prev) => ({
+        ...prev,
+        [dragging.tokenId]: position
+      }));
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const position = getClampedPosition(event.clientX, event.clientY);
+      if (position) {
+        onMoveToken(dragging.tokenId, position.x, position.y, dragging.ownerUserId, dragging.characterId);
+      }
+      setDragging(null);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [dragging, onMoveToken]);
+
   return (
-    <div className="world-card">
-      <strong>WorldCanvas</strong>
-      <p>点击 token 快速移动（阶段 6 最小交互）。</p>
-      <div className="world-board">
+    <div className="world-card world-canvas-card">
+      <div className="world-canvas-card__header">
+        <div>
+          <strong>战术场景画布</strong>
+          <div className="world-canvas-card__badges">
+            <span className="world-canvas-card__badge">战术视窗</span>
+            <span className="world-canvas-card__badge">网格 {gridEnabled ? `${gridUnitFeet} 尺` : "关闭"}</span>
+            <span className="world-canvas-card__badge">拖拽即同步</span>
+          </div>
+        </div>
+        <p>拖拽 token 到目标位置，松手后自动同步到同场景。</p>
+      </div>
+      <div
+        className="world-board"
+        ref={boardRef}
+        style={{
+          backgroundImage: gridEnabled
+            ? `
+              linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
+              radial-gradient(circle at 30% 20%, rgba(56, 189, 248, 0.2), transparent 55%),
+              radial-gradient(circle at 78% 70%, rgba(251, 191, 36, 0.2), transparent 48%),
+              linear-gradient(165deg, rgba(9, 26, 62, 0.95), rgba(7, 15, 36, 0.97))
+            `
+            : "radial-gradient(circle at 35% 25%, rgba(56, 189, 248, 0.26), transparent 55%), linear-gradient(165deg, rgba(9, 26, 62, 0.96), rgba(7, 15, 36, 0.98))",
+          backgroundSize: gridEnabled ? `${gridCellSize}px ${gridCellSize}px, ${gridCellSize}px ${gridCellSize}px, auto, auto, auto` : "auto"
+        }}
+      >
+        <div className="world-board__hud world-board__hud--top-left">主舞台</div>
+        <div className="world-board__hud world-board__hud--top-right">{gridEnabled ? `网格 ${gridUnitFeet} 尺` : "自由舞台"}</div>
+        <div className="world-board__hud world-board__hud--bottom-left">拖拽棋子可实时调整站位</div>
+        <div className="world-board__glow world-board__glow--one" />
+        <div className="world-board__glow world-board__glow--two" />
         {tokens.map((token) => (
           <button
             className="world-token"
             key={token.tokenId}
-            onClick={(event) => handleTokenDrag(event, token.tokenId)}
-            style={{ left: `${token.x}px`, top: `${token.y}px` }}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              setDragging({
+                tokenId: token.tokenId,
+                ownerUserId: token.ownerUserId,
+                characterId: token.characterId
+              });
+            }}
+            style={{
+              left: `${draftPositions[token.tokenId]?.x ?? token.x}px`,
+              top: `${draftPositions[token.tokenId]?.y ?? token.y}px`
+            }}
             type="button"
             title={`${token.tokenId} (${token.x}, ${token.y})${token.ownerUserId ? ` owner=${token.ownerUserId}` : ""}${token.characterName ? ` character=${token.characterName}` : ""}`}
           >
-            T
+            {token.characterName ? token.characterName.slice(0, 2).toUpperCase() : "TK"}
           </button>
         ))}
       </div>

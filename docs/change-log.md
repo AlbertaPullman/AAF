@@ -1,5 +1,36 @@
 # Change Log
 
+## 2026-03-16 (Stage 8 - Auth Theme Migration From OLD AAF)
+
+- 迁移旧项目登录视觉资产到新前端：`loginbg.jpg`、`logoae.gif`、`login.png`。
+- 新增电影化认证页组件，复刻旧版登录节奏：背景入场、粒子下落、Logo 动画、按钮延迟坠落。
+- 登录页与注册页统一为同一认证入口，在弹层中切换“登录/注册”模式。
+- 应用壳布局新增鉴权页全屏模式：`/login` 与 `/register` 页面隐藏全局 Header。
+- 新增认证主题样式变量与动画，整体配色向旧站风格靠拢。
+- 新增前端静态资源类型声明（`vite-env.d.ts`、`types/assets.d.ts`），修复资源导入类型错误。
+- 前端构建验证通过：`npm run build -w client`。
+
+## 2026-03-16 (Stage 8 - Story Event <-> Chat Search)
+
+- 新增剧情事件与聊天双向检索接口：`GET /api/worlds/:worldId/story-events/search`。
+- 检索支持关键词匹配事件文本与聊天文本，并支持按 `sceneId` 过滤场景上下文。
+- 检索结果支持双向关联：事件命中可反查关联聊天，聊天命中可反补关联事件。
+- 世界页剧情事件面板新增“事件与聊天双向检索”入口与结果展示区。
+- 检索增强：新增 `eventStatus`、`channelKey`、`hours` 结构化筛选参数。
+- 面板增强：支持一键定位检索命中的聊天消息并在聊天区高亮显示。
+- 联动增强：支持一键定位检索命中的剧情事件并在事件区高亮显示。
+- 新增聊天精确定位接口：`GET /api/chat/worlds/:worldId/messages/:messageId`，支持定位超出 recent 100 窗口的历史消息。
+- 世界页定位逻辑升级：先按 `messageId` 精确读取，再与 recent 列表合并展示，避免“找不到旧消息”。
+- 事件定位体验增强：定位时自动滚动到目标事件卡片并触发更显著高亮。
+- 新增 AI 助手上下文接口：`GET /api/worlds/:worldId/assistant/context`。
+- 上下文返回策略固定为“事件结算卡片优先 + 最近聊天补充”，为后续 AI 助手接入提供稳定输入。
+- 新增 AI 助手受控生成接口：`POST /api/worlds/:worldId/assistant/respond`。
+- 世界页新增最小触发入口，可生成一条 SYSTEM 频道的 AI 助手草案消息并立即回显。
+- tavern 模块新增本地 fallback 草案生成逻辑，为后续真实适配器替换保留边界。
+- 修复 server workspace 启动脚本：移除对 `dotenv-cli` 命令的依赖，改为由 `env.ts` 自动加载根目录 `.env`。
+- 新增后端检索纯函数测试：覆盖关键词匹配、metadata 事件关联提取、筛选参数归一化与非法参数校验。
+- 同步更新接口契约与接口注册表。
+
 ## 2026-03-15 (Stage 8 - Story Narrative Request Flow)
 
 - 剧情事件新增物语点提案审核流：玩家可提交提案，GM 可审批通过或驳回。

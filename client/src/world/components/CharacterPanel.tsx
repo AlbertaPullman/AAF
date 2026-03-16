@@ -60,10 +60,10 @@ export function CharacterPanel(props: CharacterPanelProps) {
 
   return (
     <div className="world-card">
-      <strong>CharacterPanel</strong>
-      <p>角色数量：{characters.length}</p>
+      <strong>角色谱系</strong>
+      <p>当前世界角色数：{characters.length}</p>
 
-      <label className="block text-sm text-gray-700">当前绑定角色</label>
+      <label className="block text-sm text-gray-700">当前绑定角色卡</label>
       <select
         className="mb-2 mt-1 w-full rounded border px-2 py-1.5"
         value={selectedCharacterId}
@@ -78,7 +78,7 @@ export function CharacterPanel(props: CharacterPanelProps) {
       </select>
 
       <form className="space-y-2" onSubmit={onCreateCharacter}>
-        <label className="block text-sm text-gray-700">新建角色</label>
+        <label className="block text-sm text-gray-700">召唤新角色</label>
         <input
           className="w-full rounded border px-2 py-1.5"
           value={createName}
@@ -91,12 +91,12 @@ export function CharacterPanel(props: CharacterPanelProps) {
           <option value="NPC">NPC</option>
         </select>
         <button className="rounded bg-slate-800 px-3 py-1.5 text-sm text-white disabled:opacity-60" disabled={creating} type="submit">
-          {creating ? "创建中..." : "创建角色"}
+          {creating ? "召唤中..." : "创建角色"}
         </button>
       </form>
 
       <form className="mt-4 space-y-2" onSubmit={onSaveCharacter}>
-        <label className="block text-sm text-gray-700">编辑角色</label>
+        <label className="block text-sm text-gray-700">角色资料整备</label>
         <input
           className="w-full rounded border px-2 py-1.5"
           value={editName}
@@ -137,7 +137,7 @@ export function CharacterPanel(props: CharacterPanelProps) {
           />
         </div>
         <button className="rounded bg-amber-700 px-3 py-1.5 text-sm text-white disabled:opacity-60" disabled={saving || !selectedCharacterId} type="submit">
-          {saving ? "保存中..." : "保存角色详情"}
+          {saving ? "记录中..." : "保存角色详情"}
         </button>
       </form>
     </div>

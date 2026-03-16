@@ -84,6 +84,13 @@ type ChatMessage = {
       status: "APPROVED" | "REJECTED";
       gmNote?: string | null;
     };
+    aiAssistantContextTag?: {
+      mode: "local-fallback";
+      instruction?: string | null;
+      storyEventCardCount: number;
+      recentMessageCount: number;
+      generatedAt: string;
+    };
   };
   createdAt: string;
   fromUser: {
@@ -234,6 +241,30 @@ type StoryEventCardItem = {
   createdAt: string;
 };
 
+type StoryEventSearchResult = {
+  keyword: string;
+  filters: {
+    sceneId?: string;
+    eventStatus: "ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED";
+    channelKey: "ALL" | "OOC" | "IC" | "SYSTEM";
+    hours?: number;
+  };
+  events: StoryEventItem[];
+  messages: Array<{
+    id: string;
+    channelKey?: string;
+    content: string;
+    createdAt: string;
+    linkedEventId?: string;
+    matchedBy: Array<"CHAT_CONTENT" | "EVENT_LINK">;
+    fromUser: {
+      id: string;
+      username: string;
+      displayName: string | null;
+    };
+  }>;
+};
+
 type WorldChatChannel = "OOC" | "IC" | "SYSTEM";
 type ChannelUnreadMap = Record<WorldChatChannel, number>;
 
@@ -264,6 +295,12 @@ function canCurrentRoleSendChannel(role: WorldDetail["myRole"], channel: WorldCh
   }
 
   return true;
+}
+
+function mergeLocatedMessageIntoList(messages: ChatMessage[], target: ChatMessage): ChatMessage[] {
+  const merged = [...messages.filter((item) => item.id !== target.id), target];
+  merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  return merged;
 }
 
 function getMyTokenId(userId: string) {
@@ -321,6 +358,16 @@ export default function WorldPage() {
   const [storyEvents, setStoryEvents] = useState<StoryEventItem[]>([]);
   const [storyEventCards, setStoryEventCards] = useState<StoryEventCardItem[]>([]);
   const [storyEventLoading, setStoryEventLoading] = useState(false);
+  const [storySearchKeyword, setStorySearchKeyword] = useState("");
+  const [storySearchEventStatus, setStorySearchEventStatus] = useState<"ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED">("ALL");
+  const [storySearchChannelKey, setStorySearchChannelKey] = useState<"ALL" | "OOC" | "IC" | "SYSTEM">("ALL");
+  const [storySearchHours, setStorySearchHours] = useState("24");
+  const [storySearching, setStorySearching] = useState(false);
+  const [storySearchResult, setStorySearchResult] = useState<StoryEventSearchResult | null>(null);
+  const [focusedWorldMessageId, setFocusedWorldMessageId] = useState<string | null>(null);
+  const [focusedStoryEventId, setFocusedStoryEventId] = useState<string | null>(null);
+  const [assistantInstruction, setAssistantInstruction] = useState("");
+  const [assistantGenerating, setAssistantGenerating] = useState(false);
 
   const tokenList = useMemo(() => Object.values(tokens), [tokens]);
   const selectedCharacter = useMemo(
@@ -331,6 +378,7 @@ export default function WorldPage() {
     () => canCurrentRoleSendChannel(myRole, worldChatChannel),
     [myRole, worldChatChannel]
   );
+  const canUseAssistant = myRole === "GM" || myRole === "ASSISTANT";
   const canManageSceneRuntime = myRole === "GM";
   const selectedSceneIndex = useMemo(() => scenes.findIndex((item) => item.id === selectedSceneId), [scenes, selectedSceneId]);
   const canMoveSceneUp = selectedSceneIndex > 0;
@@ -586,6 +634,121 @@ export default function WorldPage() {
     }
   };
 
+  const onSearchStoryEventContext = async () => {
+    if (!worldId) {
+      return;
+    }
+
+    const keyword = storySearchKeyword.trim();
+    if (!keyword) {
+      setStorySearchResult(null);
+      return;
+    }
+
+    setStorySearching(true);
+    try {
+      const resp = await http.get(`/worlds/${worldId}/story-events/search`, {
+        params: {
+          q: keyword,
+          sceneId: selectedSceneId,
+          eventStatus: storySearchEventStatus,
+          channelKey: storySearchChannelKey,
+          hours: Number(storySearchHours) || undefined,
+          limit: 20
+        }
+      });
+      setStorySearchResult((resp.data?.data ?? null) as StoryEventSearchResult | null);
+    } catch (err: any) {
+      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "检索剧情事件失败"));
+    } finally {
+      setStorySearching(false);
+    }
+  };
+
+  const onClearStoryEventSearch = () => {
+    setStorySearchKeyword("");
+    setStorySearchEventStatus("ALL");
+    setStorySearchChannelKey("ALL");
+    setStorySearchHours("24");
+    setStorySearchResult(null);
+  };
+
+  const onLocateStoryEvent = (eventId: string) => {
+    setFocusedStoryEventId(eventId);
+  };
+
+  const onLocateWorldMessage = async (messageId: string, channelKey?: string) => {
+    if (!worldId) {
+      return;
+    }
+
+    try {
+      const exactResp = await http.get(`/chat/worlds/${worldId}/messages/${messageId}`);
+      const exact = (exactResp.data?.data ?? null) as ChatMessage | null;
+      if (!exact) {
+        setError("定位消息失败：目标消息不存在");
+        return;
+      }
+
+      const targetChannel = exact.channelKey === "IC" || exact.channelKey === "SYSTEM" ? exact.channelKey : "OOC";
+      const targetSceneId = exact.sceneId || selectedSceneId;
+
+      setFocusedWorldMessageId(exact.id);
+
+      if (targetSceneId && targetSceneId !== selectedSceneId) {
+        setSelectedSceneId(targetSceneId);
+      }
+      if (worldChatChannel !== targetChannel) {
+        setWorldChatChannel(targetChannel);
+      }
+
+      const chatResp = await http.get(`/chat/worlds/${worldId}/recent`, {
+        params: { limit: 100, channelKey: targetChannel, sceneId: targetSceneId }
+      });
+      const recentList = (chatResp.data?.data ?? []) as ChatMessage[];
+      const merged = mergeLocatedMessageIntoList(recentList, exact);
+      setWorldMessages(merged);
+    } catch {
+      setError("定位聊天消息失败");
+    }
+  };
+
+  const onGenerateAssistantResponse = async () => {
+    if (!worldId || !selectedSceneId || !canUseAssistant) {
+      return;
+    }
+
+    setAssistantGenerating(true);
+    try {
+      const resp = await http.post(`/worlds/${worldId}/assistant/respond`, {
+        sceneId: selectedSceneId,
+        hours: 24,
+        cardLimit: 8,
+        messageLimit: 40,
+        instruction: assistantInstruction.trim() || undefined
+      });
+
+      const created = (resp.data?.data?.message ?? null) as ChatMessage | null;
+      if (!created) {
+        setError("AI 助手生成失败：未返回消息");
+        return;
+      }
+
+      setFocusedWorldMessageId(created.id);
+      setWorldChatChannel("SYSTEM");
+      const chatResp = await http.get(`/chat/worlds/${worldId}/recent`, {
+        params: { limit: 100, channelKey: "SYSTEM", sceneId: created.sceneId || selectedSceneId }
+      });
+      const recentList = (chatResp.data?.data ?? []) as ChatMessage[];
+      setWorldMessages(mergeLocatedMessageIntoList(recentList, created));
+      setAssistantInstruction("");
+    } catch (err: any) {
+      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "生成 AI 助手草案失败"));
+    } finally {
+      setAssistantGenerating(false);
+    }
+  };
+
   useEffect(() => {
     if (!worldId || !selectedSceneId) {
       return;
@@ -685,7 +848,7 @@ export default function WorldPage() {
     void (async () => {
       try {
         const chatResp = await http.get(`/chat/worlds/${worldId}/recent`, {
-          params: { limit: 40, channelKey: worldChatChannel, sceneId: selectedSceneId }
+          params: { limit: 100, channelKey: worldChatChannel, sceneId: selectedSceneId }
         });
         setWorldMessages(chatResp.data?.data ?? []);
         setWorldChatUnread((prev) => ({ ...prev, [worldChatChannel]: 0 }));
@@ -1025,146 +1188,199 @@ export default function WorldPage() {
   };
 
   return (
-    <section>
-      <h1>{worldName}</h1>
-      <p>阶段 6 最小同步：拖拽 token 后会向同房间成员实时广播位置。</p>
-      <p className="text-sm text-gray-600">房间状态：{socketReady ? "已连接" : "未连接"} · 在线人数：{onlineCount} · 我的角色：{myRole || "未知"}</p>
+    <section className="world-page">
+      <div className="world-hero">
+        <div className="world-hero__copy">
+          <h1>{worldName}</h1>
+          <p>JRPG 式奇幻冒险舞台。这里是场景、角色、事件与战斗的总控制台。</p>
+          <div className="world-hero__actions">
+            <button
+              className="world-hero__back"
+              onClick={() => {
+                navigate("/lobby");
+              }}
+              type="button"
+            >
+              返回大厅
+            </button>
+            <span className="world-hero__hint">当前世界的所有操作都会保留在这一页，离开后也能从大厅重新进入。</span>
+          </div>
+        </div>
+        <div className="world-status-bar">
+          <span className="world-status-pill">联机：{socketReady ? "已连接" : "未连接"}</span>
+          <span className="world-status-pill">在线：{onlineCount}</span>
+          <span className="world-status-pill">身份：{myRole || "未知"}</span>
+          <span className="world-status-pill">场景：{scenes.length}</span>
+        </div>
+      </div>
       {error ? <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">{error}</div> : null}
-      <div className="world-grid">
-        <ScenePanel
-          scenes={scenes}
-          selectedSceneId={selectedSceneId}
-          createName={newSceneName}
-          renameName={renameSceneName}
-          creating={creatingScene}
-          renaming={renamingScene}
-          deleting={deletingScene}
-          sorting={sortingScene}
-          canMoveUp={canMoveSceneUp}
-          canMoveDown={canMoveSceneDown}
-          onSelectScene={setSelectedSceneId}
-          onCreateNameChange={setNewSceneName}
-          onRenameNameChange={setRenameSceneName}
-          onCreateScene={onCreateScene}
-          onRenameScene={onRenameScene}
-          onDeleteScene={onDeleteScene}
-          onMoveSceneUp={() => void onMoveScene("UP")}
-          onMoveSceneDown={() => void onMoveScene("DOWN")}
-        />
-        <WorldCanvas tokens={tokenList} onMoveToken={onMoveToken} />
-        <TokenPanel
-          tokenCount={tokenList.length}
-          selectedCharacterName={selectedCharacter?.name ?? ""}
-          onAddMyToken={onAddMyToken}
-          onCenterToken={onCenterToken}
-        />
-        <CharacterPanel
-          characters={characters}
-          selectedCharacterId={selectedCharacterId}
-          onSelectCharacter={setSelectedCharacterId}
-          creating={creatingCharacter}
-          createName={newCharacterName}
-          createType={newCharacterType}
-          onCreateNameChange={setNewCharacterName}
-          onCreateTypeChange={setNewCharacterType}
-          onCreateCharacter={onCreateCharacter}
-          editName={editCharacterName}
-          editHp={editHp}
-          editMp={editMp}
-          editLevel={editLevel}
-          editClassName={editClassName}
-          saving={savingCharacter}
-          onEditNameChange={setEditCharacterName}
-          onEditHpChange={setEditHp}
-          onEditMpChange={setEditMp}
-          onEditLevelChange={setEditLevel}
-          onEditClassNameChange={setEditClassName}
-          onSaveCharacter={onSaveCharacter}
-        />
-        <RuntimePanel
-          runtimeState={runtimeState}
-          moduleCount={runtimeModules.length}
-          loading={runtimeLoading}
-          errorSummary={runtimeState?.status === "error" ? runtimeState.message || "运行时异常" : null}
-          onRefresh={() => {
-            void loadRuntimeState();
-          }}
-        />
-        <ModulePanel
-          modules={runtimeModules}
-          myRole={myRole}
-          loading={moduleLoading}
-          togglingModuleKey={togglingModuleKey}
-          onRefresh={() => {
-            void loadRuntimeModules();
-          }}
-          onToggle={(module) => {
-            void onToggleRuntimeModule(module);
-          }}
-        />
-        <SceneVisualPanel
-          visualState={sceneVisualState}
-          loading={sceneVisualLoading}
-          saving={sceneVisualSaving}
-          canManage={canManageSceneRuntime}
-          onRefresh={() => {
-            void loadSceneVisualState();
-          }}
-          onPatch={(input) => {
-            void onPatchSceneVisualState(input);
-          }}
-        />
-        <SceneCombatPanel
-          combatState={sceneCombatState}
-          loading={sceneCombatLoading}
-          saving={sceneCombatSaving}
-          advancing={sceneCombatAdvancing}
-          canManage={canManageSceneRuntime}
-          onRefresh={() => {
-            void loadSceneCombatState();
-          }}
-          onSave={(input) => {
-            void onSaveSceneCombatState(input);
-          }}
-          onNextTurn={() => {
-            void onAdvanceSceneCombatTurn();
-          }}
-        />
-        <StoryEventPanel
-          myRole={myRole}
-          loading={storyEventLoading}
-          events={storyEvents}
-          cards={storyEventCards}
-          onRefresh={() => {
-            void loadStoryEvents();
-          }}
-          onCreateEvent={(payload) => {
-            void onCreateStoryEvent(payload);
-          }}
-          onAddOption={(eventId, payload) => {
-            void onAddStoryEventOption(eventId, payload);
-          }}
-          onSubmitCheck={(eventId, optionId, payload) => {
-            void onSubmitStoryEventCheck(eventId, optionId, payload);
-          }}
-          onResolveEvent={(eventId, payload) => {
-            void onResolveStoryEvent(eventId, payload);
-          }}
-          onCreateNarrativeRequest={(eventId, payload) => {
-            void onCreateStoryNarrativeRequest(eventId, payload);
-          }}
-          onDecideNarrativeRequest={(eventId, requestId, payload) => {
-            void onDecideStoryNarrativeRequest(eventId, requestId, payload);
-          }}
-        />
-        <MeasurePanel />
-        <DrawPanel />
+      <div className="world-layout">
+        <aside className="world-column world-column--left">
+          <ScenePanel
+            scenes={scenes}
+            selectedSceneId={selectedSceneId}
+            createName={newSceneName}
+            renameName={renameSceneName}
+            creating={creatingScene}
+            renaming={renamingScene}
+            deleting={deletingScene}
+            sorting={sortingScene}
+            canMoveUp={canMoveSceneUp}
+            canMoveDown={canMoveSceneDown}
+            onSelectScene={setSelectedSceneId}
+            onCreateNameChange={setNewSceneName}
+            onRenameNameChange={setRenameSceneName}
+            onCreateScene={onCreateScene}
+            onRenameScene={onRenameScene}
+            onDeleteScene={onDeleteScene}
+            onMoveSceneUp={() => void onMoveScene("UP")}
+            onMoveSceneDown={() => void onMoveScene("DOWN")}
+          />
+          <TokenPanel
+            tokenCount={tokenList.length}
+            selectedCharacterName={selectedCharacter?.name ?? ""}
+            onAddMyToken={onAddMyToken}
+            onCenterToken={onCenterToken}
+          />
+          <CharacterPanel
+            characters={characters}
+            selectedCharacterId={selectedCharacterId}
+            onSelectCharacter={setSelectedCharacterId}
+            creating={creatingCharacter}
+            createName={newCharacterName}
+            createType={newCharacterType}
+            onCreateNameChange={setNewCharacterName}
+            onCreateTypeChange={setNewCharacterType}
+            onCreateCharacter={onCreateCharacter}
+            editName={editCharacterName}
+            editHp={editHp}
+            editMp={editMp}
+            editLevel={editLevel}
+            editClassName={editClassName}
+            saving={savingCharacter}
+            onEditNameChange={setEditCharacterName}
+            onEditHpChange={setEditHp}
+            onEditMpChange={setEditMp}
+            onEditLevelChange={setEditLevel}
+            onEditClassNameChange={setEditClassName}
+            onSaveCharacter={onSaveCharacter}
+          />
+          <MeasurePanel />
+          <DrawPanel />
+        </aside>
+
+        <div className="world-column world-column--center">
+          <WorldCanvas
+            tokens={tokenList}
+            onMoveToken={onMoveToken}
+            gridEnabled={sceneVisualState?.grid.enabled ?? true}
+            gridUnitFeet={sceneVisualState?.grid.unitFeet ?? 5}
+          />
+          <SceneVisualPanel
+            visualState={sceneVisualState}
+            loading={sceneVisualLoading}
+            saving={sceneVisualSaving}
+            canManage={canManageSceneRuntime}
+            onRefresh={() => {
+              void loadSceneVisualState();
+            }}
+            onPatch={(input) => {
+              void onPatchSceneVisualState(input);
+            }}
+          />
+          <SceneCombatPanel
+            combatState={sceneCombatState}
+            loading={sceneCombatLoading}
+            saving={sceneCombatSaving}
+            advancing={sceneCombatAdvancing}
+            canManage={canManageSceneRuntime}
+            onRefresh={() => {
+              void loadSceneCombatState();
+            }}
+            onSave={(input) => {
+              void onSaveSceneCombatState(input);
+            }}
+            onNextTurn={() => {
+              void onAdvanceSceneCombatTurn();
+            }}
+          />
+        </div>
+
+        <aside className="world-column world-column--right">
+          <RuntimePanel
+            runtimeState={runtimeState}
+            moduleCount={runtimeModules.length}
+            loading={runtimeLoading}
+            errorSummary={runtimeState?.status === "error" ? runtimeState.message || "运行时异常" : null}
+            onRefresh={() => {
+              void loadRuntimeState();
+            }}
+          />
+          <ModulePanel
+            modules={runtimeModules}
+            myRole={myRole}
+            loading={moduleLoading}
+            togglingModuleKey={togglingModuleKey}
+            onRefresh={() => {
+              void loadRuntimeModules();
+            }}
+            onToggle={(module) => {
+              void onToggleRuntimeModule(module);
+            }}
+          />
+          <StoryEventPanel
+            myRole={myRole}
+            loading={storyEventLoading}
+            events={storyEvents}
+            cards={storyEventCards}
+            searchKeyword={storySearchKeyword}
+            searchEventStatus={storySearchEventStatus}
+            searchChannelKey={storySearchChannelKey}
+            searchHours={storySearchHours}
+            searching={storySearching}
+            searchResult={storySearchResult}
+            onRefresh={() => {
+              void loadStoryEvents();
+            }}
+            onCreateEvent={(payload) => {
+              void onCreateStoryEvent(payload);
+            }}
+            onAddOption={(eventId, payload) => {
+              void onAddStoryEventOption(eventId, payload);
+            }}
+            onSubmitCheck={(eventId, optionId, payload) => {
+              void onSubmitStoryEventCheck(eventId, optionId, payload);
+            }}
+            onResolveEvent={(eventId, payload) => {
+              void onResolveStoryEvent(eventId, payload);
+            }}
+            onCreateNarrativeRequest={(eventId, payload) => {
+              void onCreateStoryNarrativeRequest(eventId, payload);
+            }}
+            onDecideNarrativeRequest={(eventId, requestId, payload) => {
+              void onDecideStoryNarrativeRequest(eventId, requestId, payload);
+            }}
+            onSearchKeywordChange={setStorySearchKeyword}
+            onSearchEventStatusChange={setStorySearchEventStatus}
+            onSearchChannelKeyChange={setStorySearchChannelKey}
+            onSearchHoursChange={setStorySearchHours}
+            onSearch={() => {
+              void onSearchStoryEventContext();
+            }}
+            onClearSearch={onClearStoryEventSearch}
+            onLocateMessage={(messageId, channelKey) => {
+              void onLocateWorldMessage(messageId, channelKey);
+            }}
+            focusedEventId={focusedStoryEventId}
+            onLocateEvent={onLocateStoryEvent}
+          />
+        </aside>
       </div>
 
-      <article className="world-card">
+      <article className="world-card world-chat-card">
         <div className="mb-2 flex items-center justify-between">
           <strong>世界内聊天</strong>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 world-chat-card__toolbar">
             <select
               className="rounded border px-2 py-1 text-xs"
               value={worldChatChannel}
@@ -1174,15 +1390,39 @@ export default function WorldPage() {
               <option value="IC">IC{worldChatUnread.IC > 0 ? ` (${worldChatUnread.IC})` : ""}</option>
               <option value="SYSTEM">SYSTEM{worldChatUnread.SYSTEM > 0 ? ` (${worldChatUnread.SYSTEM})` : ""}</option>
             </select>
-            <span className="text-xs text-gray-500">{worldMessages.length} 条</span>
+            <span className="text-xs text-gray-500 world-chat-card__count">{worldMessages.length} 条</span>
           </div>
         </div>
-        <div className="mb-3 max-h-60 space-y-2 overflow-y-auto rounded border bg-gray-50 p-2">
+        {canUseAssistant ? (
+          <div className="mb-3 rounded border border-cyan-200 bg-cyan-50 p-2">
+            <p className="mb-1 text-xs font-semibold text-cyan-900">AI 助手草案生成</p>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded border px-2 py-1 text-xs"
+                value={assistantInstruction}
+                onChange={(e) => setAssistantInstruction(e.target.value)}
+                placeholder="可选：补充本次总结指令，例如“总结本场景冲突与结局”"
+                maxLength={120}
+              />
+              <button
+                className="rounded border px-3 py-1 text-xs disabled:opacity-60"
+                type="button"
+                onClick={() => {
+                  void onGenerateAssistantResponse();
+                }}
+                disabled={assistantGenerating}
+              >
+                {assistantGenerating ? "生成中..." : "生成草案"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+        <div className="mb-3 max-h-60 space-y-2 overflow-y-auto rounded border bg-gray-50 p-2 world-chat-feed">
           {worldMessages.length === 0 ? <p className="text-sm text-gray-500">暂无世界消息</p> : null}
           {worldMessages.map((message) => (
-            <div className="rounded bg-white p-2 text-sm" key={message.id}>
-              <p className="text-xs text-gray-500">
-                [{message.channelKey || "OOC"}] {message.fromUser.displayName || message.fromUser.username} · {new Date(message.createdAt).toLocaleTimeString()}
+            <div className={`rounded p-2 text-sm world-chat-message ${focusedWorldMessageId === message.id ? "bg-yellow-100 ring-1 ring-yellow-400" : "bg-white"}`} key={message.id}>
+              <p className="text-xs text-gray-500 world-chat-message__meta">
+                <span className="world-channel-badge">{message.channelKey || "OOC"}</span> {message.fromUser.displayName || message.fromUser.username} · {new Date(message.createdAt).toLocaleTimeString()}
               </p>
               {message.metadata?.storyEventCheckTag ? (
                 <p
@@ -1221,11 +1461,22 @@ export default function WorldPage() {
                   ) : null}
                 </div>
               ) : null}
-              <p>{message.content}</p>
+              {message.metadata?.aiAssistantContextTag ? (
+                <div className="mb-1 rounded border border-violet-300 bg-violet-50 p-2">
+                  <p className="text-xs font-semibold text-violet-800">AI 助手草案</p>
+                  <p className="text-xs text-violet-700">
+                    模式：{message.metadata.aiAssistantContextTag.mode} · 事件卡 {message.metadata.aiAssistantContextTag.storyEventCardCount} · 最近聊天 {message.metadata.aiAssistantContextTag.recentMessageCount}
+                  </p>
+                  {message.metadata.aiAssistantContextTag.instruction ? (
+                    <p className="text-xs text-violet-700">指令：{message.metadata.aiAssistantContextTag.instruction}</p>
+                  ) : null}
+                </div>
+              ) : null}
+              <p className="world-chat-message__content">{message.content}</p>
             </div>
           ))}
         </div>
-        <form className="flex gap-2" onSubmit={onSendWorldMessage}>
+        <form className="flex gap-2 world-chat-form" onSubmit={onSendWorldMessage}>
           <input
             className="flex-1 rounded border px-3 py-2"
             value={worldChatInput}

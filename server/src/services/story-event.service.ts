@@ -1,7 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { MessageType, StoryEventScope, StoryEventStatus, WorldMemberStatus, WorldRole, type Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
-import { createWorldMessage } from "./chat.service";
+import { createWorldMessage, extractSceneIdFromMetadata, type GlobalMessagePayload } from "./chat.service";
+import {
+  extractLinkedStoryEventIdFromMessageMetadata,
+  includesKeyword,
+  normalizeStoryEventSearchInput,
+  toMessageChannelKey,
+  toStoryEventSearchText,
+  toStoryEventStatus
+} from "./story-event.search";
 
 export type StoryEventScopeView = "ALL" | "PLAYER";
 export type StoryEventStatusView = "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED";
@@ -61,6 +69,31 @@ export type StoryNarrativeRequest = {
   gmNote?: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type StoryEventSearchMessageItem = GlobalMessagePayload & {
+  linkedEventId?: string;
+  matchedBy: Array<"CHAT_CONTENT" | "EVENT_LINK">;
+};
+
+export type StoryEventSearchResult = {
+  keyword: string;
+  filters: {
+    sceneId?: string;
+    eventStatus: StoryEventStatusView | "ALL";
+    channelKey: "OOC" | "IC" | "SYSTEM" | "ALL";
+    hours?: number;
+  };
+  events: StoryEventItem[];
+  messages: StoryEventSearchMessageItem[];
+};
+
+export type StoryEventSearchInput = {
+  sceneId?: string;
+  limit?: number;
+  eventStatus?: StoryEventStatusView | "ALL";
+  channelKey?: "OOC" | "IC" | "SYSTEM" | "ALL";
+  hours?: number;
 };
 
 type StoryEventCreateInput = {
@@ -784,4 +817,149 @@ export async function listStoryEventCards(worldId: string, userId: string, limit
       fromUser: item.fromUser,
       metadata: item.metadata
     }));
+}
+
+export async function searchStoryEventsAndMessages(
+  worldId: string,
+  userId: string,
+  keyword: string,
+  input: StoryEventSearchInput = {}
+): Promise<StoryEventSearchResult> {
+  const member = await assertActiveMember(worldId, userId);
+  const isGm = member.role === WorldRole.GM;
+
+  const normalizedKeyword = keyword.trim();
+  if (!normalizedKeyword) {
+    throw new Error("search keyword is required");
+  }
+  if (normalizedKeyword.length > 80) {
+    throw new Error("search keyword is too long");
+  }
+
+  const normalized = normalizeStoryEventSearchInput(input);
+  const normalizedSceneId = normalized.sceneId;
+  if (normalizedSceneId) {
+    await assertSceneInWorld(worldId, normalizedSceneId);
+  }
+
+  const safeLimit = normalized.limit;
+  const keywordLower = normalizedKeyword.toLowerCase();
+  const normalizedEventStatus = normalized.eventStatus;
+  const normalizedChannelKey = normalized.channelKey;
+  const normalizedHours = normalized.hours;
+  const sinceDate = normalized.sinceDate;
+
+  const where: Prisma.StoryEventWhereInput = {
+    worldId
+  };
+  const eventStatus = toStoryEventStatus(normalizedEventStatus);
+  if (eventStatus) {
+    where.status = toStatus(eventStatus);
+  }
+
+  const messageChannelKey = toMessageChannelKey(normalizedChannelKey);
+  if (!isGm) {
+    where.OR = [{ scope: StoryEventScope.ALL }, { targetUserId: userId }];
+  }
+
+  const eventRows = await prisma.storyEvent.findMany({
+    where,
+    orderBy: {
+      updatedAt: "desc"
+    },
+    take: 200
+  });
+
+  const allVisibleEvents = eventRows.map(toStoryEventItem);
+  const matchedEventMap = new Map<string, StoryEventItem>();
+  const matchedEventIds = new Set<string>();
+
+  for (const event of allVisibleEvents) {
+    if (includesKeyword(toStoryEventSearchText(event), keywordLower)) {
+      matchedEventMap.set(event.id, event);
+      matchedEventIds.add(event.id);
+    }
+  }
+
+  const rawMessages = await prisma.message.findMany({
+    where: {
+      type: MessageType.WORLD,
+      worldId,
+      ...(messageChannelKey ? { channelKey: messageChannelKey } : {}),
+      ...(sinceDate ? { createdAt: { gte: sinceDate } } : {})
+    },
+    include: {
+      fromUser: {
+        select: { id: true, username: true, displayName: true }
+      }
+    },
+    orderBy: {
+      createdAt: "desc"
+    },
+    take: Math.min(safeLimit * 20, 800)
+  });
+
+  const mappedMessages: StoryEventSearchMessageItem[] = [];
+  const linkedEventIds = new Set<string>();
+
+  for (const row of rawMessages) {
+    const messageSceneId = extractSceneIdFromMetadata(row.metadata);
+    if (normalizedSceneId && messageSceneId !== normalizedSceneId) {
+      continue;
+    }
+
+    const linkedEventId = extractLinkedStoryEventIdFromMessageMetadata(row.metadata);
+    const matchedBy: Array<"CHAT_CONTENT" | "EVENT_LINK"> = [];
+    if (includesKeyword(row.content, keywordLower)) {
+      matchedBy.push("CHAT_CONTENT");
+    }
+    if (linkedEventId && matchedEventIds.has(linkedEventId)) {
+      matchedBy.push("EVENT_LINK");
+    }
+
+    if (matchedBy.length === 0) {
+      continue;
+    }
+
+    if (linkedEventId) {
+      linkedEventIds.add(linkedEventId);
+    }
+
+    mappedMessages.push({
+      id: row.id,
+      worldId: row.worldId ?? undefined,
+      channelKey: row.channelKey ?? undefined,
+      sceneId: messageSceneId,
+      content: row.content,
+      metadata: row.metadata ?? undefined,
+      createdAt: row.createdAt.toISOString(),
+      fromUser: row.fromUser,
+      linkedEventId,
+      matchedBy
+    });
+  }
+
+  for (const linkedEventId of linkedEventIds) {
+    const event = allVisibleEvents.find((item) => item.id === linkedEventId);
+    if (event) {
+      matchedEventMap.set(event.id, event);
+    }
+  }
+
+  const events = Array.from(matchedEventMap.values())
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, safeLimit);
+  const messages = mappedMessages.slice(0, safeLimit);
+
+  return {
+    keyword: normalizedKeyword,
+    filters: {
+      sceneId: normalizedSceneId,
+      eventStatus: normalizedEventStatus,
+      channelKey: normalizedChannelKey,
+      hours: normalizedHours
+    },
+    events,
+    messages
+  };
 }

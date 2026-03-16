@@ -104,6 +104,31 @@ export async function getCurrentUser(userId: string) {
   return user;
 }
 
+export async function updateCurrentUserProfile(userId: string, displayName: string) {
+  const normalized = typeof displayName === "string" ? displayName.trim() : "";
+  if (!normalized) {
+    throw new Error("Display name is required");
+  }
+  if (normalized.length > 40) {
+    throw new Error("Display name is too long");
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: { displayName: normalized },
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+      avatarUrl: true,
+      platformRole: true,
+      createdAt: true
+    }
+  });
+
+  return updated;
+}
+
 function generateToken(userId: string): string {
   return jwt.sign({ userId }, env.jwtSecret, {
     expiresIn: `${env.jwtExpiresDays}d`

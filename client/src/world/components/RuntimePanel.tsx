@@ -38,6 +38,8 @@ export function RuntimePanel({ runtimeState, moduleCount, loading, errorSummary,
         </button>
       </div>
 
+      <p>世界引擎的当前状态与异常摘要会显示在这里。</p>
+
       {runtimeState ? (
         <>
           <p className="text-sm">{worldRuntimeMessagesZh.statusLabel}：{statusLabel(runtimeState.status)}</p>

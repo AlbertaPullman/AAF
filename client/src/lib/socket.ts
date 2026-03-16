@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
-const serverHost = process.env.VITE_SERVER_HOST ?? "localhost";
-const serverPort = process.env.VITE_SERVER_PORT ?? "6666";
+const serverHost = import.meta.env.VITE_SERVER_HOST ?? "localhost";
+const serverPort = import.meta.env.VITE_SERVER_PORT ?? "7001";
 
 export const SOCKET_EVENTS = {
   connectionAck: "system:connection-ack",

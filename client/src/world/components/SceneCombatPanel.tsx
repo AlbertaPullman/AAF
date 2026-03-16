@@ -131,6 +131,8 @@ export function SceneCombatPanel({ combatState, loading, saving, advancing, canM
         </button>
       </div>
 
+      <p>这里管理回合、先攻顺序与战斗流程。</p>
+
       {!combatState ? <p className="text-sm text-gray-500">{worldSceneRuntimeMessagesZh.notLoadedCombat}</p> : null}
 
       {combatState ? (
@@ -178,7 +180,7 @@ export function SceneCombatPanel({ combatState, loading, saving, advancing, canM
 
           <div className="mt-2 rounded border p-2">
             <div className="mb-1 flex items-center justify-between">
-              <p className="text-sm font-semibold">{worldSceneRuntimeMessagesZh.initiativeTitle}</p>
+              <p className="text-sm font-semibold">先攻序列</p>
               <button
                 className="rounded border px-2 py-1 text-xs disabled:opacity-60"
                 type="button"

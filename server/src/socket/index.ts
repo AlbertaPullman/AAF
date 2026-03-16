@@ -131,14 +131,16 @@ export function initSocketServer(server: HttpServer) {
     logger.info(`socket connected: ${socket.id}, userId=${userId}`);
     socket.emit(SOCKET_EVENTS.connectionAck, { ok: true, socketId: socket.id, userId });
 
-    socket.on(SOCKET_EVENTS.globalMessageSend, async (payload: { content?: string }, ack?: (result: { ok: boolean; error?: string }) => void) => {
+    socket.on(
+      SOCKET_EVENTS.globalMessageSend,
+      async (payload: { content?: string; channelKey?: string }, ack?: (result: { ok: boolean; error?: string }) => void) => {
       try {
         const rateLimitState = isChatRateLimited(userId);
         if (rateLimitState.limited) {
           throw new Error(`rate limit exceeded, retry in ${Math.ceil((rateLimitState.retryAfterMs ?? 0) / 1000)}s`);
         }
 
-        const message = await createGlobalMessage(userId, payload?.content ?? "");
+        const message = await createGlobalMessage(userId, payload?.content ?? "", payload?.channelKey);
         io.emit(SOCKET_EVENTS.globalMessageNew, message);
         if (ack) {
           ack({ ok: true });
@@ -149,7 +151,8 @@ export function initSocketServer(server: HttpServer) {
           ack({ ok: false, error: message });
         }
       }
-    });
+      }
+    );
 
     socket.on(SOCKET_EVENTS.worldJoin, async (payload: { worldId?: string }, ack?: (result: { ok: boolean; error?: string }) => void) => {
       try {

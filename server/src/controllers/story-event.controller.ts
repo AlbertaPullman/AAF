@@ -6,6 +6,7 @@ import {
   decideStoryNarrativeRequest,
   listStoryEventCards,
   listStoryEvents,
+  searchStoryEventsAndMessages,
   resolveStoryEvent,
   submitStoryEventCheck,
   updateStoryEvent
@@ -223,6 +224,38 @@ export async function getWorldStoryEventCards(req: Request, res: Response) {
       success: false,
       data: null,
       error: { code: "STORY_EVENT_CARD_LIST_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
+export async function getWorldStoryEventSearch(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({ success: false, data: null, error: { code: "UNAUTHORIZED", message: "User not authenticated" }, requestId: req.requestId });
+      return;
+    }
+
+    const keyword = String(req.query.q ?? req.query.keyword ?? "");
+    const sceneId = typeof req.query.sceneId === "string" ? req.query.sceneId : undefined;
+    const eventStatus = typeof req.query.eventStatus === "string" ? req.query.eventStatus : undefined;
+    const channelKey = typeof req.query.channelKey === "string" ? req.query.channelKey : undefined;
+    const limit = Number(req.query.limit ?? 20);
+    const hours = Number(req.query.hours);
+    const data = await searchStoryEventsAndMessages(req.params.worldId, req.userId, keyword, {
+      sceneId,
+      eventStatus: eventStatus as "ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED" | undefined,
+      channelKey: channelKey as "ALL" | "OOC" | "IC" | "SYSTEM" | undefined,
+      limit,
+      hours
+    });
+    res.status(200).json({ success: true, data, error: null, requestId: req.requestId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    res.status(toStatus(message)).json({
+      success: false,
+      data: null,
+      error: { code: "STORY_EVENT_SEARCH_ERROR", message },
       requestId: req.requestId
     });
   }

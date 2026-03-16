@@ -34,6 +34,7 @@ export function ModulePanel({ modules, myRole, loading, togglingModuleKey, onRef
         </button>
       </div>
 
+      <p className="mb-2 text-xs text-gray-500">这里管理世界规则模块、附加系统与开关状态。</p>
       <p className="mb-2 text-xs text-gray-500">权限：{canManage ? worldRuntimeMessagesZh.permissionCanManage : worldRuntimeMessagesZh.permissionReadonly}</p>
 
       {modules.length === 0 ? <p className="text-sm text-gray-500">{worldRuntimeMessagesZh.noModules}</p> : null}

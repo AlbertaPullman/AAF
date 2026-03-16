@@ -3,6 +3,13 @@ setlocal
 
 cd /d "%~dp0"
 
+set "SERVER_PORT=7001"
+if exist ".env" (
+  for /f "usebackq tokens=1,* delims==" %%A in (`findstr /b /c:"SERVER_PORT=" ".env"`) do (
+    set "SERVER_PORT=%%B"
+  )
+)
+
 echo [AAF] Starting backend and frontend...
 
 if not exist "node_modules" (
@@ -15,7 +22,15 @@ if not exist "node_modules" (
   )
 )
 
-start "AAF Server" cmd /k "npm run dev -w server"
+set "SERVER_PORT_IN_USE="
+for /f %%I in ('powershell -NoProfile -Command "if ((Get-NetTCPConnection -LocalPort %SERVER_PORT% -State Listen -ErrorAction SilentlyContinue)) { 'true' } else { 'false' }"') do set "SERVER_PORT_IN_USE=%%I"
+
+if /I "%SERVER_PORT_IN_USE%"=="true" (
+  echo [AAF] Backend port %SERVER_PORT% already in use. Skip starting server terminal.
+) else (
+  start "AAF Server" cmd /k "npm run dev -w server"
+)
+
 start "AAF Client" cmd /k "npm run dev -w client"
 
 timeout /t 3 >nul

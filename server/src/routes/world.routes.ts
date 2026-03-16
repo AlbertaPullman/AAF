@@ -21,6 +21,7 @@ import {
   patchWorldRuntimeModule
 } from "../controllers/world-runtime.controller";
 import {
+  getWorldStoryEventSearch,
   getWorldStoryEventCards,
   getWorldStoryEvents,
   patchWorldStoryEvent,
@@ -31,6 +32,8 @@ import {
   postWorldStoryEventOption,
   postWorldStoryEventResolve
 } from "../controllers/story-event.controller";
+import { getWorldAssistantContextController } from "../controllers/assistant-context.controller";
+import { postWorldAssistantResponseController } from "../controllers/assistant-response.controller";
 
 export const worldRoutes = Router();
 
@@ -56,6 +59,7 @@ worldRoutes.patch("/:worldId/runtime", authMiddleware, patchWorldRuntime);
 worldRoutes.get("/:worldId/runtime/modules", authMiddleware, getWorldRuntimeModules);
 worldRoutes.patch("/:worldId/runtime/modules/:moduleKey", authMiddleware, patchWorldRuntimeModule);
 worldRoutes.get("/:worldId/story-events", authMiddleware, getWorldStoryEvents);
+worldRoutes.get("/:worldId/story-events/search", authMiddleware, getWorldStoryEventSearch);
 worldRoutes.post("/:worldId/story-events", authMiddleware, postWorldStoryEvent);
 worldRoutes.patch("/:worldId/story-events/:eventId", authMiddleware, patchWorldStoryEvent);
 worldRoutes.post("/:worldId/story-events/:eventId/options", authMiddleware, postWorldStoryEventOption);
@@ -64,3 +68,5 @@ worldRoutes.post("/:worldId/story-events/:eventId/narrative-requests", authMiddl
 worldRoutes.post("/:worldId/story-events/:eventId/narrative-requests/:requestId/decision", authMiddleware, postWorldStoryEventNarrativeRequestDecision);
 worldRoutes.post("/:worldId/story-events/:eventId/resolve", authMiddleware, postWorldStoryEventResolve);
 worldRoutes.get("/:worldId/story-events/cards", authMiddleware, getWorldStoryEventCards);
+worldRoutes.get("/:worldId/assistant/context", authMiddleware, getWorldAssistantContextController);
+worldRoutes.post("/:worldId/assistant/respond", authMiddleware, postWorldAssistantResponseController);

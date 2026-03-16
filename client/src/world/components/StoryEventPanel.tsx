@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 type StoryOptionCheckMode = "SINGLE" | "PER_PLAYER" | "UNLIMITED";
 type StoryNarrativeRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -43,6 +45,29 @@ type StoryEventCardItem = {
   createdAt: string;
 };
 
+type StoryEventSearchResult = {
+  keyword: string;
+  filters: {
+    sceneId?: string;
+    eventStatus: "ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED";
+    channelKey: "ALL" | "OOC" | "IC" | "SYSTEM";
+    hours?: number;
+  };
+  events: StoryEventItem[];
+  messages: Array<{
+    id: string;
+    channelKey?: string;
+    content: string;
+    createdAt: string;
+    linkedEventId?: string;
+    fromUser: {
+      id: string;
+      username: string;
+      displayName: string | null;
+    };
+  }>;
+};
+
 type StoryEventPanelProps = {
   myRole: "GM" | "PLAYER" | "OBSERVER" | "ASSISTANT" | null;
   loading: boolean;
@@ -59,6 +84,21 @@ type StoryEventPanelProps = {
     requestId: string,
     payload: { status: Exclude<StoryNarrativeRequestStatus, "PENDING">; gmNote: string }
   ) => void;
+  searchKeyword: string;
+  searchEventStatus: "ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED";
+  searchChannelKey: "ALL" | "OOC" | "IC" | "SYSTEM";
+  searchHours: string;
+  searching: boolean;
+  searchResult: StoryEventSearchResult | null;
+  onSearchKeywordChange: (value: string) => void;
+  onSearchEventStatusChange: (value: "ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED") => void;
+  onSearchChannelKeyChange: (value: "ALL" | "OOC" | "IC" | "SYSTEM") => void;
+  onSearchHoursChange: (value: string) => void;
+  onSearch: () => void;
+  onClearSearch: () => void;
+  onLocateMessage: (messageId: string, channelKey?: string) => void;
+  focusedEventId?: string | null;
+  onLocateEvent: (eventId: string) => void;
 };
 
 function isGm(role: StoryEventPanelProps["myRole"]) {
@@ -76,18 +116,148 @@ export function StoryEventPanel({
   onSubmitCheck,
   onResolveEvent,
   onCreateNarrativeRequest,
-  onDecideNarrativeRequest
+  onDecideNarrativeRequest,
+  searchKeyword,
+  searchEventStatus,
+  searchChannelKey,
+  searchHours,
+  searching,
+  searchResult,
+  onSearchKeywordChange,
+  onSearchEventStatusChange,
+  onSearchChannelKeyChange,
+  onSearchHoursChange,
+  onSearch,
+  onClearSearch,
+  onLocateMessage,
+  focusedEventId,
+  onLocateEvent
 }: StoryEventPanelProps) {
   const gm = isGm(myRole);
+
+  useEffect(() => {
+    if (!focusedEventId) {
+      return;
+    }
+
+    const el = document.querySelector<HTMLElement>(`[data-story-event-id="${focusedEventId}"]`);
+    if (!el) {
+      return;
+    }
+
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusedEventId]);
 
   return (
     <div className="world-card">
       <div className="mb-2 flex items-center justify-between">
-        <strong>剧情事件</strong>
+        <strong>冒险编年</strong>
         <button className="rounded border px-2 py-1 text-xs" type="button" onClick={onRefresh} disabled={loading}>
           {loading ? "刷新中..." : "刷新"}
         </button>
       </div>
+
+      <p>这里汇总剧情事件、技能检定、物语点提案与事件检索结果。</p>
+
+      <form
+        className="mb-3 rounded border p-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSearch();
+        }}
+      >
+        <p className="mb-1 text-xs font-semibold">事件与聊天双向检索</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="flex-1 rounded border px-2 py-1 text-xs"
+            value={searchKeyword}
+            onChange={(e) => onSearchKeywordChange(e.target.value)}
+            placeholder="输入关键词：可检索事件标题/提案理由/聊天文本"
+            maxLength={80}
+          />
+          <select
+            className="rounded border px-2 py-1 text-xs"
+            value={searchEventStatus}
+            onChange={(e) => onSearchEventStatusChange(e.target.value as "ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED")}
+          >
+            <option value="ALL">事件状态: 全部</option>
+            <option value="OPEN">事件状态: OPEN</option>
+            <option value="RESOLVED">事件状态: RESOLVED</option>
+            <option value="CLOSED">事件状态: CLOSED</option>
+            <option value="DRAFT">事件状态: DRAFT</option>
+          </select>
+          <select
+            className="rounded border px-2 py-1 text-xs"
+            value={searchChannelKey}
+            onChange={(e) => onSearchChannelKeyChange(e.target.value as "ALL" | "OOC" | "IC" | "SYSTEM")}
+          >
+            <option value="ALL">频道: 全部</option>
+            <option value="OOC">频道: OOC</option>
+            <option value="IC">频道: IC</option>
+            <option value="SYSTEM">频道: SYSTEM</option>
+          </select>
+          <input
+            className="w-24 rounded border px-2 py-1 text-xs"
+            value={searchHours}
+            onChange={(e) => onSearchHoursChange(e.target.value)}
+            placeholder="近N小时"
+          />
+          <button className="rounded border px-2 py-1 text-xs" type="submit" disabled={searching}>
+            {searching ? "检索中..." : "检索"}
+          </button>
+          <button className="rounded border px-2 py-1 text-xs" type="button" onClick={onClearSearch} disabled={searching}>
+            清空
+          </button>
+        </div>
+      </form>
+
+      {searchResult ? (
+        <div className="mb-3 rounded border border-sky-200 bg-sky-50 p-2">
+          <p className="text-xs font-semibold text-sky-900">
+            检索结果："{searchResult.keyword}" · 事件 {searchResult.events.length} 条 · 聊天 {searchResult.messages.length} 条
+          </p>
+          <div className="mt-2 space-y-2">
+            <div>
+              <p className="text-xs font-semibold text-sky-800">匹配事件</p>
+              {searchResult.events.length === 0 ? <p className="text-xs text-sky-700">无匹配事件</p> : null}
+              <div className="space-y-1">
+                {searchResult.events.slice(0, 5).map((event) => (
+                  <div className="flex items-center justify-between gap-2" key={event.id}>
+                    <p className="text-xs text-sky-800">
+                      {event.title} · {event.status}
+                    </p>
+                    <button className="rounded border px-2 py-0.5 text-xs" type="button" onClick={() => onLocateEvent(event.id)}>
+                      定位事件
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-sky-800">匹配聊天</p>
+              {searchResult.messages.length === 0 ? <p className="text-xs text-sky-700">无匹配聊天</p> : null}
+              <div className="max-h-32 space-y-1 overflow-y-auto">
+                {searchResult.messages.slice(0, 8).map((message) => (
+                  <div className="rounded border border-sky-200 bg-white p-1" key={message.id}>
+                    <p className="text-xs text-sky-700">
+                      [{message.channelKey ?? "OOC"}] {message.fromUser.displayName || message.fromUser.username}
+                      {message.linkedEventId ? ` · 关联事件 ${message.linkedEventId}` : ""}
+                    </p>
+                    <p className="line-clamp-2 text-xs text-sky-900">{message.content}</p>
+                    <button
+                      className="mt-1 rounded border px-2 py-0.5 text-xs"
+                      type="button"
+                      onClick={() => onLocateMessage(message.id, message.channelKey)}
+                    >
+                      定位到聊天区
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {gm ? (
         <form
@@ -117,7 +287,11 @@ export function StoryEventPanel({
       <div className="space-y-2">
         {events.length === 0 ? <p className="text-xs text-gray-500">暂无进行中的剧情事件</p> : null}
         {events.map((event) => (
-          <div className="rounded border p-2" key={event.id}>
+          <div
+            className={`rounded border p-2 ${focusedEventId === event.id ? "border-yellow-400 bg-yellow-50 ring-1 ring-yellow-300 animate-pulse" : ""}`}
+            data-story-event-id={event.id}
+            key={event.id}
+          >
             <p className="text-sm font-semibold">{event.title}</p>
             <p className="text-xs text-gray-600">状态：{event.status}</p>
             {event.description ? <p className="text-xs text-gray-700">{event.description}</p> : null}

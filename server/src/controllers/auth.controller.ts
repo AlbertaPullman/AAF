@@ -77,3 +77,35 @@ export async function getCurrentUser(req: Request, res: Response) {
     });
   }
 }
+
+export async function updateCurrentUser(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const displayName = typeof req.body?.displayName === "string" ? req.body.displayName : "";
+    const user = await authService.updateCurrentUserProfile(req.userId, displayName);
+
+    res.status(200).json({
+      success: true,
+      data: user,
+      error: null,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.status(400).json({
+      success: false,
+      data: null,
+      error: { code: "USER_UPDATE_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
