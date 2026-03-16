@@ -39,3 +39,27 @@ body {
   border-radius: 8px;
   padding: 12px;
 }
+
+.world-board {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  height: 360px;
+  margin-top: 10px;
+  border: 1px dashed #9aa4b2;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fafc, #edf2f7);
+  overflow: hidden;
+}
+
+.world-token {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid #1d4ed8;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}

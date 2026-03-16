@@ -51,6 +51,174 @@
       "owner": "world"
     },
     {
+      "name": "worldCharacterList",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/characters",
+      "owner": "character"
+    },
+    {
+      "name": "worldCharacterCreate",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/characters",
+      "owner": "character"
+    },
+    {
+      "name": "worldCharacterUpdate",
+      "method": "PUT",
+      "path": "/api/worlds/:worldId/characters/:characterId",
+      "owner": "character"
+    },
+    {
+      "name": "worldSceneList",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/scenes",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneCreate",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/scenes",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneRename",
+      "method": "PUT",
+      "path": "/api/worlds/:worldId/scenes/:sceneId",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneDelete",
+      "method": "DELETE",
+      "path": "/api/worlds/:worldId/scenes/:sceneId",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneSort",
+      "method": "PATCH",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/sort",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneVisualGet",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/visual",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneVisualPatch",
+      "method": "PATCH",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/visual",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneCombatGet",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/combat",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneCombatPut",
+      "method": "PUT",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/combat",
+      "owner": "scene"
+    },
+    {
+      "name": "worldSceneCombatNextTurn",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/combat/next-turn",
+      "owner": "scene"
+    },
+    {
+      "name": "worldRuntimeGet",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/runtime",
+      "owner": "world-runtime"
+    },
+    {
+      "name": "worldRuntimePatch",
+      "method": "PATCH",
+      "path": "/api/worlds/:worldId/runtime",
+      "owner": "world-runtime"
+    },
+    {
+      "name": "worldRuntimeModuleList",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/runtime/modules",
+      "owner": "world-runtime"
+    },
+    {
+      "name": "worldRuntimeModulePatch",
+      "method": "PATCH",
+      "path": "/api/worlds/:worldId/runtime/modules/:moduleKey",
+      "owner": "world-runtime"
+    },
+    {
+      "name": "worldStoryEventList",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/story-events",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventCreate",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/story-events",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventUpdate",
+      "method": "PATCH",
+      "path": "/api/worlds/:worldId/story-events/:eventId",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventOptionCreate",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/story-events/:eventId/options",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventCheckSubmit",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/story-events/:eventId/options/:optionId/check",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventResolve",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/story-events/:eventId/resolve",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventNarrativeRequestCreate",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/story-events/:eventId/narrative-requests",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventNarrativeRequestDecision",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/story-events/:eventId/narrative-requests/:requestId/decision",
+      "owner": "story-event"
+    },
+    {
+      "name": "worldStoryEventCardList",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/story-events/cards",
+      "owner": "story-event"
+    },
+    {
+      "name": "chatGlobalRecent",
+      "method": "GET",
+      "path": "/api/chat/global/recent",
+      "owner": "chat"
+    },
+    {
+      "name": "chatWorldRecent",
+      "method": "GET",
+      "path": "/api/chat/worlds/:worldId/recent",
+      "owner": "chat"
+    },
+    {
       "name": "tavernStatus",
       "method": "GET",
       "path": "/api/tavern/status",
@@ -74,12 +242,42 @@
       "owner": "chat"
     },
     {
+      "name": "world:message:send",
+      "direction": "client->server",
+      "owner": "chat"
+    },
+    {
+      "name": "world:message:new",
+      "direction": "server->client",
+      "owner": "chat"
+    },
+    {
       "name": "world:join",
       "direction": "client->server",
       "owner": "world"
     },
     {
+      "name": "world:leave",
+      "direction": "client->server",
+      "owner": "world"
+    },
+    {
+      "name": "world:members:update",
+      "direction": "server->client",
+      "owner": "world"
+    },
+    {
       "name": "scene:token:move",
+      "direction": "client->server",
+      "owner": "scene"
+    },
+    {
+      "name": "scene:token:moved",
+      "direction": "server->client",
+      "owner": "scene"
+    },
+    {
+      "name": "scene:select",
       "direction": "client->server",
       "owner": "scene"
     }

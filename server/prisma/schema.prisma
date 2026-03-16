@@ -52,6 +52,18 @@ enum FriendStatus {
   BLOCKED
 }
 
+enum StoryEventScope {
+  ALL
+  PLAYER
+}
+
+enum StoryEventStatus {
+  DRAFT
+  OPEN
+  RESOLVED
+  CLOSED
+}
+
 model User {
   id                String        @id @default(cuid())
   username          String        @unique
@@ -67,6 +79,7 @@ model User {
   sentMessages      Message[]     @relation("MessageSender")
   privateMessages   Message[]     @relation("MessageRecipient")
   aiSessions        AiSession[]
+  storyEventsCreated StoryEvent[] @relation("StoryEventCreator")
   friendRequestsSent     Friend[] @relation("FriendRequester")
   friendRequestsReceived Friend[] @relation("FriendAddressee")
 }
@@ -88,6 +101,7 @@ model World {
   characters      Character[]
   messages        Message[]
   aiSessions      AiSession[]
+  storyEvents     StoryEvent[]
 
   @@index([ownerId])
   @@index([visibility])
@@ -192,4 +206,30 @@ model AiSession {
   @@index([worldId])
   @@index([npcId])
   @@index([userId])
+}
+
+model StoryEvent {
+  id              String          @id @default(cuid())
+  worldId         String
+  title           String
+  description     String          @default("")
+  scope           StoryEventScope @default(ALL)
+  targetUserId    String?
+  sceneId         String?
+  status          StoryEventStatus @default(OPEN)
+  options         Json
+  narrativeRequests Json?
+  summary         String?
+  finalOutcome    String?
+  processTimeline Json?
+  createdBy       String
+  resolvedAt      DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  world           World           @relation(fields: [worldId], references: [id])
+  creator         User            @relation("StoryEventCreator", fields: [createdBy], references: [id])
+
+  @@index([worldId, createdAt])
+  @@index([worldId, status])
+  @@index([targetUserId])
 }

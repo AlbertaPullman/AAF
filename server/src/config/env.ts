@@ -19,5 +19,11 @@ export const env = {
   corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5174",
   jwtSecret: process.env.JWT_SECRET ?? "replace-with-a-secure-secret",
   jwtExpiresDays: Number(process.env.JWT_EXPIRES_DAYS ?? 365),
-  databaseUrl: process.env.DATABASE_URL ?? "file:../../data/sqlite/aaf.db"
+  databaseUrl: process.env.DATABASE_URL ?? "file:../../data/sqlite/aaf.db",
+  chatRateLimitWindowMs: Number(process.env.CHAT_RATE_LIMIT_WINDOW_MS ?? 10_000),
+  chatRateLimitMaxMessages: Number(process.env.CHAT_RATE_LIMIT_MAX_MESSAGES ?? 5),
+  chatBlockedWords: (process.env.CHAT_BLOCKED_WORDS ?? "")
+    .split(",")
+    .map((word) => word.trim())
+    .filter(Boolean)
 };

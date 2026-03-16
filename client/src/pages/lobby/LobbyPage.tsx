@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { http } from "../../lib/http";
 import { useAuthStore } from "../../store/authStore";
+import { connectSocket, disconnectSocket, reconnectSocket, socket, SOCKET_EVENTS } from "../../lib/socket";
 
 type WorldItem = {
   id: string;
@@ -20,9 +21,21 @@ type WorldItem = {
   myRole?: string;
 };
 
+type ChatMessage = {
+  id: string;
+  content: string;
+  createdAt: string;
+  fromUser: {
+    id: string;
+    username: string;
+    displayName: string | null;
+  };
+};
+
 export default function LobbyPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
   const [publicWorlds, setPublicWorlds] = useState<WorldItem[]>([]);
@@ -35,6 +48,10 @@ export default function LobbyPage() {
   const [visibility, setVisibility] = useState<"PUBLIC" | "PASSWORD">("PUBLIC");
   const [password, setPassword] = useState("");
   const [creating, setCreating] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [socketStatus, setSocketStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("disconnected");
 
   const displayName = useMemo(() => user?.displayName || user?.username || "未知用户", [user]);
 
@@ -59,6 +76,79 @@ export default function LobbyPage() {
   useEffect(() => {
     void loadWorlds();
   }, [loadWorlds]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    setSocketStatus("connecting");
+
+    void (async () => {
+      try {
+        const resp = await http.get("/chat/global/recent", { params: { limit: 30 } });
+        setChatMessages(resp.data.data ?? []);
+      } catch {
+        // keep empty state when history loading fails
+      }
+    })();
+
+    connectSocket(token);
+
+    const onAck = () => {
+      setSocketStatus("connected");
+    };
+
+    const onConnect = () => {
+      setSocketStatus("connected");
+    };
+
+    const onDisconnect = () => {
+      setSocketStatus("disconnected");
+    };
+
+    const onConnectError = () => {
+      setSocketStatus("reconnecting");
+    };
+
+    const onReconnectAttempt = () => {
+      setSocketStatus("reconnecting");
+    };
+
+    const onReconnectFailed = () => {
+      setSocketStatus("disconnected");
+    };
+
+    const onNewMessage = (message: ChatMessage) => {
+      setChatMessages((prev) => {
+        const next = [...prev, message];
+        if (next.length > 100) {
+          return next.slice(next.length - 100);
+        }
+        return next;
+      });
+    };
+
+    socket.on(SOCKET_EVENTS.connectionAck, onAck);
+    socket.on(SOCKET_EVENTS.globalMessageNew, onNewMessage);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    socket.io.on("reconnect_attempt", onReconnectAttempt);
+    socket.io.on("reconnect_failed", onReconnectFailed);
+
+    return () => {
+      socket.off(SOCKET_EVENTS.connectionAck, onAck);
+      socket.off(SOCKET_EVENTS.globalMessageNew, onNewMessage);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
+      socket.io.off("reconnect_attempt", onReconnectAttempt);
+      socket.io.off("reconnect_failed", onReconnectFailed);
+      setSocketStatus("disconnected");
+      disconnectSocket();
+    };
+  }, [token]);
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -114,8 +204,32 @@ export default function LobbyPage() {
   };
 
   const onLogout = () => {
+    disconnectSocket();
     clearAuth();
     navigate("/login");
+  };
+
+  const onSendChat = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!chatInput.trim()) {
+      return;
+    }
+
+    setChatSending(true);
+    const content = chatInput;
+    setChatInput("");
+
+    socket.emit(
+      SOCKET_EVENTS.globalMessageSend,
+      { content },
+      (result: { ok: boolean; error?: string }) => {
+        if (!result.ok) {
+          setError(result.error || "发送消息失败");
+          setChatInput(content);
+        }
+        setChatSending(false);
+      }
+    );
   };
 
   return (
@@ -225,6 +339,53 @@ export default function LobbyPage() {
             );
           })}
         </ul>
+      </article>
+
+      <article className="rounded border p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">全局聊天</h2>
+          <span className={`text-xs ${socketStatus === "connected" ? "text-green-600" : socketStatus === "reconnecting" ? "text-amber-600" : "text-gray-500"}`}>
+            {socketStatus === "connected" ? "实时连接中" : socketStatus === "reconnecting" ? "重连中..." : socketStatus === "connecting" ? "连接中..." : "已断开"}
+          </span>
+        </div>
+
+        {socketStatus !== "connected" ? (
+          <div className="mb-3 flex items-center justify-between rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
+            <span>{socketStatus === "reconnecting" ? "实时连接异常，正在自动重连" : "实时连接已断开"}</span>
+            <button className="rounded border border-amber-300 px-2 py-1" type="button" onClick={reconnectSocket}>
+              立即重连
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mb-3 max-h-72 space-y-2 overflow-y-auto rounded border bg-gray-50 p-3">
+          {chatMessages.length === 0 ? <p className="text-sm text-gray-500">暂无消息</p> : null}
+          {chatMessages.map((message) => (
+            <div className="rounded bg-white p-2 text-sm" key={message.id}>
+              <p className="text-xs text-gray-500">
+                {message.fromUser.displayName || message.fromUser.username} · {new Date(message.createdAt).toLocaleTimeString()}
+              </p>
+              <p className="text-gray-800">{message.content}</p>
+            </div>
+          ))}
+        </div>
+
+        <form className="flex gap-2" onSubmit={onSendChat}>
+          <input
+            className="flex-1 rounded border px-3 py-2"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="输入全局聊天消息"
+            maxLength={1000}
+          />
+          <button
+            className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60"
+            type="submit"
+            disabled={chatSending || socketStatus !== "connected"}
+          >
+            {chatSending ? "发送中..." : "发送"}
+          </button>
+        </form>
       </article>
     </section>
   );

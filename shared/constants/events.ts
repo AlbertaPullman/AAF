@@ -1,6 +1,12 @@
 export const EVENTS = {
   globalMessageSend: "global:message:send",
   globalMessageNew: "global:message:new",
+  worldMessageSend: "world:message:send",
+  worldMessageNew: "world:message:new",
   worldJoin: "world:join",
-  tokenMove: "scene:token:move"
+  worldLeave: "world:leave",
+  worldMembersUpdate: "world:members:update",
+  sceneSelect: "scene:select",
+  tokenMove: "scene:token:move",
+  tokenMoved: "scene:token:moved"
 } as const;
