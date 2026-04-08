@@ -5,32 +5,584 @@
       "name": "狂怒斗士天赋树-本职",
       "description": "狂怒斗士职业天赋树",
       "treeType": "PROFESSION",
-      "category": "狂怒斗士",
+      "category": "职业天赋树/狂怒斗士",
       "status": "PUBLISHED",
-      "version": 2,
+      "version": 8,
       "graphData": {
         "cells": [
           {
+            "shape": "edge",
+            "id": "fbc3e81a-ebb7-4933-b4ec-4e644aea0a69",
+            "zIndex": -389,
+            "source": {
+              "cell": "import_node_3_6",
+              "port": "6cc952af-9f8f-4f32-ad91-c35fab83e02c"
+            },
+            "target": {
+              "cell": "import_node_3_7",
+              "port": "30d13d52-a2b7-4d00-ac9c-aecb2aedcfa1"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "8128d6eb-dac1-424c-b79a-459dcb2a78d5",
+            "zIndex": -388,
+            "source": {
+              "cell": "import_node_3_3",
+              "port": "fa4a7434-03dc-497c-9574-cf649141a1d8"
+            },
+            "target": {
+              "cell": "import_node_4_4",
+              "port": "364180aa-8a7e-4ed8-9702-4b642d508f10"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "0012e7c4-3a08-4ce2-9e87-ad6991d699fd",
+            "zIndex": -387,
+            "source": {
+              "cell": "import_node_3_3",
+              "port": "fa4a7434-03dc-497c-9574-cf649141a1d8"
+            },
+            "target": {
+              "cell": "import_node_2_4",
+              "port": "87b337e6-a4ef-4f66-b502-2eeb9e86acfc"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "9b5160ef-f9fd-42cf-b978-b67583db2d1b",
+            "zIndex": -386,
+            "source": {
+              "cell": "import_node_3_2",
+              "port": "6c896b79-3c46-48a1-ae3e-20706c381987"
+            },
+            "target": {
+              "cell": "import_node_4_3",
+              "port": "95982546-76bd-41e0-8d70-212efccf880e"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "667b5716-b3fd-48af-967d-fde77bab5315",
+            "zIndex": -385,
+            "source": {
+              "cell": "import_node_3_2",
+              "port": "6c896b79-3c46-48a1-ae3e-20706c381987"
+            },
+            "target": {
+              "cell": "import_node_2_3",
+              "port": "382ddbe3-2fde-4892-90b4-b830aa90de75"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "ef5ca23c-7b37-494a-a16d-5965ab4d209c",
+            "zIndex": -384,
+            "source": {
+              "cell": "import_node_4_1",
+              "port": "3f7ac1d8-9ae2-4365-8a1d-01020d5a67b7"
+            },
+            "target": {
+              "cell": "import_node_5_1",
+              "port": "e4685bbb-8f3d-4556-bb08-94a5b4638b3e"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "bae7d848-4246-4893-86ac-f2551ce6a177",
+            "zIndex": -383,
+            "source": {
+              "cell": "import_node_2_1",
+              "port": "d3779aa5-c525-4981-8eba-454002eac4d6"
+            },
+            "target": {
+              "cell": "import_node_1_1",
+              "port": "1ab5c8f4-8c51-47ab-99a3-8c791a9e2737"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "371b5b63-2f9f-4d0d-94cd-9b4bbd948933",
+            "zIndex": -382,
+            "source": {
+              "cell": "import_node_3_1",
+              "port": "0fe1e1d9-f54e-4832-b5a2-c42541460a20"
+            },
+            "target": {
+              "cell": "import_node_3_2",
+              "port": "762905c9-ba63-4dec-ad29-964cf29a2c11"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_5_6",
+            "zIndex": -381,
+            "source": {
+              "cell": "import_node_5_6"
+            },
+            "target": {
+              "cell": "import_node_5_7"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_5_5",
+            "zIndex": -380,
+            "source": {
+              "cell": "import_node_5_5"
+            },
+            "target": {
+              "cell": "import_node_5_6"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_5_4",
+            "zIndex": -379,
+            "source": {
+              "cell": "import_node_5_4"
+            },
+            "target": {
+              "cell": "import_node_5_5"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_5_3",
+            "zIndex": -378,
+            "source": {
+              "cell": "import_node_5_3"
+            },
+            "target": {
+              "cell": "import_node_5_4"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_5_2",
+            "zIndex": -377,
+            "source": {
+              "cell": "import_node_5_2"
+            },
+            "target": {
+              "cell": "import_node_5_3"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_5_1",
+            "zIndex": -376,
+            "source": {
+              "cell": "import_node_5_1"
+            },
+            "target": {
+              "cell": "import_node_5_2"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_4_7",
+            "zIndex": -375,
+            "source": {
+              "cell": "import_node_4_7"
+            },
+            "target": {
+              "cell": "import_node_4_8"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_4_6",
+            "zIndex": -374,
+            "source": {
+              "cell": "import_node_4_6"
+            },
+            "target": {
+              "cell": "import_node_4_7"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_4_5",
+            "zIndex": -373,
+            "source": {
+              "cell": "import_node_4_5"
+            },
+            "target": {
+              "cell": "import_node_4_6"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_4_2",
+            "zIndex": -372,
+            "source": {
+              "cell": "import_node_4_2"
+            },
+            "target": {
+              "cell": "import_node_4_3"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_4_1",
+            "zIndex": -371,
+            "source": {
+              "cell": "import_node_4_1"
+            },
+            "target": {
+              "cell": "import_node_4_2"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_3_7",
+            "zIndex": -370,
+            "source": {
+              "cell": "import_node_3_7"
+            },
+            "target": {
+              "cell": "import_node_3_8"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_3_5",
+            "zIndex": -369,
+            "source": {
+              "cell": "import_node_3_5"
+            },
+            "target": {
+              "cell": "import_node_3_6"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_2_7",
+            "zIndex": -368,
+            "source": {
+              "cell": "import_node_2_7"
+            },
+            "target": {
+              "cell": "import_node_2_8"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_2_6",
+            "zIndex": -367,
+            "source": {
+              "cell": "import_node_2_6"
+            },
+            "target": {
+              "cell": "import_node_2_7"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_2_5",
+            "zIndex": -366,
+            "source": {
+              "cell": "import_node_2_5"
+            },
+            "target": {
+              "cell": "import_node_2_6"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_2_2",
+            "zIndex": -365,
+            "source": {
+              "cell": "import_node_2_2"
+            },
+            "target": {
+              "cell": "import_node_2_3"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_2_1",
+            "zIndex": -364,
+            "source": {
+              "cell": "import_node_2_1"
+            },
+            "target": {
+              "cell": "import_node_2_2"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_1_6",
+            "zIndex": -363,
+            "source": {
+              "cell": "import_node_1_6"
+            },
+            "target": {
+              "cell": "import_node_1_7"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_1_5",
+            "zIndex": -362,
+            "source": {
+              "cell": "import_node_1_5"
+            },
+            "target": {
+              "cell": "import_node_1_6"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_1_4",
+            "zIndex": -361,
+            "source": {
+              "cell": "import_node_1_4"
+            },
+            "target": {
+              "cell": "import_node_1_5"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_1_3",
+            "zIndex": -360,
+            "source": {
+              "cell": "import_node_1_3"
+            },
+            "target": {
+              "cell": "import_node_1_4"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_1_2",
+            "zIndex": -359,
+            "source": {
+              "cell": "import_node_1_2"
+            },
+            "target": {
+              "cell": "import_node_1_3"
+            }
+          },
+          {
+            "shape": "edge",
+            "attrs": {
+              "line": {
+                "stroke": "#5b9be8"
+              }
+            },
+            "id": "import_edge_auto_1_1",
+            "zIndex": -358,
+            "source": {
+              "cell": "import_node_1_1"
+            },
+            "target": {
+              "cell": "import_node_1_2"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "241139df-82b8-44fc-98e5-3d6d2d5bb72f",
+            "zIndex": -357,
+            "source": {
+              "cell": "import_node_3_4",
+              "port": "017bded4-4064-4ca9-bbb5-fe1c17816c4f"
+            },
+            "target": {
+              "cell": "import_node_2_5",
+              "port": "93becf15-817f-4c30-8f71-9152a898836f"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "a6fd98c7-d035-48dc-a9b7-5fc05bcd5a10",
+            "zIndex": -356,
+            "source": {
+              "cell": "import_node_3_4",
+              "port": "017bded4-4064-4ca9-bbb5-fe1c17816c4f"
+            },
+            "target": {
+              "cell": "import_node_4_5",
+              "port": "aaf6c092-5dbc-4a5a-b7fb-84d3083452de"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "2bcb14fa-d563-400c-9afd-b172eebd9f1f",
+            "zIndex": -355,
+            "source": {
+              "cell": "import_node_3_6",
+              "port": "6cc952af-9f8f-4f32-ad91-c35fab83e02c"
+            },
+            "target": {
+              "cell": "import_node_2_7",
+              "port": "3b437621-a68f-4a72-aec5-2b5e945a7e16"
+            }
+          },
+          {
+            "shape": "edge",
+            "id": "f6126d6d-8157-46c1-8d69-ce746d77a158",
+            "zIndex": -354,
+            "source": {
+              "cell": "import_node_3_6",
+              "port": "6cc952af-9f8f-4f32-ad91-c35fab83e02c"
+            },
+            "target": {
+              "cell": "import_node_4_7",
+              "port": "16c28093-51ed-4ed2-9fab-3585a66e14a1"
+            }
+          },
+          {
             "position": {
               "x": 128,
-              "y": 200
+              "y": 236
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "原始怒火",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "原始怒火\n消耗：1\n前置：2狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -43,7 +595,9 @@
               "cost": 1,
               "requirement": "2狂怒斗士",
               "talentAffix": "",
-              "parentNodeIds": [],
+              "parentNodeIds": [
+                "import_node_2_1"
+              ],
               "affixMeta": {
                 "mastery": false,
                 "exclusive": false
@@ -94,29 +648,43 @@
                   "id": "653fcff2-37af-4264-9245-f78096cde50b"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 128,
-              "y": 320
+              "y": 392
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "无惧疼痛",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "无惧疼痛\n消耗：2\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -182,29 +750,43 @@
                   "id": "d84593db-2dd5-47fa-b06f-b8d632012885"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 128,
-              "y": 440
+              "y": 560
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "无我狂暴",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "无我狂暴\n消耗：2\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -213,8 +795,8 @@
             "data": {
               "title": "无我狂暴",
               "summary": "",
-              "description": "你在狂暴期间免疫魅惑和恐慌。如果你狂暴前已经陷入魅惑或恐慌，则该效应在你狂暴期间被压制。",
-              "cost": 1,
+              "description": "你在狂暴期间免疫**魅惑**和**恐慌**。\n如果你狂暴前已经陷入魅惑或恐慌，则该效应在你狂暴期间失效。",
+              "cost": 2,
               "requirement": "3狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -229,7 +811,8 @@
                   "level": 3,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -269,29 +852,43 @@
                   "id": "667a279e-9916-4983-92a4-d5e7db79b762"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 128,
-              "y": 560
+              "y": 728
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "坚毅不倒",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "坚毅不倒\n消耗：2\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -300,8 +897,8 @@
             "data": {
               "title": "坚毅不倒",
               "summary": "",
-              "description": "处于浴血状态时，你进行体质和力量相关的检定及豁免具有优势。",
-              "cost": 1,
+              "description": "处于浴血状态时，你进行**体质**和**力量**相关的**检定**及**豁免**具有**优势**。",
+              "cost": 2,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -316,7 +913,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -356,29 +954,43 @@
                   "id": "8f9e1312-9920-43a6-9338-dbdfa4da4639"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 128,
-              "y": 680
+              "y": 908
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "钢筋铁骨",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "钢筋铁骨\n消耗：1\n前置：4狂怒斗士\n词缀：研习5\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -387,7 +999,7 @@
             "data": {
               "title": "钢筋铁骨",
               "summary": "",
-              "description": "level1 LV1：若你处于狂暴状态，你获得1点DR\nlevel2 LV2：狂暴时额外获得1点DR\nlevel3 LV3：狂暴时额外获得1点DR\nlevel4 LV4：狂暴时额外获得1点DR\nlevel5 LV5：狂暴时额外获得1点DR",
+              "description": "level1 若你处于狂暴状态，你获得1点DR\nlevel2 狂暴时额外获得1点DR\nlevel3 狂暴时额外获得1点DR\nlevel4 狂暴时额外获得1点DR\nlevel5 狂暴时额外获得1点DR",
               "cost": 1,
               "requirement": "4狂怒斗士",
               "talentAffix": "研习5",
@@ -404,6 +1016,13 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
+              ],
+              "studyDescriptions": [
+                "若你处于狂暴状态，你获得1点DR",
+                "狂暴时额外获得1点DR",
+                "狂暴时额外获得1点DR",
+                "狂暴时额外获得1点DR",
+                "狂暴时额外获得1点DR"
               ]
             },
             "zIndex": 3,
@@ -444,29 +1063,43 @@
                   "id": "6bb0f228-ed4e-4255-b93b-ba7925f6cccb"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 128,
-              "y": 800
+              "y": 1076
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "坚韧狂暴",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "坚韧狂暴\n消耗：3\n前置：5狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -475,8 +1108,8 @@
             "data": {
               "title": "坚韧狂暴",
               "summary": "",
-              "description": "狂暴期间，当你的生命值即将降至0之前，你可以进行一次DC10的体质豁免，豁免成功则改为生命值为1。每当你再次触发此特性时，体质豁免DC提高5，在你完成一次休整后其重置为10。",
-              "cost": 1,
+              "description": "狂暴期间,当你的生命值即将降为0之前,你可以进行一次**DC10**的**体质豁免**.豁免成功则改为**降为1**.\n每当你再次触发此特性时,体质豁免DC提高5.在你完成一次休整后其重置为10.",
+              "cost": 3,
               "requirement": "5狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -491,7 +1124,8 @@
                   "level": 5,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -531,29 +1165,43 @@
                   "id": "1a14d07a-739a-49d9-bfb6-5cc00b3596a1"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 128,
-              "y": 920
+              "y": 1220
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "不屈勇武",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "不屈勇武\n消耗：5\n前置：8狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -562,7 +1210,7 @@
             "data": {
               "title": "不屈勇武",
               "summary": "",
-              "description": "如果你进行的力量检定或武器豁免的总值低于你的力量总值，你可以使用你的力量属性替代检定总值。",
+              "description": "如果你进行的**力量检定**或**力量豁免**的总值低于你的力量值,你可以使用你的力量值替代检定总值.",
               "cost": 5,
               "requirement": "8狂怒斗士",
               "talentAffix": "",
@@ -578,7 +1226,8 @@
                   "level": 8,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -618,125 +1267,43 @@
                   "id": "a1da95e3-5272-4bbd-8b94-be7f04ca0578"
                 }
               ]
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
             },
-            "id": "import_edge_auto_1_1",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_1_1"
-            },
-            "target": {
-              "cell": "import_node_1_2"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_1_2",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_1_2"
-            },
-            "target": {
-              "cell": "import_node_1_3"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_1_3",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_1_3"
-            },
-            "target": {
-              "cell": "import_node_1_4"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_1_4",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_1_4"
-            },
-            "target": {
-              "cell": "import_node_1_5"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_1_5",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_1_5"
-            },
-            "target": {
-              "cell": "import_node_1_6"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_1_6",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_1_6"
-            },
-            "target": {
-              "cell": "import_node_1_7"
-            }
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
-              "x": 334,
-              "y": 80
+              "x": 228,
+              "y": -36
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "鲁莽攻击",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "鲁莽攻击\n消耗：1\n前置：1狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -800,29 +1367,43 @@
                   "id": "d3779aa5-c525-4981-8eba-454002eac4d6"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 334,
-              "y": 200
+              "y": 236
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "血性狂怒",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "血性狂怒\n消耗：2\n前置：2狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -888,29 +1469,43 @@
                   "id": "78289af4-7540-46fa-8189-76d95cba0966"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 334,
-              "y": 320
+              "y": 392
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "怒火打击",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "怒火打击\n消耗：2\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -920,10 +1515,11 @@
               "title": "怒火打击",
               "summary": "",
               "description": "进入狂暴时，你可以立即发动一次**近战武器攻击**。",
-              "cost": 1,
+              "cost": 2,
               "requirement": "3狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
+                "import_node_3_2",
                 "import_node_2_2"
               ],
               "affixMeta": {
@@ -976,29 +1572,43 @@
                   "id": "c6c1f207-6f3a-424a-868c-252cf2c3afa7"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 334,
-              "y": 440
+              "y": 560
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "以牙还牙",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "以牙还牙\n消耗：1\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1007,12 +1617,12 @@
             "data": {
               "title": "以牙还牙",
               "summary": "",
-              "description": "若你被直觉闪避时处于狂暴状态，作为反应的一部分，你可以对攻击者发动一次武器攻击。",
+              "description": "若你被**直觉闪避**时处于狂暴状态，作为**反应**的一部分，你可以对攻击者发动一次**武器攻击。**",
               "cost": 1,
               "requirement": "3狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
-                "import_node_2_3"
+                "import_node_3_3"
               ],
               "affixMeta": {
                 "mastery": false,
@@ -1023,7 +1633,8 @@
                   "level": 3,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -1063,29 +1674,43 @@
                   "id": "145f7e40-fbe0-43be-80bb-f2b7b46cb946"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 334,
-              "y": 560
+              "y": 728
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "凶蛮打击",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "凶蛮打击\n消耗：2\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1094,12 +1719,12 @@
             "data": {
               "title": "凶蛮打击",
               "summary": "",
-              "description": "在进行一次近战武器攻击前，你可以消耗战意值为本攻击附加额外效果，每次攻击前附加一种效果：巨力(3战意值)：目标被直接推开15尺距离，体型大于你两级的生物不受影响；断筋(3战意值)：目标步行速度降低15尺，持续至你下一回合开始。",
-              "cost": 1,
+              "description": "在进行一次近战武器攻击前,你可以**消耗战意值**为本次攻击附加额外效果,每次攻击仅能附加一种效果:\n**巨力(3战意值)**:目标被直线推开15尺距离,体型大于你两级的生物不受影响.\n**断筋(3战意值)**:目标步行速度降低15尺,持续至你下一回合开始.",
+              "cost": 2,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
-                "import_node_2_4"
+                "import_node_3_4"
               ],
               "affixMeta": {
                 "mastery": false,
@@ -1110,7 +1735,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -1150,29 +1776,43 @@
                   "id": "b06eccad-2c51-46ff-abc9-9258c88b322b"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 334,
-              "y": 680
+              "y": 908
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "强化凶蛮打击",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "强化凶蛮打击\n消耗：2\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1181,8 +1821,8 @@
             "data": {
               "title": "强化凶蛮打击",
               "summary": "",
-              "description": "你的凶蛮打击新增两个效果：震慑(5战意值)：目标无法完成借机攻击，进行的豁免检定具有劣势，持续至你下一回合开始；破势(5战意值)：对目标进行的攻击检定具有优势，持续至你下一回合开始。",
-              "cost": 1,
+              "description": "你的凶蛮打击新增两个效果:\n**震颤(5战意值)**:目标无法借机攻击,进行的豁免检定具有劣势,持续至你下一回合开始.\n**破势(5战意值)**:对目标进行的攻击检定具有优势,持续至你下一回合开始.",
+              "cost": 2,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -1197,7 +1837,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -1237,29 +1878,43 @@
                   "id": "e9238e02-7ad8-471f-8244-29fbd156e010"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 334,
-              "y": 800
+              "y": 1076
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "强化凶蛮重击",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "强化凶蛮重击\n消耗：1\n前置：5狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1268,12 +1923,13 @@
             "data": {
               "title": "强化凶蛮重击",
               "summary": "",
-              "description": "你每为凶蛮重击造成一次暴击，可以增加一次凶蛮打击效果且无需消耗战意值。",
+              "description": "用**近战武器**造成一次**重击**时,你可以附加一项**凶蛮打击**效果且无需消耗战意值.",
               "cost": 1,
               "requirement": "5狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
-                "import_node_2_6"
+                "import_node_2_6",
+                "import_node_3_6"
               ],
               "affixMeta": {
                 "mastery": false,
@@ -1284,7 +1940,8 @@
                   "level": 5,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -1324,29 +1981,43 @@
                   "id": "7b85a77e-66b9-45fd-abe3-b822d0f9918f"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 334,
-              "y": 920
+              "y": 1220
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "原初斗士",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "原初斗士\n消耗：5\n前置：8狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1355,7 +2026,7 @@
             "data": {
               "title": "原初斗士",
               "summary": "",
-              "description": "力量属性和体质属性提升4。",
+              "description": "**力量属性**和**体质属性**提升4。",
               "cost": 5,
               "requirement": "8狂怒斗士",
               "talentAffix": "",
@@ -1371,7 +2042,8 @@
                   "level": 8,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -1411,141 +2083,43 @@
                   "id": "64e121ff-e434-4e61-9a72-fe701c0deaf3"
                 }
               ]
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
             },
-            "id": "import_edge_auto_2_1",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_2_1"
-            },
-            "target": {
-              "cell": "import_node_2_2"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_2_2",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_2_2"
-            },
-            "target": {
-              "cell": "import_node_2_3"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_2_3",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_2_3"
-            },
-            "target": {
-              "cell": "import_node_2_4"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_2_4",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_2_4"
-            },
-            "target": {
-              "cell": "import_node_2_5"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_2_5",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_2_5"
-            },
-            "target": {
-              "cell": "import_node_2_6"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_2_6",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_2_6"
-            },
-            "target": {
-              "cell": "import_node_2_7"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_2_7",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_2_7"
-            },
-            "target": {
-              "cell": "import_node_2_8"
-            }
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
-              "x": 540,
-              "y": 80
+              "x": 408,
+              "y": 84
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "快速移动",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "快速移动\n消耗：1\n前置：1狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1609,29 +2183,43 @@
                   "id": "0fe1e1d9-f54e-4832-b5a2-c42541460a20"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 540,
-              "y": 200
+              "y": 236
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "酒馆斗殴者",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "酒馆斗殴者\n消耗：1\n前置：2狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1697,29 +2285,43 @@
                   "id": "6c896b79-3c46-48a1-ae3e-20706c381987"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 540,
-              "y": 320
+              "y": 392
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "直觉闪避",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "直觉闪避\n消耗：1\n前置：3狂怒斗士\n词缀：通晓\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1731,12 +2333,10 @@
               "description": "一名可见生物的攻击命中你时，你可以用**反应**使此次攻击的伤害减半。",
               "cost": 1,
               "requirement": "3狂怒斗士",
-              "talentAffix": "",
-              "parentNodeIds": [
-                "import_node_3_2"
-              ],
+              "talentAffix": "通晓",
+              "parentNodeIds": [],
               "affixMeta": {
-                "mastery": false,
+                "mastery": true,
                 "exclusive": false
               },
               "requirementMeta": [
@@ -1785,29 +2385,43 @@
                   "id": "fa4a7434-03dc-497c-9574-cf649141a1d8"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 540,
-              "y": 440
+              "y": 560
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "暴怒冲锋",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "暴怒冲锋\n消耗：2\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1816,13 +2430,11 @@
             "data": {
               "title": "暴怒冲锋",
               "summary": "",
-              "description": "你发动冲锋前，可以用自由动作立即进入狂暴。",
-              "cost": 1,
+              "description": "你发动**冲锋**前，可以用**自由动作**立即进入**狂暴**。（你需要正常的扣除战意值）",
+              "cost": 2,
               "requirement": "3狂怒斗士",
               "talentAffix": "",
-              "parentNodeIds": [
-                "import_node_3_3"
-              ],
+              "parentNodeIds": [],
               "affixMeta": {
                 "mastery": false,
                 "exclusive": false
@@ -1832,7 +2444,8 @@
                   "level": 3,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -1872,29 +2485,43 @@
                   "id": "017bded4-4064-4ca9-bbb5-fe1c17816c4f"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 540,
-              "y": 560
+              "y": 728
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "嗜血",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "嗜血\n消耗：1\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1903,13 +2530,11 @@
             "data": {
               "title": "嗜血",
               "summary": "",
-              "description": "处于浴血状态时，近战武器在造成重击时为你恢复1d10生命值。",
+              "description": "处于**浴血**状态时，近战武器在造成重击时为你恢复**1d10生命值**。",
               "cost": 1,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
-              "parentNodeIds": [
-                "import_node_3_4"
-              ],
+              "parentNodeIds": [],
               "affixMeta": {
                 "mastery": false,
                 "exclusive": false
@@ -1919,7 +2544,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -1959,29 +2585,43 @@
                   "id": "33b9d756-69df-4294-9630-3789bf9d160d"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 540,
-              "y": 680
+              "y": 908
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "凶蛮重击",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "凶蛮重击\n消耗：1\n前置：4狂怒斗士\n词缀：研习5\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -1990,7 +2630,7 @@
             "data": {
               "title": "凶蛮重击",
               "summary": "",
-              "description": "level1 LV1：你使用近战武器造成重击时，额外投掷1枚武器伤害骰\nlevel2 LV2：额外投掷两枚武器伤害骰\nlevel3 LV3：额外投掷三枚武器伤害骰\nlevel4 LV4：额外投掷四枚武器伤害骰\nlevel5 LV5：额外投掷五枚武器伤害骰",
+              "description": "level1 你使用近战武器造成重击时，额外投掷1枚武器伤害骰\nlevel2 额外投掷1枚武器伤害骰\nlevel3 额外投掷1枚武器伤害骰\nlevel4 额外投掷1枚武器伤害骰\nlevel5 额外投掷1枚武器伤害骰",
               "cost": 1,
               "requirement": "4狂怒斗士",
               "talentAffix": "研习5",
@@ -2007,6 +2647,13 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
+              ],
+              "studyDescriptions": [
+                "你使用近战武器造成重击时，额外投掷1枚武器伤害骰",
+                "额外投掷1枚武器伤害骰",
+                "额外投掷1枚武器伤害骰",
+                "额外投掷1枚武器伤害骰",
+                "额外投掷1枚武器伤害骰"
               ]
             },
             "zIndex": 3,
@@ -2047,29 +2694,43 @@
                   "id": "6cc952af-9f8f-4f32-ad91-c35fab83e02c"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 540,
-              "y": 800
+              "y": 1076
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "战意沸腾",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "战意沸腾\n消耗：2\n前置：5狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2078,8 +2739,8 @@
             "data": {
               "title": "战意沸腾",
               "summary": "",
-              "description": "若你处于浴血状态，你获得2点战意值上限。",
-              "cost": 1,
+              "description": "若你处于**浴血**状态，你获得2点战意值上限。",
+              "cost": 2,
               "requirement": "5狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -2094,7 +2755,8 @@
                   "level": 5,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -2134,29 +2796,43 @@
                   "id": "1b83eb50-418a-48bd-a887-195ad106ad99"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 540,
-              "y": 920
+              "y": 1220
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "不倦狂暴",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "不倦狂暴\n消耗：5\n前置：8狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2165,7 +2841,7 @@
             "data": {
               "title": "不倦狂暴",
               "summary": "",
-              "description": "你不再需要消耗任意值维持狂暴，现在狂暴总是能持续至本次战斗结束。除昏迷外的定身不再使你的狂暴提前结束，狂暴结束时你也不会进入缓慢状态。",
+              "description": "你不再需要消耗战意值维持狂暴，现在狂暴总是能持续至本次战斗结束。\n除昏迷外的**定身**不再使你的狂暴提前结束，狂暴结束时你也不会进入**缓慢**状态.",
               "cost": 5,
               "requirement": "8狂怒斗士",
               "talentAffix": "",
@@ -2181,7 +2857,8 @@
                   "level": 8,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -2221,119 +2898,9 @@
                   "id": "f61dcec4-31f6-46a2-8a68-21c229736e15"
                 }
               ]
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
             },
-            "id": "import_edge_auto_3_1",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_3_1"
-            },
-            "target": {
-              "cell": "import_node_3_2"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_3_2",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_3_2"
-            },
-            "target": {
-              "cell": "import_node_3_3"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_3_3",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_3_3"
-            },
-            "target": {
-              "cell": "import_node_3_4"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_3_4",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_3_4"
-            },
-            "target": {
-              "cell": "import_node_3_5"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_3_5",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_3_5"
-            },
-            "target": {
-              "cell": "import_node_3_6"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_3_6",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_3_6"
-            },
-            "target": {
-              "cell": "import_node_3_7"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_3_7",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_3_7"
-            },
-            "target": {
-              "cell": "import_node_3_8"
-            }
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
@@ -2341,21 +2908,33 @@
               "y": 80
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "危机感应",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "危机感应\n消耗：1\n前置：1狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2419,29 +2998,43 @@
                   "id": "3f7ac1d8-9ae2-4365-8a1d-01020d5a67b7"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 746,
-              "y": 200
+              "y": 236
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "英灵召唤",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "英灵召唤\n消耗：2\n前置：2狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2507,29 +3100,43 @@
                   "id": "a2377446-99dc-4197-a202-c0abce3fffe8"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 746,
-              "y": 320
+              "y": 392
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "英灵显现",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "英灵显现\n消耗：1\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2543,6 +3150,7 @@
               "requirement": "3狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
+                "import_node_3_2",
                 "import_node_4_2"
               ],
               "affixMeta": {
@@ -2595,29 +3203,43 @@
                   "id": "51035a87-6a22-40b2-a600-aff54ae643b9"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 746,
-              "y": 440
+              "y": 560
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "险境感知",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "险境感知\n消耗：1\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2626,12 +3248,12 @@
             "data": {
               "title": "险境感知",
               "summary": "",
-              "description": "受到可见效应（例如陷阱和法术）的影响时，你因其进行的敏捷豁免具有优势。",
+              "description": "受到可见效应（例如陷阱和法术）的影响时，你因其进行的**敏捷豁免**具有优势。",
               "cost": 1,
               "requirement": "3狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
-                "import_node_4_3"
+                "import_node_3_3"
               ],
               "affixMeta": {
                 "mastery": false,
@@ -2642,7 +3264,8 @@
                   "level": 3,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -2682,29 +3305,43 @@
                   "id": "a5af5f0c-9e68-410a-af17-c0b87e26a0bb"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 746,
-              "y": 560
+              "y": 728
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "势不可挡",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "势不可挡\n消耗：2\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2713,12 +3350,12 @@
             "data": {
               "title": "势不可挡",
               "summary": "",
-              "description": "你进行冲锋时，冲锋路径内所有体型不大于你超过一级的生物必须进行一次力量豁免，豁免失败的生物不视为冲锋路径上的阻挡物，你经过这些生物的时候会将其推离冲锋路径，由你选择往左或右侧推开。冲锋路径上存在硬度为5或更低的障碍物时，你为每个障碍物进行一次破坏检定，检定成功则该障碍物被你撞碎，检定失败则被障碍物阻挡冲锋。",
-              "cost": 1,
+              "description": "你进行**冲锋**时,冲锋路径内所有体型不大于你超过一级的生物必须进行一次**力量豁免**,豁免失败的生物不视为冲锋路线上的阻挡物,你经过这些生物的时候会将其推离冲锋路径,由你选择往左侧或右侧推开.\n冲锋路径上存在硬度为5或更低的障碍物时,你为每个障碍物进行一次**破坏检定**,检定成功则该障碍物被你摧毁,检定失败则被障碍物阻挡冲锋.",
+              "cost": 2,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
-                "import_node_4_4"
+                "import_node_3_4"
               ],
               "affixMeta": {
                 "mastery": false,
@@ -2729,7 +3366,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -2769,29 +3407,43 @@
                   "id": "38465049-880a-4e0f-81a8-88bc0c4f9fd9"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 746,
-              "y": 680
+              "y": 908
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "蛮牛踩踏",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "蛮牛踩踏\n消耗：1\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2800,7 +3452,7 @@
             "data": {
               "title": "蛮牛踩踏",
               "summary": "",
-              "description": "那些无法成为你阻挡的生物将会成为你的踏脚石，你每经过一名生物所在的格子，该生物便会受到2d6钝击伤害，前提是该生物无法阻挡你的冲锋。",
+              "description": "那些无法成为你阻挡的生物将会成为你的踏板.\n你进行**冲锋**时,你每经过一名生物所在的格子,该生物便会受到**2d6钝击伤害**且**倒地**.前提是该生物无法阻挡你的冲锋.",
               "cost": 1,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
@@ -2816,7 +3468,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -2856,29 +3509,43 @@
                   "id": "8db759d9-fd4b-41ea-8f35-760df9f651d1"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 746,
-              "y": 800
+              "y": 1076
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "毁灭冲锋",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "毁灭冲锋\n消耗：2\n前置：5狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2887,12 +3554,13 @@
             "data": {
               "title": "毁灭冲锋",
               "summary": "",
-              "description": "你每冲锋10尺，一次冲锋目标你的攻击便造成1d6额外伤害，如果你冲锋失败，将失去该额外伤害加成。你在冲锋时对目标造成重击后，该目标将陷入晕厥状态，直至你下一回合结束。",
-              "cost": 1,
+              "description": "你每冲锋10尺,下一次对冲锋目标的攻击便造成**1d6额外伤害**.如果你冲锋失败,将失去该额外伤害加成.\n你在冲锋时对目标造成**重击**后,该目标将陷入**晕眩**状态,直至你下一回合结束.",
+              "cost": 2,
               "requirement": "5狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
-                "import_node_4_6"
+                "import_node_4_6",
+                "import_node_3_6"
               ],
               "affixMeta": {
                 "mastery": false,
@@ -2903,7 +3571,8 @@
                   "level": 5,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -2943,29 +3612,43 @@
                   "id": "1b9307c9-c7c8-4f1a-b434-73fca22ce5e3"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 746,
-              "y": 920
+              "y": 1220
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "野蛮行军",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "野蛮行军\n消耗：5\n前置：8狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -2974,7 +3657,7 @@
             "data": {
               "title": "野蛮行军",
               "summary": "",
-              "description": "你的冲锋距离提升为三倍步行速度范围内的一名目标。冲锋路径上遇到障碍时，你可以用跳跃(不消耗动作)的方式跨越障碍，这不会使冲锋失效，前提是你必须拥有足够的跳跃能力来跳过障碍。",
+              "description": "你的冲锋距离提升为**三倍步行速度**。\n冲锋路径上遇到**障碍**时,你可以用**跳跃(不消耗动作)**的方式将其跨越,这不会使冲锋失败,前提是你必须拥有足够的跳跃能力来跳过障碍.",
               "cost": 5,
               "requirement": "8狂怒斗士",
               "talentAffix": "",
@@ -2990,7 +3673,8 @@
                   "level": 8,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -3030,141 +3714,43 @@
                   "id": "d1bef432-2842-47ec-9d1a-037219305684"
                 }
               ]
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
             },
-            "id": "import_edge_auto_4_1",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_4_1"
-            },
-            "target": {
-              "cell": "import_node_4_2"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_4_2",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_4_2"
-            },
-            "target": {
-              "cell": "import_node_4_3"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_4_3",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_4_3"
-            },
-            "target": {
-              "cell": "import_node_4_4"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_4_4",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_4_4"
-            },
-            "target": {
-              "cell": "import_node_4_5"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_4_5",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_4_5"
-            },
-            "target": {
-              "cell": "import_node_4_6"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_4_6",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_4_6"
-            },
-            "target": {
-              "cell": "import_node_4_7"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_4_7",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_4_7"
-            },
-            "target": {
-              "cell": "import_node_4_8"
-            }
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 952,
-              "y": 200
+              "y": 236
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "精魂图腾",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "精魂图腾\n消耗：2\n前置：2狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -3173,11 +3759,13 @@
             "data": {
               "title": "精魂图腾",
               "summary": "",
-              "description": "进入狂怒时，你可以**消耗3战意值**从下列**精魂图腾**中选择一项激活并获得其对应加成：\n熊：**获得**元素伤害**的抗性。\n**鹰：**你可以用**1个快速动作**同时执行**移动**与**撤离**。\n**狼：**你和盟友的**夹击**敌人时，对该敌人的攻击获得**+1奖励骰**，\n狂暴结束后，你失去精魂图腾的加成。\n每回合开始时，你需要**消耗1战意值**维持精魂图腾的激活状态。",
+              "description": "进入狂怒时，你可以**消耗3战意值**从下列**精魂图腾**中选择一项激活并获得其对应加成：\n**熊**：**获得**元素伤害**的抗性。\n**鹰：**你可以用**1个快速动作**同时执行**移动**与**撤离**。\n**狼：**你和盟友的**夹击**敌人时，对该敌人的攻击获得**+1奖励骰**，\n狂暴结束后，你失去精魂图腾的加成。\n每回合开始时，你需要**消耗1战意值**维持精魂图腾的激活状态。",
               "cost": 2,
               "requirement": "2狂怒斗士",
               "talentAffix": "",
-              "parentNodeIds": [],
+              "parentNodeIds": [
+                "import_node_4_1"
+              ],
               "affixMeta": {
                 "mastery": false,
                 "exclusive": false
@@ -3228,29 +3816,43 @@
                   "id": "fe4cae39-8281-4e52-ac45-63e08e969e39"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 952,
-              "y": 320
+              "y": 392
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "精魂庇护",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "精魂庇护\n消耗：2\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -3260,7 +3862,7 @@
               "title": "精魂庇护",
               "summary": "",
               "description": "你从下列**精魂庇护**中选择一项激活并获得对应加成：\n**枭：****黑暗视觉**增加60尺。\n**熊：**获得等同于步行速度的**攀爬速度**。\n**鲑：**获得等同于步行速度的**游泳速度**。\n完成一次长休后，你可以更改激活的精魂庇护。",
-              "cost": 1,
+              "cost": 2,
               "requirement": "3狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -3316,29 +3918,43 @@
                   "id": "aeaad9d1-1f45-4c3d-9dc0-4cbf6f346ec6"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 952,
-              "y": 440
+              "y": 560
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "强化精魂图腾",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "强化精魂图腾\n消耗：2\n前置：3狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -3347,8 +3963,8 @@
             "data": {
               "title": "强化精魂图腾",
               "summary": "",
-              "description": "精魂图腾现在拥有更多选项：游隼：未着装任何护甲时，获得等同于步行速度的飞行速度；猛狮：位于你15尺范围内的敌人对你之外的生物发动攻击检定时获得+2惩罚骰；巨犀：你的体型增加一级。",
-              "cost": 1,
+              "description": "**精魂图腾**现在拥有更多选项：\n**游隼**：未着装任何护甲时，获得等同于**步行速度**的**飞行速度**。\n**猛狮**：位于你5尺范围内的敌人对除你之外的生物发动攻击检定时获得**+2惩罚骰**.\n**巨犀**：你的体型增加一级。",
+              "cost": 2,
               "requirement": "3狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -3363,7 +3979,8 @@
                   "level": 3,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -3403,29 +4020,43 @@
                   "id": "9b04d4d5-c8a0-41dd-ba71-f68643317301"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 952,
-              "y": 560
+              "y": 728
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "精魂联结",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "精魂联结\n消耗：1\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -3434,7 +4065,7 @@
             "data": {
               "title": "精魂联结",
               "summary": "",
-              "description": "你可以用1个快速动作消耗2战意值，切换当前激活的精魂图腾。",
+              "description": "你可以用**1个快速动作**并**消耗2战意值**，切换当前激活的精魂图腾。",
               "cost": 1,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
@@ -3450,7 +4081,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -3490,29 +4122,43 @@
                   "id": "562ac49a-5170-4a97-b1f0-97698fc07858"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 952,
-              "y": 680
+              "y": 908
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "精魂意志",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "精魂意志\n消耗：2\n前置：4狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -3521,8 +4167,8 @@
             "data": {
               "title": "精魂意志",
               "summary": "",
-              "description": "狂暴时，你可以同时激活2个精魂图腾，但精魂联结依然只能一次切换一个精魂图腾。",
-              "cost": 1,
+              "description": "狂暴时，你可以同时激活2个**精魂图腾**，但**精魂联结**依然只能一次切换一个精魂图腾。",
+              "cost": 2,
               "requirement": "4狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -3537,7 +4183,8 @@
                   "level": 4,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -3577,29 +4224,43 @@
                   "id": "c0f90da9-9c5a-47f3-b3a3-9309451e5ba0"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 952,
-              "y": 800
+              "y": 1076
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "原初守护",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "原初守护\n消耗：3\n前置：5狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -3608,8 +4269,8 @@
             "data": {
               "title": "原初守护",
               "summary": "",
-              "description": "狂暴时，你获得光耀和黯蚀伤害的抗性。",
-              "cost": 1,
+              "description": "狂暴时，你获得**光耀**和**黯蚀**伤害的抗性。",
+              "cost": 3,
               "requirement": "5狂怒斗士",
               "talentAffix": "",
               "parentNodeIds": [
@@ -3624,7 +4285,8 @@
                   "level": 5,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -3664,29 +4326,43 @@
                   "id": "517e1245-3ac1-4c82-a36c-0cae286613c3"
                 }
               ]
-            }
+            },
+            "width": 196,
+            "height": 92
           },
           {
             "position": {
               "x": 952,
-              "y": 920
+              "y": 1220
             },
             "size": {
-              "width": 180,
-              "height": 56
+              "width": 196,
+              "height": 92
             },
             "attrs": {
               "body": {
-                "fill": "#f7fbff",
-                "stroke": "#74aef4",
-                "rx": 10,
-                "ry": 10
+                "fill": "#ffffff",
+                "stroke": "rgba(109, 165, 241, 0.28)",
+                "rx": 8,
+                "ry": 8,
+                "strokeWidth": 1
               },
               "label": {
-                "text": "原初狂怒",
-                "fill": "#1b4f8a",
-                "fontSize": 13,
-                "fontWeight": 600
+                "text": "原初狂怒\n消耗：5\n前置：8狂怒斗士\n词缀：无\n概述：暂无概述",
+                "fill": "#124f90",
+                "fontSize": 11,
+                "fontWeight": 600,
+                "lineHeight": 16,
+                "textAnchor": "start",
+                "textVerticalAnchor": "top",
+                "refX": 10,
+                "refY": 8,
+                "textWrap": {
+                  "width": -20,
+                  "height": -16,
+                  "ellipsis": true,
+                  "breakWord": true
+                }
               }
             },
             "visible": true,
@@ -3695,7 +4371,7 @@
             "data": {
               "title": "原初狂怒",
               "summary": "",
-              "description": "精魂图腾激活时获得额外效果：熊：暴击伤害增加一倍；狼：被夹击的敌人无法对你进行借机攻击，你对目标的攻击检定获得+2奖励骰；鹰：冲锋时你可以用自由动作执行游离和回避；野猪：你可以在空中对目标发动冲锋，但必须为直线；雄狮：位于你5尺范围内的敌人对你之外的生物发动攻击检定时具有劣势；巨犀：你的体型增加一级。",
+              "description": "精魂图腾激活时获得额外效果:\n**熊**:武器伤害骰增加一枚.\n**狼**:被夹击的敌人无法对你进行借机攻击,你对目标的攻击检定获得+2奖励骰.\n**鹰**:冲锋时你可以用自由动作执行撤离和回避.\n**游隼**:你可以在空中对目标发动冲锋,但必须为直线\n**雄狮**:位于你5尺范围内的敌人对除你之外的生物发动攻击检定时具有劣势.\n**巨犀**:你的体型增加一级.",
               "cost": 5,
               "requirement": "8狂怒斗士",
               "talentAffix": "",
@@ -3711,7 +4387,8 @@
                   "level": 8,
                   "profession": "狂怒斗士"
                 }
-              ]
+              ],
+              "studyDescriptions": []
             },
             "zIndex": 3,
             "ports": {
@@ -3751,117 +4428,23 @@
                   "id": "56cb334a-fb0a-4934-9af1-865910a9bc31"
                 }
               ]
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
             },
-            "id": "import_edge_auto_5_1",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_5_1"
-            },
-            "target": {
-              "cell": "import_node_5_2"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_5_2",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_5_2"
-            },
-            "target": {
-              "cell": "import_node_5_3"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_5_3",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_5_3"
-            },
-            "target": {
-              "cell": "import_node_5_4"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_5_4",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_5_4"
-            },
-            "target": {
-              "cell": "import_node_5_5"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_5_5",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_5_5"
-            },
-            "target": {
-              "cell": "import_node_5_6"
-            }
-          },
-          {
-            "shape": "edge",
-            "attrs": {
-              "line": {
-                "stroke": "#5b9be8"
-              }
-            },
-            "id": "import_edge_auto_5_6",
-            "zIndex": 3,
-            "source": {
-              "cell": "import_node_5_6"
-            },
-            "target": {
-              "cell": "import_node_5_7"
-            }
+            "width": 196,
+            "height": 92
           }
         ]
       },
       "createdBy": "cmn6sd8l500003tgg63dkqco7",
       "createdAt": "2026-03-26T06:22:59.784Z",
-      "updatedAt": "2026-03-26T07:10:02.461Z",
-      "publishedAt": "2026-03-26T07:06:08.543Z"
+      "updatedAt": "2026-04-03T08:31:22.727Z",
+      "publishedAt": "2026-04-03T06:27:54.538Z"
     },
     {
       "id": "talent_tpl_mn73autg_tiz54p",
       "name": "战士天赋树-本职",
       "description": "战士职业天赋树",
       "treeType": "PROFESSION",
-      "category": "战士",
+      "category": "职业天赋树/战士",
       "status": "DRAFT",
       "version": 1,
       "graphData": {
@@ -7897,7 +8480,7 @@
       "name": "影刃天赋树-本职",
       "description": "影刃职业天赋树",
       "treeType": "PROFESSION",
-      "category": "影刃",
+      "category": "职业天赋树/影刃",
       "status": "DRAFT",
       "version": 1,
       "graphData": {
@@ -11913,6 +12496,81 @@
       "createdBy": "cmn6sd8l500003tgg63dkqco7",
       "createdAt": "2026-03-26T06:38:36.320Z",
       "updatedAt": "2026-03-26T06:56:55.268Z"
+    }
+  ],
+  "directories": [
+    {
+      "id": "talent_dir_mnijb1py_xr7sk1",
+      "path": [
+        "狂怒斗士"
+      ],
+      "sortOrder": 1,
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-03-26T06:22:59.784Z",
+      "updatedAt": "2026-03-26T06:22:59.784Z"
+    },
+    {
+      "id": "talent_dir_mnijb1py_3jvu78",
+      "path": [
+        "战士"
+      ],
+      "sortOrder": 2,
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-03-26T06:26:52.420Z",
+      "updatedAt": "2026-03-26T06:26:52.420Z"
+    },
+    {
+      "id": "talent_dir_mnijb1py_08efnt",
+      "path": [
+        "影刃"
+      ],
+      "sortOrder": 3,
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-03-26T06:38:36.320Z",
+      "updatedAt": "2026-03-26T06:38:36.320Z"
+    },
+    {
+      "id": "talent_dir_mnik6jzd_gonmss",
+      "path": [
+        "职业天赋树",
+        "狂怒斗士"
+      ],
+      "sortOrder": 1,
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-03-26T06:22:59.784Z",
+      "updatedAt": "2026-03-26T06:22:59.784Z"
+    },
+    {
+      "id": "talent_dir_mnik6jzd_frudey",
+      "path": [
+        "职业天赋树",
+        "战士"
+      ],
+      "sortOrder": 2,
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-03-26T06:26:52.420Z",
+      "updatedAt": "2026-03-26T06:26:52.420Z"
+    },
+    {
+      "id": "talent_dir_mnik6jzd_sxy57d",
+      "path": [
+        "职业天赋树",
+        "影刃"
+      ],
+      "sortOrder": 3,
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-03-26T06:38:36.320Z",
+      "updatedAt": "2026-03-26T06:38:36.320Z"
+    },
+    {
+      "id": "talent_dir_mnilo02l_pd9dd3",
+      "path": [
+        "职业天赋树"
+      ],
+      "sortOrder": 4,
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-04-03T07:46:26.781Z",
+      "updatedAt": "2026-04-03T07:46:26.781Z"
     }
   ]
 }

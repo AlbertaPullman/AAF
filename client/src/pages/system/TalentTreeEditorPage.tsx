@@ -19,9 +19,35 @@ type TalentTreeTemplate = {
   updatedAt: string;
 };
 
+type TalentTreeDirectoryItem = {
+  id: string;
+  path: string[];
+  sortOrder: number;
+};
+
 type TemplateListResponse = {
   editable: boolean;
   templates: TalentTreeTemplate[];
+  directories: TalentTreeDirectoryItem[];
+};
+
+type TalentDirectoryNode = {
+  key: string;
+  directoryId: string | null;
+  sortOrder: number;
+  label: string;
+  path: string[];
+  children: TalentDirectoryNode[];
+  templates: TalentTreeTemplate[];
+};
+
+type TalentNodePreviewItem = {
+  id: string;
+  title: string;
+  summary: string;
+  cost: number;
+  requirement: string;
+  talentAffix: string;
 };
 
 type NodeFormState = {
@@ -115,6 +141,14 @@ type ParsedTalentImport = {
   };
 };
 
+type TemplateMetaFormState = {
+  templateId: string;
+  name: string;
+  description: string;
+  rootDirectory: string;
+  subDirectoryInput: string;
+};
+
 const PROFESSION_NAME_SET = new Set([
   "狂怒斗士",
   "战士",
@@ -128,6 +162,22 @@ const PROFESSION_NAME_SET = new Set([
   "吟游诗人",
   "魔能使",
   "机兵士"
+]);
+
+const TALENT_DIRECTORY_ROOTS = {
+  profession: "职业天赋树",
+  general: "通用天赋树"
+} as const;
+
+const TALENT_DIRECTORY_ROOT_ALIAS = new Map<string, string>([
+  ["职业天赋树", TALENT_DIRECTORY_ROOTS.profession],
+  ["职业天赋", TALENT_DIRECTORY_ROOTS.profession],
+  ["职业", TALENT_DIRECTORY_ROOTS.profession],
+  ["PROFESSION", TALENT_DIRECTORY_ROOTS.profession],
+  ["通用天赋树", TALENT_DIRECTORY_ROOTS.general],
+  ["通用天赋", TALENT_DIRECTORY_ROOTS.general],
+  ["通用", TALENT_DIRECTORY_ROOTS.general],
+  ["GENERAL", TALENT_DIRECTORY_ROOTS.general]
 ]);
 
 const TALENT_NODE_PORTS = {
@@ -160,20 +210,106 @@ const TALENT_NODE_PORTS = {
   items: [{ group: "in" }, { group: "out" }]
 };
 
+const TALENT_NODE_VISUAL = {
+  bodyFill: "#ffffff",
+  bodyStroke: "rgba(109, 165, 241, 0.28)",
+  bodyStrokeWidth: 1,
+  bodyRadius: 8,
+  labelFill: "#124f90",
+  labelFontSize: 11,
+  labelFontWeight: 600
+} as const;
+
+type TalentNodeLabelPayload = {
+  title: string;
+  summary: string;
+  cost: number;
+  requirement: string;
+  talentAffix: string;
+};
+
+function toShortNodeSummary(summary: string) {
+  const normalized = summary.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "暂无概述";
+  }
+  return normalized.length > 12 ? `${normalized.slice(0, 12)}…` : normalized;
+}
+
+function toTalentNodeLabelText(payload: TalentNodeLabelPayload) {
+  const title = payload.title.trim() || "未命名节点";
+  const cost = Number.isFinite(payload.cost) ? Math.max(0, Math.floor(payload.cost)) : 1;
+  const requirement = payload.requirement.trim() || "无";
+  const talentAffix = payload.talentAffix.trim() || "无";
+  const summary = toShortNodeSummary(payload.summary);
+
+  return [
+    title,
+    `消耗：${cost}`,
+    `前置：${requirement}`,
+    `词缀：${talentAffix}`,
+    `概述：${summary}`
+  ].join("\n");
+}
+
+function toTalentNodeLabelPayload(value: Record<string, unknown>): TalentNodeLabelPayload {
+  return {
+    title: typeof value.title === "string" ? value.title : "",
+    summary: typeof value.summary === "string" ? value.summary : "",
+    cost: typeof value.cost === "number" && Number.isFinite(value.cost) ? value.cost : 1,
+    requirement: typeof value.requirement === "string" ? value.requirement : "",
+    talentAffix: typeof value.talentAffix === "string" ? value.talentAffix : ""
+  };
+}
+
+function createTalentNodeAttrs(payload: TalentNodeLabelPayload) {
+  return {
+    body: {
+      fill: TALENT_NODE_VISUAL.bodyFill,
+      stroke: TALENT_NODE_VISUAL.bodyStroke,
+      strokeWidth: TALENT_NODE_VISUAL.bodyStrokeWidth,
+      rx: TALENT_NODE_VISUAL.bodyRadius,
+      ry: TALENT_NODE_VISUAL.bodyRadius
+    },
+    label: {
+      text: toTalentNodeLabelText(payload),
+      fill: TALENT_NODE_VISUAL.labelFill,
+      fontSize: TALENT_NODE_VISUAL.labelFontSize,
+      fontWeight: TALENT_NODE_VISUAL.labelFontWeight,
+      lineHeight: 16,
+      textVerticalAnchor: "top",
+      textAnchor: "start",
+      refX: 10,
+      refY: 8,
+      textWrap: {
+        width: -20,
+        height: -16,
+        ellipsis: true,
+        breakWord: true
+      }
+    }
+  };
+}
+
 const IMPORT_LAYOUT = {
   startX: 80,
   startY: 80,
   columnGap: 230,
-  rowGap: 120,
-  nodeWidth: 180,
-  nodeHeight: 56
+  rowGap: 104,
+  nodeWidth: 196,
+  nodeHeight: 92
 };
+
+const TALENT_EDITOR_GRID_SIZE = 12;
+const TALENT_EDITOR_MIN_NODE_GAP_GRID = 5;
+const TALENT_EDITOR_MIN_NODE_GAP = TALENT_EDITOR_GRID_SIZE * TALENT_EDITOR_MIN_NODE_GAP_GRID;
+const TALENT_EDITOR_MIN_GAP_MAX_ITERATIONS = 12;
 
 const TALENT_IMPORT_EXAMPLE = JSON.stringify(
   {
     name: "狂怒斗士天赋树",
     treeType: "PROFESSION",
-    category: "狂怒斗士",
+    category: "职业天赋树/狂怒斗士",
     description: "从思维导图一键导入",
     branches: [
       {
@@ -233,6 +369,45 @@ function parseImportTreeType(value: unknown): TalentTreeType | undefined {
     return "PROFESSION";
   }
   return undefined;
+}
+
+function toRootDirectoryByType(treeType: TalentTreeType) {
+  return treeType === "GENERAL" ? TALENT_DIRECTORY_ROOTS.general : TALENT_DIRECTORY_ROOTS.profession;
+}
+
+function normalizeRootDirectoryName(value: string) {
+  return TALENT_DIRECTORY_ROOT_ALIAS.get(value.trim().toUpperCase())
+    || TALENT_DIRECTORY_ROOT_ALIAS.get(value.trim())
+    || null;
+}
+
+function inferTreeTypeByDirectoryPath(pathValue: string[], fallback: TalentTreeType = "PROFESSION"): TalentTreeType {
+  const root = normalizeRootDirectoryName(pathValue[0] ?? "");
+  if (root === TALENT_DIRECTORY_ROOTS.general) {
+    return "GENERAL";
+  }
+  if (root === TALENT_DIRECTORY_ROOTS.profession) {
+    return "PROFESSION";
+  }
+  return fallback;
+}
+
+function normalizeCategoryPath(pathValue: string[], fallback: TalentTreeType = "PROFESSION") {
+  const normalized = pathValue
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+
+  if (!normalized.length) {
+    return [toRootDirectoryByType(fallback)];
+  }
+
+  const root = normalizeRootDirectoryName(normalized[0]);
+  if (root) {
+    return [root, ...normalized.slice(1)];
+  }
+
+  return [toRootDirectoryByType(fallback), ...normalized.slice(0, 5)];
 }
 
 function normalizeRequirementFromImport(value: TalentImportNodeInput["requirement"]) {
@@ -335,6 +510,13 @@ function parseTalentImportPayload(raw: unknown): ParsedTalentImport {
       const x = baseX;
       const y = baseY + nodeIndex * IMPORT_LAYOUT.rowGap;
       const description = resolveNodeDescriptionFromImport(node, talentAffix);
+      const nodePayload = {
+        title,
+        summary: typeof node.summary === "string" ? node.summary : "",
+        cost,
+        requirement: normalizeRequirementFromImport(node.requirement),
+        talentAffix
+      };
 
       cells.push({
         id: nodeId,
@@ -343,27 +525,14 @@ function parseTalentImportPayload(raw: unknown): ParsedTalentImport {
         y,
         width: IMPORT_LAYOUT.nodeWidth,
         height: IMPORT_LAYOUT.nodeHeight,
-        attrs: {
-          body: {
-            fill: "#f7fbff",
-            stroke: "#74aef4",
-            rx: 10,
-            ry: 10
-          },
-          label: {
-            text: title,
-            fill: "#1b4f8a",
-            fontSize: 13,
-            fontWeight: 600
-          }
-        },
+        attrs: createTalentNodeAttrs(nodePayload),
         data: {
-          title,
-          summary: typeof node.summary === "string" ? node.summary : "",
+          title: nodePayload.title,
+          summary: nodePayload.summary,
           description,
-          cost,
-          requirement: normalizeRequirementFromImport(node.requirement),
-          talentAffix
+          cost: nodePayload.cost,
+          requirement: nodePayload.requirement,
+          talentAffix: nodePayload.talentAffix
         },
         ports: TALENT_NODE_PORTS
       });
@@ -440,6 +609,154 @@ function parseTalentImportPayload(raw: unknown): ParsedTalentImport {
   };
 }
 
+function parseDirectoryPath(value: string, fallback: TalentTreeType = "PROFESSION") {
+  return normalizeCategoryPath(value.split("/"), fallback);
+}
+
+function toDirectoryKey(pathValue: string[]) {
+  return pathValue.join("::");
+}
+
+function normalizeTemplateSort(left: TalentTreeTemplate, right: TalentTreeTemplate) {
+  return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+}
+
+function buildTalentDirectoryTree(templates: TalentTreeTemplate[], directories: TalentTreeDirectoryItem[]) {
+  const roots: TalentDirectoryNode[] = [];
+  const nodeMap = new Map<string, TalentDirectoryNode>();
+
+  const ensureNode = (pathValue: string[]) => {
+    if (!pathValue.length) {
+      return null;
+    }
+
+    let parent: TalentDirectoryNode | null = null;
+    for (let index = 0; index < pathValue.length; index += 1) {
+      const currentPath = pathValue.slice(0, index + 1);
+      const key = toDirectoryKey(currentPath);
+      let current = nodeMap.get(key);
+      if (!current) {
+        current = {
+          key,
+          directoryId: null,
+          sortOrder: Number.MAX_SAFE_INTEGER,
+          label: currentPath[currentPath.length - 1],
+          path: currentPath,
+          children: [],
+          templates: []
+        };
+        nodeMap.set(key, current);
+        if (parent) {
+          if (!parent.children.some((item) => item.key === current?.key)) {
+            parent.children.push(current);
+          }
+        } else if (!roots.some((item) => item.key === current?.key)) {
+          roots.push(current);
+        }
+      }
+      parent = current;
+    }
+
+    return parent;
+  };
+
+  directories
+    .slice()
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .forEach((directory) => {
+      const rawPath = (directory.path ?? []).map((item) => String(item || ""));
+      const fallbackTreeType = inferTreeTypeByDirectoryPath(rawPath, "PROFESSION");
+      const normalizedPath = normalizeCategoryPath(rawPath, fallbackTreeType);
+      const node = ensureNode(normalizedPath);
+      if (node) {
+        node.directoryId = directory.id;
+        node.sortOrder = directory.sortOrder;
+      }
+    });
+
+  const uncategorizedTemplates: TalentTreeTemplate[] = [];
+  templates
+    .slice()
+    .sort(normalizeTemplateSort)
+    .forEach((template) => {
+      const pathValue = parseDirectoryPath(template.category || "", template.treeType);
+      const node = ensureNode(pathValue);
+      if (node) {
+        node.templates.push(template);
+      } else {
+        uncategorizedTemplates.push(template);
+      }
+    });
+
+  const sortNodes = (nodes: TalentDirectoryNode[]) => {
+    nodes
+      .sort((left, right) => {
+        if (left.sortOrder !== right.sortOrder) {
+          return left.sortOrder - right.sortOrder;
+        }
+        return left.label.localeCompare(right.label, "zh-Hans-CN");
+      })
+      .forEach((node) => {
+        node.templates.sort(normalizeTemplateSort);
+        sortNodes(node.children);
+      });
+  };
+
+  sortNodes(roots);
+
+  if (uncategorizedTemplates.length) {
+    roots.unshift({
+      key: "__root__",
+      directoryId: null,
+      sortOrder: Number.MIN_SAFE_INTEGER,
+      label: "未分类",
+      path: [],
+      children: [],
+      templates: uncategorizedTemplates
+    });
+  }
+
+  return roots;
+}
+
+function extractTalentNodePreviewItems(rawGraph: unknown): TalentNodePreviewItem[] {
+  const graphData = toGraphData(rawGraph);
+  const cells = Array.isArray(graphData.cells) ? graphData.cells : [];
+  const previews = cells
+    .filter((cell) => cell.shape !== "edge")
+    .map((cell, index) => {
+      const data = cell.data && typeof cell.data === "object" ? (cell.data as Record<string, unknown>) : {};
+      const title = (typeof data.title === "string" && data.title.trim()) || resolveNodeTitleFromCell(cell);
+      const x = typeof cell.x === "number" ? cell.x : 0;
+      const y = typeof cell.y === "number" ? cell.y : 0;
+      return {
+        index,
+        x,
+        y,
+        item: {
+          id: String(cell.id ?? `preview_node_${index + 1}`),
+          title,
+          summary: typeof data.summary === "string" ? data.summary : "",
+          cost: typeof data.cost === "number" && Number.isFinite(data.cost) ? data.cost : 1,
+          requirement: typeof data.requirement === "string" ? data.requirement : "",
+          talentAffix: typeof data.talentAffix === "string" ? data.talentAffix : ""
+        }
+      };
+    });
+
+  return previews
+    .sort((left, right) => left.y - right.y || left.x - right.x || left.index - right.index)
+    .map((row) => row.item);
+}
+
+function resolveTemplateDirectoryHint(template: TalentTreeTemplate) {
+  const categoryPath = parseDirectoryPath(template.category || "", template.treeType);
+  if (categoryPath.length <= 1) {
+    return "根目录";
+  }
+  return categoryPath.slice(1).join(" / ");
+}
+
 function sanitizeFileName(value: string) {
   return value
     .trim()
@@ -458,7 +775,8 @@ function resolveNodeTitleFromCell(cell: Record<string, unknown>) {
 
   const attrs = cell.attrs && typeof cell.attrs === "object" ? (cell.attrs as Record<string, unknown>) : null;
   const label = attrs?.label && typeof attrs.label === "object" ? (attrs.label as Record<string, unknown>) : null;
-  const labelText = label && typeof label.text === "string" ? label.text.trim() : "";
+  const labelTextRaw = label && typeof label.text === "string" ? label.text.trim() : "";
+  const labelText = labelTextRaw.split("\n")[0]?.trim() ?? "";
   if (labelText) {
     return labelText;
   }
@@ -497,9 +815,35 @@ function toGraphData(value: unknown) {
       data.talentAffix = typeof data.talentAffix === "string" ? data.talentAffix : "";
 
       const attrs = cell.attrs && typeof cell.attrs === "object" ? { ...(cell.attrs as Record<string, unknown>) } : {};
+      const body = attrs.body && typeof attrs.body === "object" ? { ...(attrs.body as Record<string, unknown>) } : {};
       const label = attrs.label && typeof attrs.label === "object" ? { ...(attrs.label as Record<string, unknown>) } : {};
-      label.text = data.title;
+      attrs.body = {
+        ...body,
+        fill: TALENT_NODE_VISUAL.bodyFill,
+        stroke: TALENT_NODE_VISUAL.bodyStroke,
+        strokeWidth: TALENT_NODE_VISUAL.bodyStrokeWidth,
+        rx: TALENT_NODE_VISUAL.bodyRadius,
+        ry: TALENT_NODE_VISUAL.bodyRadius
+      };
+      label.fill = TALENT_NODE_VISUAL.labelFill;
+      label.fontSize = TALENT_NODE_VISUAL.labelFontSize;
+      label.fontWeight = TALENT_NODE_VISUAL.labelFontWeight;
+      label.lineHeight = 16;
+      label.textAnchor = "start";
+      label.textVerticalAnchor = "top";
+      label.refX = 10;
+      label.refY = 8;
+      label.textWrap = {
+        width: -20,
+        height: -16,
+        ellipsis: true,
+        breakWord: true
+      };
+      label.text = toTalentNodeLabelText(toTalentNodeLabelPayload(data));
       attrs.label = label;
+
+      const width = IMPORT_LAYOUT.nodeWidth;
+      const height = IMPORT_LAYOUT.nodeHeight;
 
       const ports = cell.ports && typeof cell.ports === "object" ? (cell.ports as Record<string, unknown>) : null;
       const existingItems = ports && Array.isArray((ports as { items?: unknown }).items)
@@ -509,6 +853,8 @@ function toGraphData(value: unknown) {
 
       return {
         ...cell,
+        width,
+        height,
         data,
         attrs,
         ports: hasValidPorts ? ports : TALENT_NODE_PORTS
@@ -517,6 +863,98 @@ function toGraphData(value: unknown) {
     .filter((item): item is Record<string, unknown> => !!item);
 
   return { cells: normalizedCells };
+}
+
+function enforceNodeMinimumGap(graph: Graph, movedNodeId: string, minGap: number) {
+  const movedCell = graph.getCellById(movedNodeId);
+  if (!movedCell || !movedCell.isNode()) {
+    return false;
+  }
+
+  const movedNode = movedCell as unknown as {
+    getBBox: () => { x: number; y: number; width: number; height: number };
+    position: (x: number, y: number, options?: { silent?: boolean }) => void;
+  };
+
+  const otherNodes = graph
+    .getNodes()
+    .filter((node) => String(node.id) !== movedNodeId) as Array<{
+      getBBox: () => { x: number; y: number; width: number; height: number };
+    }>;
+
+  if (!otherNodes.length) {
+    return false;
+  }
+
+  let adjusted = false;
+
+  for (let pass = 0; pass < TALENT_EDITOR_MIN_GAP_MAX_ITERATIONS; pass += 1) {
+    const movedBox = movedNode.getBBox();
+    const movedRect = {
+      left: movedBox.x,
+      right: movedBox.x + movedBox.width,
+      top: movedBox.y,
+      bottom: movedBox.y + movedBox.height
+    };
+
+    let passAdjusted = false;
+
+    for (const otherNode of otherNodes) {
+      const other = otherNode.getBBox();
+      const overlapX = Math.min(movedRect.right, other.x + other.width) - Math.max(movedRect.left, other.x);
+      if (overlapX <= 0) {
+        continue;
+      }
+
+      const movedCenterY = movedRect.top + movedBox.height / 2;
+      const otherCenterY = other.y + other.height / 2;
+
+      let nextY: number | null = null;
+
+      if (movedRect.top >= other.y + other.height) {
+        const verticalGap = movedRect.top - (other.y + other.height);
+        if (verticalGap < minGap) {
+          nextY = other.y + other.height + minGap;
+        }
+      } else if (other.y >= movedRect.bottom) {
+        const verticalGap = other.y - movedRect.bottom;
+        if (verticalGap < minGap) {
+          nextY = other.y - minGap - movedBox.height;
+        }
+      } else {
+        nextY = movedCenterY >= otherCenterY
+          ? other.y + other.height + minGap
+          : other.y - minGap - movedBox.height;
+      }
+
+      if (nextY === null) {
+        continue;
+      }
+
+      const currentX = movedRect.left;
+      movedNode.position(currentX, Math.max(0, nextY), { silent: true });
+
+      adjusted = true;
+      passAdjusted = true;
+      break;
+    }
+
+    if (!passAdjusted) {
+      break;
+    }
+  }
+
+  return adjusted;
+}
+
+function enforceAllNodesMinimumGap(graph: Graph, minGap: number) {
+  let adjusted = false;
+  graph.getNodes().forEach((node) => {
+    if (enforceNodeMinimumGap(graph, String(node.id), minGap)) {
+      adjusted = true;
+    }
+  });
+  return adjusted;
 }
 
 function parseTalentAffixMeta(value: unknown): AffixMeta {
@@ -721,8 +1159,12 @@ export default function TalentTreeEditorPage() {
   const user = useAuthStore((state) => state.user);
   const graphRef = useRef<Graph | null>(null);
   const nodeDescriptionTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const saveTemplateShortcutRef = useRef<(() => Promise<boolean>) | null>(null);
+  const graphHistoryRef = useRef<Array<Record<string, unknown>>>([]);
+  const muteGraphHistoryRef = useRef(false);
   const [graphContainerEl, setGraphContainerEl] = useState<HTMLDivElement | null>(null);
   const [graphReady, setGraphReady] = useState(false);
+  const [graphVersion, setGraphVersion] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -733,12 +1175,21 @@ export default function TalentTreeEditorPage() {
 
   const [editable, setEditable] = useState(false);
   const [templates, setTemplates] = useState<TalentTreeTemplate[]>([]);
+  const [directories, setDirectories] = useState<TalentTreeDirectoryItem[]>([]);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [expandedDirectoryKeys, setExpandedDirectoryKeys] = useState<string[]>([]);
+  const [activeDirectoryPath, setActiveDirectoryPath] = useState<string[]>([]);
+  const [draggingTemplateId, setDraggingTemplateId] = useState<string | null>(null);
+  const [showDirectoryModal, setShowDirectoryModal] = useState(false);
+  const [newDirectoryLevel, setNewDirectoryLevel] = useState(2);
+  const [newDirectoryNames, setNewDirectoryNames] = useState<string[]>([TALENT_DIRECTORY_ROOTS.profession, ""]);
 
   const [nameInput, setNameInput] = useState("");
   const [descriptionInput, setDescriptionInput] = useState("");
-  const [treeTypeInput, setTreeTypeInput] = useState<TalentTreeType>("PROFESSION");
-  const [categoryInput, setCategoryInput] = useState("职业天赋");
+  const [categoryInput, setCategoryInput] = useState<string>(TALENT_DIRECTORY_ROOTS.profession);
+  const [isTemplateMetaModalOpen, setIsTemplateMetaModalOpen] = useState(false);
+  const [templateMetaSaving, setTemplateMetaSaving] = useState(false);
+  const [templateMetaForm, setTemplateMetaForm] = useState<TemplateMetaFormState | null>(null);
   const [editingNodeForm, setEditingNodeForm] = useState<NodeFormState | null>(null);
   const [isNodeEditorOpen, setIsNodeEditorOpen] = useState(false);
   const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
@@ -747,6 +1198,7 @@ export default function TalentTreeEditorPage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importJsonInput, setImportJsonInput] = useState(TALENT_IMPORT_EXAMPLE);
   const [importApplyMeta, setImportApplyMeta] = useState(true);
+  const [selectedPreviewNodeId, setSelectedPreviewNodeId] = useState<string | null>(null);
 
   const isAdmin = user?.platformRole === "MASTER" || user?.platformRole === "ADMIN";
 
@@ -755,27 +1207,180 @@ export default function TalentTreeEditorPage() {
     [templates, activeTemplateId]
   );
 
+  const directoryTree = useMemo(
+    () => buildTalentDirectoryTree(templates, directories),
+    [templates, directories]
+  );
+
+  const previewNodes = useMemo(() => {
+    if (graphRef.current) {
+      return extractTalentNodePreviewItems(graphRef.current.toJSON());
+    }
+    return extractTalentNodePreviewItems(activeTemplate?.graphData);
+  }, [activeTemplate, graphVersion]);
+
+  const bumpGraphVersion = useCallback(() => {
+    setGraphVersion((prev) => prev + 1);
+  }, []);
+
+  const recordGraphSnapshot = useCallback((graph: Graph | null) => {
+    if (!graph || muteGraphHistoryRef.current) {
+      return;
+    }
+
+    const snapshot = graph.toJSON() as Record<string, unknown>;
+    graphHistoryRef.current.push(snapshot);
+    if (graphHistoryRef.current.length > 80) {
+      graphHistoryRef.current.shift();
+    }
+  }, []);
+
+  const resetGraphHistory = useCallback((graph: Graph | null) => {
+    if (!graph) {
+      graphHistoryRef.current = [];
+      return;
+    }
+    graphHistoryRef.current = [graph.toJSON() as Record<string, unknown>];
+  }, []);
+
+  const ensureEdgesBehindNodes = useCallback((graph: Graph | null) => {
+    if (!graph) {
+      return;
+    }
+    graph.getEdges().forEach((edge) => {
+      edge.toBack();
+    });
+  }, []);
+
+  const applyGraphSnapshot = useCallback((graph: Graph | null, snapshot: Record<string, unknown> | null | undefined) => {
+    if (!graph || !snapshot) {
+      return;
+    }
+
+    muteGraphHistoryRef.current = true;
+    graph.fromJSON(toGraphData(snapshot));
+    ensureEdgesBehindNodes(graph);
+    muteGraphHistoryRef.current = false;
+    bumpGraphVersion();
+  }, [bumpGraphVersion, ensureEdgesBehindNodes]);
+
+  const openNodeEditorById = useCallback((nodeId: string) => {
+    const graph = graphRef.current;
+    if (!graph) {
+      return;
+    }
+
+    const node = graph.getCellById(nodeId);
+    if (!node || !node.isNode()) {
+      return;
+    }
+
+    setSelectedGraphNodeId(String(node.id));
+    setSelectedGraphNodeIds([String(node.id)]);
+    setSelectedPreviewNodeId(String(node.id));
+
+    const raw = node.getData() as Record<string, unknown>;
+    const titleFromLabel = String(node.attr("label/text") ?? "").trim();
+    setEditingNodeForm({
+      id: String(node.id),
+      title: typeof raw.title === "string" && raw.title.trim() ? raw.title : (titleFromLabel || "未命名节点"),
+      summary: typeof raw.summary === "string" ? raw.summary : "",
+      description: typeof raw.description === "string" ? raw.description : "",
+      studyDescriptions: [],
+      cost: typeof raw.cost === "number" && Number.isFinite(raw.cost) ? raw.cost : 1,
+      requirement: typeof raw.requirement === "string" ? raw.requirement : "",
+      affixMastery: false,
+      affixStudy: false,
+      affixStudyMax: 1,
+      affixExclusive: false
+    });
+
+    const affixMeta = parseTalentAffixMeta(raw.talentAffix);
+    const studyMax = Math.max(1, Number(affixMeta.studyMax || 1));
+    const isStudy = Number.isFinite(affixMeta.studyMax) && studyMax > 0;
+
+    setEditingNodeForm((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const nodeDescription = typeof raw.description === "string" ? raw.description : "";
+      const studyDescriptions = isStudy ? parseStudyDescriptionLines(nodeDescription, studyMax) : [];
+      return {
+        ...prev,
+        affixMastery: affixMeta.mastery,
+        affixExclusive: affixMeta.exclusive,
+        affixStudy: isStudy,
+        affixStudyMax: studyMax,
+        studyDescriptions
+      };
+    });
+
+    setIsNodeEditorOpen(true);
+  }, []);
+
   const loadTemplates = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const resp = await http.get("/talent-trees/templates");
-      const data = (resp.data?.data ?? { editable: false, templates: [] }) as TemplateListResponse;
+      const data = (resp.data?.data ?? { editable: false, templates: [], directories: [] }) as TemplateListResponse;
       setEditable(Boolean(data.editable));
       setTemplates(data.templates ?? []);
-      if (!activeTemplateId && data.templates?.[0]?.id) {
-        setActiveTemplateId(data.templates[0].id);
-      }
+      setDirectories(data.directories ?? []);
+      setActiveTemplateId((prev) => {
+        if (prev && (data.templates ?? []).some((item) => item.id === prev)) {
+          return prev;
+        }
+        return data.templates?.[0]?.id ?? null;
+      });
     } catch (err: any) {
       setError(err.response?.data?.error?.message || "加载天赋树模板失败");
     } finally {
       setLoading(false);
     }
-  }, [activeTemplateId]);
+  }, []);
 
   useEffect(() => {
     void loadTemplates();
   }, [loadTemplates]);
+
+  useEffect(() => {
+    if (!directories.length) {
+      setExpandedDirectoryKeys((prev) => (prev.includes("__root__") ? prev : [...prev, "__root__"]));
+      return;
+    }
+
+    const allKeys = directories
+      .map((item) => item.path ?? [])
+      .filter((pathValue) => pathValue.length > 0)
+      .flatMap((pathValue) => pathValue.map((_, index) => toDirectoryKey(pathValue.slice(0, index + 1))));
+
+    setExpandedDirectoryKeys((prev) => {
+      const merged = new Set(prev);
+      allKeys.forEach((key) => merged.add(key));
+      return Array.from(merged);
+    });
+  }, [directories]);
+
+  useEffect(() => {
+    if (!activeTemplate) {
+      setActiveDirectoryPath([]);
+      return;
+    }
+
+    const pathValue = parseDirectoryPath(activeTemplate.category || "", activeTemplate.treeType);
+    setActiveDirectoryPath(pathValue);
+    if (!pathValue.length) {
+      return;
+    }
+
+    const keys = pathValue.map((_, index) => toDirectoryKey(pathValue.slice(0, index + 1)));
+    setExpandedDirectoryKeys((prev) => {
+      const merged = new Set(prev);
+      keys.forEach((key) => merged.add(key));
+      return Array.from(merged);
+    });
+  }, [activeTemplate]);
 
   useEffect(() => {
     if (!isAdmin || !graphContainerEl || graphRef.current) {
@@ -786,8 +1391,13 @@ export default function TalentTreeEditorPage() {
       container: graphContainerEl,
       autoResize: true,
       grid: {
-        size: 12,
-        visible: true
+        size: TALENT_EDITOR_GRID_SIZE,
+        visible: true,
+        type: "mesh",
+        args: {
+          color: "rgba(143, 176, 219, 0.36)",
+          thickness: 1
+        }
       },
       panning: {
         enabled: true,
@@ -812,57 +1422,49 @@ export default function TalentTreeEditorPage() {
     graph.use(new Selection({
       enabled: true,
       rubberband: true,
+      rubberEdge: true,
       multiple: true,
       movable: true,
       showNodeSelectionBox: true,
+      showEdgeSelectionBox: false,
       strict: false,
       eventTypes: ["leftMouseDown"]
     }));
 
-    graph.on("node:contextmenu", ({ e, node }) => {
-      e.preventDefault();
-      setSelectedGraphNodeId(String(node.id));
-      const raw = node.getData() as Record<string, unknown>;
-      const titleFromLabel = String(node.attr("label/text") ?? "").trim();
-      setEditingNodeForm({
-        id: String(node.id),
-        title: typeof raw.title === "string" && raw.title.trim() ? raw.title : (titleFromLabel || "未命名节点"),
-        summary: typeof raw.summary === "string" ? raw.summary : "",
-        description: typeof raw.description === "string" ? raw.description : "",
-        studyDescriptions: [],
-        cost: typeof raw.cost === "number" && Number.isFinite(raw.cost) ? raw.cost : 1,
-        requirement: typeof raw.requirement === "string" ? raw.requirement : "",
-        affixMastery: false,
-        affixStudy: false,
-        affixStudyMax: 1,
-        affixExclusive: false
-      });
+    graph.on("edge:added", ({ edge }) => {
+      edge.toBack();
+    });
 
-      const affixMeta = parseTalentAffixMeta(raw.talentAffix);
-      const studyMax = Math.max(1, Number(affixMeta.studyMax || 1));
-      const isStudy = Number.isFinite(affixMeta.studyMax) && studyMax > 0;
+    ensureEdgesBehindNodes(graph);
 
-      setEditingNodeForm((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const nodeDescription = typeof raw.description === "string" ? raw.description : "";
-        const studyDescriptions = isStudy ? parseStudyDescriptionLines(nodeDescription, studyMax) : [];
-        return {
-          ...prev,
-          affixMastery: affixMeta.mastery,
-          affixExclusive: affixMeta.exclusive,
-          affixStudy: isStudy,
-          affixStudyMax: studyMax,
-          studyDescriptions
-        };
-      });
-      setIsNodeEditorOpen(true);
+    const onGraphMutation = () => {
+      recordGraphSnapshot(graph);
+      bumpGraphVersion();
+    };
+
+    graph.on("cell:added", onGraphMutation);
+    graph.on("cell:removed", onGraphMutation);
+    graph.on("node:change:position", onGraphMutation);
+    graph.on("node:change:data", onGraphMutation);
+    graph.on("edge:change:source", onGraphMutation);
+    graph.on("edge:change:target", onGraphMutation);
+
+    graph.on("node:moved", ({ node }) => {
+      const adjusted = enforceNodeMinimumGap(graph, String(node.id), TALENT_EDITOR_MIN_NODE_GAP);
+      if (adjusted) {
+        recordGraphSnapshot(graph);
+        bumpGraphVersion();
+      }
+    });
+
+    graph.on("node:dblclick", ({ node }) => {
+      openNodeEditorById(String(node.id));
     });
 
     graph.on("node:click", ({ node }) => {
       const nodeId = String(node.id);
       setSelectedGraphNodeId(nodeId);
+      setSelectedPreviewNodeId(nodeId);
       const selectedNodes = graph.getSelectedCells().filter((cell) => cell.isNode());
       if (selectedNodes.length > 0) {
         setSelectedGraphNodeIds(selectedNodes.map((cell) => String(cell.id)));
@@ -874,6 +1476,7 @@ export default function TalentTreeEditorPage() {
     graph.on("blank:click", () => {
       setSelectedGraphNodeId(null);
       setSelectedGraphNodeIds([]);
+      setSelectedPreviewNodeId(null);
     });
 
     graph.on("selection:changed", ({ selected }) => {
@@ -881,7 +1484,11 @@ export default function TalentTreeEditorPage() {
       const ids = selectedNodes.map((cell: { id: string }) => String(cell.id));
       setSelectedGraphNodeIds(ids);
       setSelectedGraphNodeId(ids[0] ?? null);
+      setSelectedPreviewNodeId(ids[0] ?? null);
     });
+
+    resetGraphHistory(graph);
+    bumpGraphVersion();
 
     graphRef.current = graph;
     setGraphReady(true);
@@ -890,19 +1497,28 @@ export default function TalentTreeEditorPage() {
       graphRef.current = null;
       setGraphReady(false);
     };
-  }, [isAdmin, graphContainerEl]);
+  }, [
+    isAdmin,
+    graphContainerEl,
+    ensureEdgesBehindNodes,
+    openNodeEditorById,
+    recordGraphSnapshot,
+    resetGraphHistory,
+    bumpGraphVersion
+  ]);
 
   useEffect(() => {
     if (!activeTemplate) {
       setNameInput("");
       setDescriptionInput("");
-      setTreeTypeInput("PROFESSION");
-      setCategoryInput("职业天赋");
+      setCategoryInput(TALENT_DIRECTORY_ROOTS.profession);
       if (graphRef.current) {
-        graphRef.current.fromJSON({ cells: [] });
+        applyGraphSnapshot(graphRef.current, { cells: [] });
+        resetGraphHistory(graphRef.current);
       }
       setSelectedGraphNodeId(null);
       setSelectedGraphNodeIds([]);
+      setSelectedPreviewNodeId(null);
       setEditingNodeForm(null);
       setIsNodeEditorOpen(false);
       return;
@@ -910,28 +1526,17 @@ export default function TalentTreeEditorPage() {
 
     setNameInput(activeTemplate.name);
     setDescriptionInput(activeTemplate.description || "");
-    setTreeTypeInput(activeTemplate.treeType);
-    setCategoryInput(activeTemplate.category || (activeTemplate.treeType === "GENERAL" ? "通用天赋" : "职业天赋"));
+    setCategoryInput(parseDirectoryPath(activeTemplate.category || "", activeTemplate.treeType).join("/"));
     if (graphRef.current) {
-      graphRef.current.fromJSON(toGraphData(activeTemplate.graphData));
+      applyGraphSnapshot(graphRef.current, toGraphData(activeTemplate.graphData));
+      resetGraphHistory(graphRef.current);
     }
     setSelectedGraphNodeId(null);
     setSelectedGraphNodeIds([]);
+    setSelectedPreviewNodeId(null);
     setEditingNodeForm(null);
     setIsNodeEditorOpen(false);
-  }, [activeTemplate, graphReady]);
-
-  useEffect(() => {
-    if (!activeTemplate) {
-      return;
-    }
-    setCategoryInput((prev) => {
-      if (prev.trim()) {
-        return prev;
-      }
-      return treeTypeInput === "GENERAL" ? "通用天赋" : "职业天赋";
-    });
-  }, [treeTypeInput, activeTemplate]);
+  }, [activeTemplate, graphReady, applyGraphSnapshot, resetGraphHistory]);
 
   const addTalentNode = () => {
     if (!graphRef.current) {
@@ -940,26 +1545,19 @@ export default function TalentTreeEditorPage() {
     }
 
     const count = graphRef.current.getNodes().length + 1;
-    graphRef.current.addNode({
+    const createdNode = graphRef.current.addNode({
       shape: "rect",
       x: 80 + count * 16,
       y: 80 + count * 12,
-      width: 180,
-      height: 56,
-      attrs: {
-        body: {
-          fill: "#f7fbff",
-          stroke: "#74aef4",
-          rx: 10,
-          ry: 10
-        },
-        label: {
-          text: `天赋节点 ${count}`,
-          fill: "#1b4f8a",
-          fontSize: 13,
-          fontWeight: 600
-        }
-      },
+      width: IMPORT_LAYOUT.nodeWidth,
+      height: IMPORT_LAYOUT.nodeHeight,
+      attrs: createTalentNodeAttrs({
+        title: `天赋节点 ${count}`,
+        summary: "",
+        cost: 1,
+        requirement: "",
+        talentAffix: ""
+      }),
       data: {
         title: `天赋节点 ${count}`,
         summary: "",
@@ -970,12 +1568,16 @@ export default function TalentTreeEditorPage() {
       },
       ports: TALENT_NODE_PORTS
     });
+    if (createdNode) {
+      enforceNodeMinimumGap(graphRef.current, String(createdNode.id), TALENT_EDITOR_MIN_NODE_GAP);
+    }
     graphRef.current.centerContent();
+    bumpGraphVersion();
     setNotice(`已新增节点：天赋节点 ${count}`);
   };
 
   const addLinkHint = () => {
-    setNotice("请拖拽节点上下圆点端口连线；右键节点可打开节点配置弹窗。");
+    setNotice("请拖拽节点上下圆点端口连线；双击节点可打开节点配置弹窗。");
   };
 
   const onCopySelectedNode = useCallback(() => {
@@ -1093,22 +1695,15 @@ export default function TalentTreeEditorPage() {
         shape: "rect",
         x: item.payload.x + 32,
         y: item.payload.y + 32,
-        width: item.payload.width,
-        height: item.payload.height,
-        attrs: {
-          body: {
-            fill: "#f7fbff",
-            stroke: "#74aef4",
-            rx: 10,
-            ry: 10
-          },
-          label: {
-            text: nextTitle,
-            fill: "#1b4f8a",
-            fontSize: 13,
-            fontWeight: 600
-          }
-        },
+        width: Math.max(item.payload.width, IMPORT_LAYOUT.nodeWidth),
+        height: Math.max(item.payload.height, IMPORT_LAYOUT.nodeHeight),
+        attrs: createTalentNodeAttrs({
+          title: nextTitle,
+          summary: item.payload.summary,
+          cost: item.payload.cost,
+          requirement: item.payload.requirement,
+          talentAffix: item.payload.talentAffix
+        }),
         data: {
           title: nextTitle,
           summary: item.payload.summary,
@@ -1154,8 +1749,12 @@ export default function TalentTreeEditorPage() {
     const createdCells = createdNodeIds
       .map((id) => graphRef.current?.getCellById(id))
       .filter((cell): cell is NonNullable<typeof cell> => Boolean(cell));
+    if (graphRef.current) {
+      enforceAllNodesMinimumGap(graphRef.current, TALENT_EDITOR_MIN_NODE_GAP);
+    }
     graphRef.current.resetSelection(createdCells);
     setSelectedGraphNodeIds(createdNodeIds);
+    setSelectedPreviewNodeId(createdNodeIds[0] ?? null);
 
     if (createdNodeIds.length === 1) {
       const onlyNode = nodeClipboard.nodes[0];
@@ -1189,22 +1788,15 @@ export default function TalentTreeEditorPage() {
       shape: "rect",
       x: childX,
       y: childY,
-      width: 180,
-      height: 56,
-      attrs: {
-        body: {
-          fill: "#f7fbff",
-          stroke: "#74aef4",
-          rx: 10,
-          ry: 10
-        },
-        label: {
-          text: childTitle,
-          fill: "#1b4f8a",
-          fontSize: 13,
-          fontWeight: 600
-        }
-      },
+      width: IMPORT_LAYOUT.nodeWidth,
+      height: IMPORT_LAYOUT.nodeHeight,
+      attrs: createTalentNodeAttrs({
+        title: childTitle,
+        summary: "",
+        cost: 1,
+        requirement: parentTitle,
+        talentAffix: ""
+      }),
       data: {
         title: childTitle,
         summary: "",
@@ -1215,6 +1807,7 @@ export default function TalentTreeEditorPage() {
       },
       ports: TALENT_NODE_PORTS
     });
+    enforceNodeMinimumGap(graphRef.current, String(child.id), TALENT_EDITOR_MIN_NODE_GAP);
 
     const parentOutPort = parent.getPorts().find((port) => port.group === "out")?.id;
     const childInPort = child.getPorts().find((port) => port.group === "in")?.id;
@@ -1235,8 +1828,83 @@ export default function TalentTreeEditorPage() {
     });
 
     setSelectedGraphNodeId(String(child.id));
+    setSelectedPreviewNodeId(String(child.id));
     setNotice(`已创建并连线子节点：${childTitle}`);
   };
+
+  const onDeleteSelectedCells = useCallback(() => {
+    if (!editable || !graphRef.current) {
+      return;
+    }
+
+    const selectedFromGraph = graphRef.current
+      .getSelectedCells()
+      .filter((cell) => cell.isNode() || cell.isEdge())
+      .map((cell) => String(cell.id));
+
+    const fallbackIds = selectedGraphNodeIds.length > 0
+      ? selectedGraphNodeIds
+      : (selectedGraphNodeId ? [selectedGraphNodeId] : []);
+
+    const targetIds = Array.from(new Set((selectedFromGraph.length > 0 ? selectedFromGraph : fallbackIds).filter(Boolean)));
+
+    if (targetIds.length < 1) {
+      setNotice("请先点击或框选节点/连线，再按 Delete/Backspace 删除");
+      return;
+    }
+
+    let removedNodeCount = 0;
+    let removedEdgeCount = 0;
+
+    targetIds.forEach((id) => {
+      const cell = graphRef.current?.getCellById(id);
+      if (!cell || (!cell.isNode() && !cell.isEdge())) {
+        return;
+      }
+      if (cell.isNode()) {
+        removedNodeCount += 1;
+      } else if (cell.isEdge()) {
+        removedEdgeCount += 1;
+      }
+      graphRef.current?.removeCell(cell);
+    });
+
+    setSelectedGraphNodeId(null);
+    setSelectedGraphNodeIds([]);
+    setSelectedPreviewNodeId(null);
+    setIsNodeEditorOpen(false);
+    setEditingNodeForm(null);
+    if (removedNodeCount > 0 && removedEdgeCount > 0) {
+      setNotice(`已删除 ${removedNodeCount} 个节点，${removedEdgeCount} 条连线`);
+      return;
+    }
+    if (removedNodeCount > 0) {
+      setNotice(removedNodeCount === 1 ? "已删除 1 个节点" : `已删除 ${removedNodeCount} 个节点`);
+      return;
+    }
+    if (removedEdgeCount > 0) {
+      setNotice(removedEdgeCount === 1 ? "已删除 1 条连线" : `已删除 ${removedEdgeCount} 条连线`);
+    }
+  }, [editable, selectedGraphNodeId, selectedGraphNodeIds]);
+
+  const onUndoGraph = useCallback(() => {
+    if (!editable || !graphRef.current) {
+      return;
+    }
+
+    if (graphHistoryRef.current.length <= 1) {
+      setNotice("当前没有可撤回的操作");
+      return;
+    }
+
+    graphHistoryRef.current.pop();
+    const previousSnapshot = graphHistoryRef.current[graphHistoryRef.current.length - 1];
+    applyGraphSnapshot(graphRef.current, previousSnapshot);
+    setSelectedGraphNodeId(null);
+    setSelectedGraphNodeIds([]);
+    setSelectedPreviewNodeId(null);
+    setNotice("已撤回一步画布变更");
+  }, [editable, applyGraphSnapshot]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -1252,6 +1920,20 @@ export default function TalentTreeEditorPage() {
       }
 
       const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === "s") {
+        event.preventDefault();
+        if (editable) {
+          void saveTemplateShortcutRef.current?.();
+        }
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && key === "z") {
+        event.preventDefault();
+        onUndoGraph();
+        return;
+      }
+
       if ((event.ctrlKey || event.metaKey) && key === "c") {
         event.preventDefault();
         onCopySelectedNode();
@@ -1260,13 +1942,18 @@ export default function TalentTreeEditorPage() {
         event.preventDefault();
         onPasteCopiedNode();
       }
+
+      if (key === "backspace" || key === "delete") {
+        event.preventDefault();
+        onDeleteSelectedCells();
+      }
     };
 
     window.addEventListener("keydown", onWindowKeyDown);
     return () => {
       window.removeEventListener("keydown", onWindowKeyDown);
     };
-  }, [isAdmin, onCopySelectedNode, onPasteCopiedNode]);
+  }, [isAdmin, editable, onCopySelectedNode, onPasteCopiedNode, onDeleteSelectedCells, onUndoGraph]);
 
   const onChangeEditingNodeForm = (patch: Partial<Omit<NodeFormState, "id">>) => {
     if (!editingNodeForm) {
@@ -1359,7 +2046,13 @@ export default function TalentTreeEditorPage() {
         studyMax: affixStudyMax
       }
     });
-    node.attr("label/text", nextTitle);
+    node.attr(createTalentNodeAttrs({
+      title: nextTitle,
+      summary: editingNodeForm.summary,
+      cost: editingNodeForm.cost,
+      requirement: editingNodeForm.requirement,
+      talentAffix
+    }));
     const ports = node.getPorts();
     if (!ports.length) {
       node.prop("ports", TALENT_NODE_PORTS);
@@ -1391,23 +2084,90 @@ export default function TalentTreeEditorPage() {
     setNotice("节点已删除（保存模板后生效）");
   };
 
+  const onCreateDirectory = async () => {
+    if (!editable) {
+      setError("当前账号无编辑权限");
+      return;
+    }
+
+    const rawPath = newDirectoryNames
+      .slice(0, newDirectoryLevel)
+      .map((item) => item.trim());
+
+    if (!rawPath[0] || rawPath.slice(1).some((item) => !item)) {
+      setError("请完整填写每一级目录名");
+      return;
+    }
+
+    const pathValue = normalizeCategoryPath(rawPath, "PROFESSION");
+
+    setLoading(true);
+    setError(null);
+    try {
+      await http.post("/talent-trees/directories", { path: pathValue });
+      await loadTemplates();
+      const key = toDirectoryKey(pathValue);
+      setExpandedDirectoryKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+      setActiveDirectoryPath(pathValue);
+      setShowDirectoryModal(false);
+      setNotice("目录已创建");
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || "创建目录失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onMoveTemplateToDirectory = useCallback(async (templateId: string, nextPath: string[]) => {
+    if (!editable) {
+      return;
+    }
+
+    const target = templates.find((item) => item.id === templateId);
+    if (!target) {
+      return;
+    }
+
+    const currentPath = parseDirectoryPath(target.category || "", target.treeType);
+    if (toDirectoryKey(currentPath) === toDirectoryKey(nextPath)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      await http.put(`/talent-trees/templates/${templateId}`, {
+        category: nextPath.join("/")
+      });
+      await loadTemplates();
+      setActiveTemplateId(templateId);
+      setActiveDirectoryPath(nextPath);
+      setNotice("模板已移动到新目录");
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || "模板移动失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [editable, templates, loadTemplates]);
+
   const onCreateTemplate = async () => {
     if (!editable) {
       setError("当前账号无编辑权限");
       return;
     }
 
-    const draftName = window.prompt("请输入新天赋树名称");
-    if (!draftName?.trim()) {
-      return;
-    }
-
     setError(null);
     try {
+      const initialPath = normalizeCategoryPath(
+        activeDirectoryPath.length ? activeDirectoryPath : [TALENT_DIRECTORY_ROOTS.profession],
+        "PROFESSION"
+      );
+      const initialTreeType = inferTreeTypeByDirectoryPath(initialPath, "PROFESSION");
+      const draftName = `新建天赋树_${Date.now().toString(36).slice(-4)}`;
       const resp = await http.post("/talent-trees/templates", {
-        name: draftName.trim(),
-        treeType: "PROFESSION",
-        category: "职业天赋",
+        name: draftName,
+        treeType: initialTreeType,
+        category: initialPath.join("/"),
         description: ""
       });
       const created = resp.data?.data as TalentTreeTemplate;
@@ -1422,23 +2182,29 @@ export default function TalentTreeEditorPage() {
   const onSaveTemplate = async () => {
     if (!activeTemplate || !editable || !graphRef.current || !graphReady) {
       setError("画布尚未初始化，请稍后重试");
-      return;
+      return false;
     }
 
     setSaving(true);
     setError(null);
     try {
       const graphData = enrichTalentGraphForRuntime(graphRef.current.toJSON());
+      const normalizedCategoryPath = parseDirectoryPath(categoryInput, activeTemplate.treeType);
+      const normalizedCategory = normalizedCategoryPath.join("/");
+      const resolvedTreeType = inferTreeTypeByDirectoryPath(normalizedCategoryPath, activeTemplate.treeType);
       const resp = await http.put(`/talent-trees/templates/${activeTemplate.id}`, {
         name: nameInput,
         description: descriptionInput,
-        treeType: treeTypeInput,
-        category: categoryInput,
+        treeType: resolvedTreeType,
+        category: normalizedCategory,
         graphData
       });
 
       const updated = resp.data?.data as TalentTreeTemplate;
       setTemplates((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      await loadTemplates();
+      setActiveTemplateId(updated.id);
+      setCategoryInput(normalizedCategory);
       setNotice("天赋树已保存");
       return true;
     } catch (err: any) {
@@ -1448,6 +2214,10 @@ export default function TalentTreeEditorPage() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    saveTemplateShortcutRef.current = onSaveTemplate;
+  }, [onSaveTemplate]);
 
   const onPublishTemplate = async () => {
     if (!activeTemplate || !editable) {
@@ -1513,7 +2283,9 @@ export default function TalentTreeEditorPage() {
         return;
       }
 
-      graphRef.current.fromJSON(toGraphData(parsed.graphData));
+      applyGraphSnapshot(graphRef.current, toGraphData(parsed.graphData));
+      enforceAllNodesMinimumGap(graphRef.current, TALENT_EDITOR_MIN_NODE_GAP);
+      resetGraphHistory(graphRef.current);
       graphRef.current.centerContent();
 
       if (importApplyMeta) {
@@ -1523,16 +2295,20 @@ export default function TalentTreeEditorPage() {
         if (typeof parsed.meta.description === "string") {
           setDescriptionInput(parsed.meta.description);
         }
-        if (parsed.meta.treeType) {
-          setTreeTypeInput(parsed.meta.treeType);
-        }
-        if (parsed.meta.category) {
-          setCategoryInput(parsed.meta.category);
+        if (parsed.meta.category || parsed.meta.treeType) {
+          const currentPath = parseDirectoryPath(categoryInput, activeTemplate?.treeType ?? "PROFESSION");
+          const fallbackTreeType = parsed.meta.treeType ?? inferTreeTypeByDirectoryPath(currentPath, activeTemplate?.treeType ?? "PROFESSION");
+          const nextPath = parsed.meta.category
+            ? parseDirectoryPath(parsed.meta.category, fallbackTreeType)
+            : normalizeCategoryPath([toRootDirectoryByType(fallbackTreeType), ...currentPath.slice(1)], fallbackTreeType);
+          setCategoryInput(nextPath.join("/"));
         }
       }
 
       setIsImportModalOpen(false);
       setSelectedGraphNodeId(null);
+      setSelectedGraphNodeIds([]);
+      setSelectedPreviewNodeId(null);
       setNotice(`JSON 导入完成：${parsed.nodeCount} 个节点，${parsed.edgeCount} 条连线（记得再点一次“保存模板”）`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "JSON 解析失败";
@@ -1608,11 +2384,12 @@ export default function TalentTreeEditorPage() {
       })
       .filter((item): item is { from: string; to: string } => Boolean(item));
 
+    const exportCategoryPath = parseDirectoryPath(categoryInput, activeTemplate.treeType);
     const exportPayload: TalentImportPayload = {
       name: nameInput.trim() || activeTemplate.name,
       description: descriptionInput,
-      treeType: treeTypeInput,
-      category: categoryInput,
+      treeType: inferTreeTypeByDirectoryPath(exportCategoryPath, activeTemplate.treeType),
+      category: exportCategoryPath.join("/"),
       autoConnect: false,
       branches,
       edges
@@ -1633,6 +2410,149 @@ export default function TalentTreeEditorPage() {
     URL.revokeObjectURL(downloadUrl);
 
     setNotice(`已导出 JSON：${fileName}`);
+  };
+
+  const onSelectPreviewNode = (nodeId: string) => {
+    const graph = graphRef.current;
+    if (graph) {
+      const node = graph.getCellById(nodeId);
+      if (node && node.isNode()) {
+        graph.resetSelection([node]);
+      }
+    }
+    setSelectedGraphNodeId(nodeId);
+    setSelectedGraphNodeIds([nodeId]);
+    setSelectedPreviewNodeId(nodeId);
+  };
+
+  const openTemplateMetaEditor = useCallback((template: TalentTreeTemplate) => {
+    const categoryPath = parseDirectoryPath(template.category || "", template.treeType);
+    setTemplateMetaForm({
+      templateId: template.id,
+      name: template.name,
+      description: template.description || "",
+      rootDirectory: categoryPath[0] ?? TALENT_DIRECTORY_ROOTS.profession,
+      subDirectoryInput: categoryPath.slice(1).join("/")
+    });
+    setIsTemplateMetaModalOpen(true);
+  }, []);
+
+  const onSaveTemplateMeta = useCallback(async () => {
+    if (!editable || !templateMetaForm) {
+      return;
+    }
+
+    const nextName = templateMetaForm.name.trim();
+    if (!nextName) {
+      setError("模板名称不能为空");
+      return;
+    }
+
+    const subPath = templateMetaForm.subDirectoryInput
+      .split("/")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    const nextCategoryPath = normalizeCategoryPath([templateMetaForm.rootDirectory, ...subPath], "PROFESSION");
+    const nextTreeType = inferTreeTypeByDirectoryPath(nextCategoryPath, "PROFESSION");
+
+    setTemplateMetaSaving(true);
+    setError(null);
+    try {
+      await http.put(`/talent-trees/templates/${templateMetaForm.templateId}`, {
+        name: nextName,
+        description: templateMetaForm.description,
+        category: nextCategoryPath.join("/"),
+        treeType: nextTreeType
+      });
+      await loadTemplates();
+      setActiveTemplateId(templateMetaForm.templateId);
+      if (activeTemplateId === templateMetaForm.templateId) {
+        setNameInput(nextName);
+        setDescriptionInput(templateMetaForm.description);
+        setCategoryInput(nextCategoryPath.join("/"));
+      }
+      setActiveDirectoryPath(nextCategoryPath);
+      setNotice("模板信息已更新");
+      setIsTemplateMetaModalOpen(false);
+      setTemplateMetaForm(null);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || "更新模板信息失败");
+    } finally {
+      setTemplateMetaSaving(false);
+    }
+  }, [editable, templateMetaForm, loadTemplates, activeTemplateId]);
+
+  const renderDirectoryNode = (node: TalentDirectoryNode, level = 1) => {
+    const expanded = expandedDirectoryKeys.includes(node.key);
+    const canAcceptDrop = editable && Boolean(draggingTemplateId);
+
+    return (
+      <div key={node.key} className="talent-editor-sidebar__tree-group">
+        <button
+          type="button"
+          className={`talent-editor-sidebar__tree-node level-${level} ${expanded ? "is-active" : ""}`}
+          onClick={() => {
+            setActiveDirectoryPath(node.path);
+            setExpandedDirectoryKeys((prev) => (
+              prev.includes(node.key)
+                ? prev.filter((item) => item !== node.key)
+                : [...prev, node.key]
+            ));
+          }}
+          onDragOver={(event) => {
+            if (canAcceptDrop) {
+              event.preventDefault();
+            }
+          }}
+          onDrop={(event) => {
+            if (!canAcceptDrop || !draggingTemplateId) {
+              return;
+            }
+            event.preventDefault();
+            void onMoveTemplateToDirectory(draggingTemplateId, node.path);
+            setDraggingTemplateId(null);
+          }}
+        >
+          <span>{expanded ? "▾" : "▸"}</span>
+          <strong>{node.label}</strong>
+        </button>
+
+        {expanded ? (
+          <div className="talent-editor-sidebar__tree-children">
+            {node.children.map((child) => renderDirectoryNode(child, level + 1))}
+            {node.templates.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                className={`talent-editor-sidebar__item ${template.id === activeTemplateId ? "is-active" : ""}`}
+                draggable={editable}
+                onDragStart={() => {
+                  if (editable) {
+                    setDraggingTemplateId(template.id);
+                  }
+                }}
+                onDragEnd={() => setDraggingTemplateId(null)}
+                onContextMenu={(event) => {
+                  if (!editable) {
+                    return;
+                  }
+                  event.preventDefault();
+                  openTemplateMetaEditor(template);
+                }}
+                onClick={() => {
+                  setActiveTemplateId(template.id);
+                  setActiveDirectoryPath(node.path);
+                }}
+              >
+                <p>{template.name}</p>
+                <span>{resolveTemplateDirectoryHint(template)}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
   };
 
   return (
@@ -1664,20 +2584,27 @@ export default function TalentTreeEditorPage() {
 
       <section className="talent-editor-layout">
         <aside className="talent-editor-sidebar">
-          <h2>模板列表</h2>
+          <div className="talent-editor-sidebar__head">
+            <h2>模板目录</h2>
+            {editable ? (
+              <button
+                type="button"
+                className="talent-editor-sidebar__create-directory"
+                onClick={() => {
+                  const rootDirectory = normalizeRootDirectoryName(activeDirectoryPath[0] ?? "") ?? TALENT_DIRECTORY_ROOTS.profession;
+                  setNewDirectoryLevel(2);
+                  setNewDirectoryNames([rootDirectory, ""]);
+                  setShowDirectoryModal(true);
+                }}
+              >
+                新建目录
+              </button>
+            ) : null}
+          </div>
+          <p className="talent-editor-sidebar__hint">可拖拽模板到目录节点完成分类；右键模板条目可编辑名称与描述。</p>
           {templates.length === 0 ? <p className="talent-editor-sidebar__empty">暂无天赋树模板</p> : null}
           <div className="talent-editor-sidebar__list">
-            {templates.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className={`talent-editor-sidebar__item ${item.id === activeTemplateId ? "is-active" : ""}`}
-                onClick={() => setActiveTemplateId(item.id)}
-              >
-                <p>{item.name}</p>
-                <span>{item.category} · {item.treeType}</span>
-              </button>
-            ))}
+            {directoryTree.map((node) => renderDirectoryNode(node))}
           </div>
         </aside>
 
@@ -1686,43 +2613,6 @@ export default function TalentTreeEditorPage() {
             <div className="talent-editor-main__empty">请选择模板开始编辑</div>
           ) : (
             <>
-              <div className="talent-editor-form">
-                <label>
-                  名称
-                  <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} disabled={!editable} />
-                </label>
-                <label>
-                  类型
-                  <select
-                    value={treeTypeInput}
-                    onChange={(e) => setTreeTypeInput(e.target.value as TalentTreeType)}
-                    disabled={!editable}
-                  >
-                    <option value="PROFESSION">职业天赋树</option>
-                    <option value="GENERAL">通用天赋树</option>
-                  </select>
-                </label>
-                <label>
-                  分类
-                  <input
-                    value={categoryInput}
-                    onChange={(e) => setCategoryInput(e.target.value)}
-                    placeholder="如：战士系、法师系、通用天赋"
-                    maxLength={30}
-                    disabled={!editable}
-                  />
-                </label>
-                <label>
-                  描述
-                  <textarea
-                    value={descriptionInput}
-                    onChange={(e) => setDescriptionInput(e.target.value)}
-                    rows={2}
-                    disabled={!editable}
-                  />
-                </label>
-              </div>
-
               <div className="talent-editor-toolbar">
                 <button type="button" onClick={addTalentNode} disabled={!editable}>新增节点</button>
                 <button type="button" onClick={onCreateChildNode} disabled={!editable || !selectedGraphNodeId}>生成子节点</button>
@@ -1740,12 +2630,195 @@ export default function TalentTreeEditorPage() {
                 </button>
               </div>
 
+              <div className="talent-editor-shortcuts">模板信息（名称/描述/目录）请在左侧目录中右键对应条目进行编辑。</div>
+
+              <div className="talent-editor-shortcuts">快捷键：Ctrl+S 保存模板，Ctrl+Z 撤回画布操作，Delete/Backspace 删除选中节点或连线。</div>
+
               <div className="talent-editor-canvas" ref={setGraphContainerEl} />
 
             </>
           )}
         </main>
       </section>
+
+      {isTemplateMetaModalOpen && templateMetaForm ? (
+        <div className="talent-template-modal" onClick={() => setIsTemplateMetaModalOpen(false)}>
+          <section className="talent-template-modal__panel" onClick={(event) => event.stopPropagation()}>
+            <header className="talent-template-modal__header">
+              <h3>模板信息</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTemplateMetaModalOpen(false);
+                  setTemplateMetaForm(null);
+                }}
+              >
+                关闭
+              </button>
+            </header>
+
+            <div className="talent-template-modal__form">
+              <label>
+                名称
+                <input
+                  value={templateMetaForm.name}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setTemplateMetaForm((prev) => (prev ? { ...prev, name: nextValue } : prev));
+                  }}
+                  maxLength={80}
+                  disabled={!editable}
+                />
+              </label>
+
+              <label>
+                一级目录（决定天赋树类型）
+                <select
+                  value={templateMetaForm.rootDirectory}
+                  onChange={(event) => {
+                    const rootDirectory = normalizeRootDirectoryName(event.target.value) ?? TALENT_DIRECTORY_ROOTS.profession;
+                    setTemplateMetaForm((prev) => (prev ? { ...prev, rootDirectory } : prev));
+                  }}
+                  disabled={!editable}
+                >
+                  <option value={TALENT_DIRECTORY_ROOTS.profession}>{TALENT_DIRECTORY_ROOTS.profession}</option>
+                  <option value={TALENT_DIRECTORY_ROOTS.general}>{TALENT_DIRECTORY_ROOTS.general}</option>
+                </select>
+              </label>
+
+              <label>
+                子目录（可选，多级用 / 分隔）
+                <input
+                  value={templateMetaForm.subDirectoryInput}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setTemplateMetaForm((prev) => (prev ? { ...prev, subDirectoryInput: nextValue } : prev));
+                  }}
+                  placeholder="例如：战士/防御"
+                  maxLength={180}
+                  disabled={!editable}
+                />
+              </label>
+
+              <label>
+                描述
+                <textarea
+                  value={templateMetaForm.description}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setTemplateMetaForm((prev) => (prev ? { ...prev, description: nextValue } : prev));
+                  }}
+                  rows={3}
+                  disabled={!editable}
+                />
+              </label>
+            </div>
+
+            <div className="talent-template-modal__actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTemplateMetaModalOpen(false);
+                  setTemplateMetaForm(null);
+                }}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void onSaveTemplateMeta()}
+                disabled={!editable || templateMetaSaving}
+              >
+                {templateMetaSaving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {showDirectoryModal ? (
+        <div className="talent-directory-modal">
+          <section className="talent-directory-modal__panel">
+            <header className="talent-directory-modal__header">
+              <h3>新建目录</h3>
+              <button type="button" onClick={() => setShowDirectoryModal(false)}>关闭</button>
+            </header>
+
+            <label className="talent-directory-modal__level">
+              目录级数
+              <select
+                value={newDirectoryLevel}
+                onChange={(event) => {
+                  const nextLevel = Math.max(2, Math.min(6, Number(event.target.value || 2)));
+                  setNewDirectoryLevel(nextLevel);
+                  setNewDirectoryNames((prev) => {
+                    const fixedRoot = normalizeRootDirectoryName(prev[0] ?? "") ?? TALENT_DIRECTORY_ROOTS.profession;
+                    const next = Array.from({ length: nextLevel }, (_, index) => {
+                      if (index === 0) {
+                        return fixedRoot;
+                      }
+                      return prev[index] ?? "";
+                    });
+                    return next;
+                  });
+                }}
+              >
+                <option value={2}>二级</option>
+                <option value={3}>三级</option>
+                <option value={4}>四级</option>
+                <option value={5}>五级</option>
+                <option value={6}>六级</option>
+              </select>
+            </label>
+
+            <label>
+              一级目录（固定）
+              <select
+                value={newDirectoryNames[0] ?? TALENT_DIRECTORY_ROOTS.profession}
+                onChange={(event) => {
+                  const rootDirectory = normalizeRootDirectoryName(event.target.value) ?? TALENT_DIRECTORY_ROOTS.profession;
+                  setNewDirectoryNames((prev) => {
+                    const next = [...prev];
+                    next[0] = rootDirectory;
+                    return next;
+                  });
+                }}
+              >
+                <option value={TALENT_DIRECTORY_ROOTS.profession}>{TALENT_DIRECTORY_ROOTS.profession}</option>
+                <option value={TALENT_DIRECTORY_ROOTS.general}>{TALENT_DIRECTORY_ROOTS.general}</option>
+              </select>
+            </label>
+
+            <div className="talent-directory-modal__fields">
+              {Array.from({ length: Math.max(0, newDirectoryLevel - 1) }).map((_, index) => {
+                const levelIndex = index + 1;
+                return (
+                <label key={`talent_dir_level_${levelIndex + 1}`}>
+                  {`第 ${levelIndex + 1} 级目录名`}
+                  <input
+                    value={newDirectoryNames[levelIndex] ?? ""}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setNewDirectoryNames((prev) => {
+                        const next = [...prev];
+                        next[levelIndex] = nextValue;
+                        return next;
+                      });
+                    }}
+                    maxLength={32}
+                  />
+                </label>
+              );
+              })}
+            </div>
+
+            <div className="talent-directory-modal__actions">
+              <button type="button" onClick={() => setShowDirectoryModal(false)}>取消</button>
+              <button type="button" onClick={onCreateDirectory}>创建目录</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {isImportModalOpen ? (
         <div className="talent-import-modal" onClick={() => setIsImportModalOpen(false)}>
@@ -1767,7 +2840,7 @@ export default function TalentTreeEditorPage() {
                 checked={importApplyMeta}
                 onChange={(event) => setImportApplyMeta(event.target.checked)}
               />
-              <span>同时应用 JSON 中的 name/treeType/category/description 到模板表单</span>
+              <span>同时应用 JSON 中的 name/treeType/category/description 到当前模板元信息</span>
             </label>
 
             <textarea
@@ -1792,7 +2865,7 @@ export default function TalentTreeEditorPage() {
       ) : null}
 
       {isNodeEditorOpen && editingNodeForm ? (
-        <div className="talent-node-editor-modal" onClick={() => setIsNodeEditorOpen(false)}>
+        <div className="talent-node-editor-modal">
           <section className="talent-node-editor-modal__panel" onClick={(event) => event.stopPropagation()}>
             <header className="talent-node-editor-modal__header">
               <h3>节点配置</h3>

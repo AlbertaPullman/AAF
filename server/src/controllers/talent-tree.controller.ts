@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import {
+  createTalentTreeDirectory,
   createTalentTreeTemplate,
   deleteTalentTreeTemplate,
   listTalentTreeTemplates,
@@ -71,6 +72,34 @@ export async function postTalentTreeTemplate(req: Request, res: Response) {
       success: false,
       data: null,
       error: { code: "TALENT_TREE_TEMPLATE_CREATE_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
+export async function postTalentTreeDirectory(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const data = await createTalentTreeDirectory(req.userId, {
+      path: req.body?.path
+    });
+
+    res.status(201).json({ success: true, data, error: null, requestId: req.requestId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    res.status(toStatus(message)).json({
+      success: false,
+      data: null,
+      error: { code: "TALENT_TREE_DIRECTORY_CREATE_ERROR", message },
       requestId: req.requestId
     });
   }

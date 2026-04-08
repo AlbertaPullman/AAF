@@ -147,12 +147,10 @@ type TalentTreeProjection = {
 
 type TalentPreviewMode = "THUMBNAIL" | "DETAIL";
 
-const TALENT_PREVIEW_THUMBNAIL_SPACING_X = 1.06;
-const TALENT_PREVIEW_THUMBNAIL_SPACING_Y = 1.12;
-const TALENT_PREVIEW_DETAIL_SPACING_X = 1.04;
-const TALENT_PREVIEW_DETAIL_SPACING_Y = 1.74;
-const TALENT_PREVIEW_THUMBNAIL_NODE_HEIGHT = 128;
-const TALENT_PREVIEW_DETAIL_NODE_HEIGHT = 280;
+const TALENT_PREVIEW_CANVAS_PADDING = 32;
+const TALENT_PREVIEW_SYNC_MIN_NODE_WIDTH = 196;
+const TALENT_PREVIEW_SYNC_MIN_NODE_HEIGHT = 92;
+const TALENT_PREVIEW_DETAIL_NODE_HEIGHT = 180;
 
 type RulebookEntryStatus = "DRAFT" | "PUBLISHED";
 
@@ -480,50 +478,22 @@ function createTalentProjection(graphData: unknown, mode: TalentPreviewMode): Ta
     return { nodes, edges, width: 680, height: 360 };
   }
 
-  const spacingX = mode === "DETAIL" ? TALENT_PREVIEW_DETAIL_SPACING_X : TALENT_PREVIEW_THUMBNAIL_SPACING_X;
-  const spacingY = mode === "DETAIL" ? TALENT_PREVIEW_DETAIL_SPACING_Y : TALENT_PREVIEW_THUMBNAIL_SPACING_Y;
-  const nodeHeight = mode === "DETAIL" ? TALENT_PREVIEW_DETAIL_NODE_HEIGHT : TALENT_PREVIEW_THUMBNAIL_NODE_HEIGHT;
+  const spacingX = 1;
+  const spacingY = 1;
+  const previewNodeWidth = TALENT_PREVIEW_SYNC_MIN_NODE_WIDTH;
+  const previewNodeHeight = mode === "DETAIL"
+    ? TALENT_PREVIEW_DETAIL_NODE_HEIGHT
+    : TALENT_PREVIEW_SYNC_MIN_NODE_HEIGHT;
 
   const minX = Math.min(...nodes.map((node) => node.x));
   const minY = Math.min(...nodes.map((node) => node.y));
   const shiftedNodes = nodes.map((node) => ({
     ...node,
-    x: (node.x - minX) * spacingX + 32,
-    y: (node.y - minY) * spacingY + 32,
-    height: nodeHeight
+    x: (node.x - minX) * spacingX + TALENT_PREVIEW_CANVAS_PADDING,
+    y: (node.y - minY) * spacingY + TALENT_PREVIEW_CANVAS_PADDING,
+    width: previewNodeWidth,
+    height: previewNodeHeight
   }));
-
-  if (mode === "DETAIL") {
-    const minVerticalGap = 20;
-    const layerMergeThreshold = 90;
-    const sortedNodes = [...shiftedNodes].sort((left, right) => left.y - right.y);
-    const layers: TalentTreeNodeView[][] = [];
-
-    for (const node of sortedNodes) {
-      const lastLayer = layers[layers.length - 1];
-      if (!lastLayer) {
-        layers.push([node]);
-        continue;
-      }
-
-      const layerAnchor = lastLayer[0].y;
-      if (Math.abs(node.y - layerAnchor) <= layerMergeThreshold) {
-        lastLayer.push(node);
-      } else {
-        layers.push([node]);
-      }
-    }
-
-    let previousLayerBottom = 0;
-    layers.forEach((layer, index) => {
-      const naturalY = Math.min(...layer.map((node) => node.y));
-      const alignedY = index === 0 ? naturalY : Math.max(naturalY, previousLayerBottom + minVerticalGap);
-      layer.forEach((node) => {
-        node.y = alignedY;
-      });
-      previousLayerBottom = alignedY + nodeHeight;
-    });
-  }
 
   const maxX = Math.max(...shiftedNodes.map((node) => node.x + node.width));
   const maxY = Math.max(...shiftedNodes.map((node) => node.y + node.height));
@@ -531,8 +501,8 @@ function createTalentProjection(graphData: unknown, mode: TalentPreviewMode): Ta
   return {
     nodes: shiftedNodes,
     edges,
-    width: Math.max(680, maxX + 32),
-    height: Math.max(360, maxY + 32)
+    width: Math.max(680, maxX + TALENT_PREVIEW_CANVAS_PADDING),
+    height: Math.max(360, maxY + TALENT_PREVIEW_CANVAS_PADDING)
   };
 }
 
