@@ -1,5 +1,76 @@
 # Change Log
 
+## 2026-03-23 (Stage 8 - Rulebook Viewer + Admin Editor)
+
+- 新增规则书后端接口：`GET/POST /api/rulebook/entries`、`PUT /api/rulebook/entries/:entryId`、`POST /api/rulebook/entries/:entryId/publish`、`DELETE /api/rulebook/entries/:entryId`。
+- 规则书目录能力增强：新增 `POST /api/rulebook/directories`，支持创建任意层级目录路径。
+- 规则书目录排序增强：新增 `POST /api/rulebook/directories/reorder`，目录顺序从首字母排序调整为 `sortOrder` 持久化排序，并支持同级目录拖拽调整。
+- 规则书树排序增强：新增 `POST /api/rulebook/tree/reorder`，同级下目录与条目可混合排序并互换位置。
+- 规则书目录删除能力增强：新增 `DELETE /api/rulebook/directories`，支持目录节点右键删除并级联清理子目录/条目。
+- 规则书条目排序能力增强：新增 `POST /api/rulebook/entries/reorder`，支持持久化条目顺序。
+- 规则书采用文件持久化：`data/sqlite/rulebook-entries.json`，支持草稿/发布状态与版本递增。
+- 大厅工具箱“规则书”弹窗升级为可用阅读器：左侧多级目录树，右侧正文阅读区。
+- 规则书正文支持富文本渲染与图片展示（HTML 内容经前端净化后渲染）。
+- 新增管理员规则书编辑器入口：`/system/rulebook`。
+- 编辑器支持：左侧目录区“新增条目/新增目录”入口、目录级数弹窗创建、富文本编辑、图片导入、保存、发布、删除。
+- 编辑器支持目录侧鼠标左键拖拽条目排序，并支持拖拽到其他目录完成跨目录迁移。
+- 新增规则书 PDF 导出：`GET /api/rulebook/export/pdf`，目录层级映射到 PDF 导航窗格（书签），并按目录与条目分页排版导出。
+- 已同步 API 契约与接口注册表。
+- 构建验证通过：`npm run -w server build`、`npm run -w client build`。
+
+## 2026-03-23 (Stage 8 - Talent Tree Preview Projection Fix & World Linkage Plan)
+
+- 修复大厅天赋树预览投射异常：兼容解析 X6 `position/size` 字段，解决“节点叠在一起、连线不显示”问题。
+- 大厅预览主区升级为只读画布投射：渲染节点卡片与节点间连线，不再使用纯文本节点列表。
+- 预览节点信息固定四行：名字、消耗、前置、描述；点击节点可高亮并查看详情。
+- 编辑器节点右键弹窗新增“删除节点”按钮，支持在模板内删除节点（保存后生效）。
+- 天赋预览布局优化：左侧目录收窄，中间画布主体扩大，减少无效留白。
+- 节点详情区从底部迁移至右侧，与画布形成“中间画布 + 右侧详情”工作区。
+- 明确世界内联动顺序：
+	- 第一步：世界侧复用大厅同款只读投射组件，确保模板显示一致。
+	- 第二步：新增“模板实例化到世界”与“世界树版本锁定”能力，避免模板漂移影响进行中团局。
+	- 第三步：新增玩家分配/洗点记录（按角色、按树、按节点）与权限校验。
+	- 第四步：将已解锁节点效果投影到角色运行时，再接入战斗/规则结算引擎。
+	- 第五步：补齐重算与回滚策略（重置、重放、冲突检测）及日志审计。
+
+## 2026-03-23 (Stage 8 - Talent Tree Viewer Split)
+
+## 2026-03-23 (Stage 8 - Talent Tree Viewer Split)
+
+- 大厅工具箱“天赋树预览”改为玩家只读查看模式：弹窗内新增“左侧目录 + 主体节点详情”双栏布局。
+- 目录支持 `category` 自定义大分类，按分类展示模板列表；移动端目录改为抽屉式入口。
+- 大厅侧编辑器入口改为管理员专属，普通用户不再进入 `/system/talent-trees` 编辑页。
+- 天赋树模板模型新增 `category` 字段，已贯通 `POST /api/talent-trees/templates` 与 `PUT /api/talent-trees/templates/:templateId`。
+- 修复天赋树类型保存问题：支持更稳健的 `treeType` 归一化，避免“通用天赋树”被回退为“职业天赋树”。
+- 新增模板删除能力：`DELETE /api/talent-trees/templates/:templateId`，编辑器已接入删除按钮。
+- 编辑器交互增强：发布前自动保存当前表单与图数据，新增节点后自动聚焦画布提示。
+- 提升编辑与查看空间：编辑器画布区域扩大；大厅天赋树弹窗扩大至约 80% 视窗并移除旧占位用途区块。
+- 天赋树预览目录改为三级导航结构：一级树类型（职业/通用）→ 二级自定义分类 → 三级模板名，并支持折叠展开。
+- 天赋树编辑器节点配置改为右键弹窗：可编辑节点名字、天赋点消耗、前置要求、节点描述。
+- 兼容历史已发布节点：加载图数据时自动补齐节点端口与基础 data，旧节点同样可编辑与连线。
+- 连线锚点调整为边缘连接，减少连线穿过节点正文导致的可读性问题。
+- 自动化改造路线明确：大厅/世界先复用同一阅读骨架，后续在世界侧补“GM 实例化编辑 + 玩家分配流程 + 战斗执行器联动”。
+
+## 2026-03-23 (Stage 8 - Talent Tree Editor Kickoff)
+
+- 新增天赋树模板后端接口：`GET/POST /api/talent-trees/templates`、`PUT /api/talent-trees/templates/:templateId`、`POST /api/talent-trees/templates/:templateId/publish`。
+- 新增天赋树模板服务层，采用 `data/sqlite/talent-tree-templates.json` 文件持久化，支持草稿保存与发布版本递增。
+- 新增前端页面：`/system/talent-trees`，接入 X6 可视化编辑器（节点创建、连线、缩放、保存、发布）。
+- 大厅工具箱新增“天赋树预览”工具卡，并在工具弹窗内提供“进入天赋树编辑器”入口。
+- 新增编辑器相关样式与布局，支持模板列表、元信息编辑、画布操作。
+- 同步更新 API 契约与接口注册表。
+- 构建验证通过：`npm run build -w server`、`npm run build -w client`。
+
+## 2026-03-23 (Stage 8 - Lobby Right Panel Composite Container)
+
+- 大厅右侧“消息/图鉴”占位升级为复合容器，新增顶部大页签：`星语论坛` 与 `工具箱`。
+- 右侧容器默认进入 `星语论坛` 占位页，当前仅保留大厅侧论坛占位提示。
+- `工具箱` 页签新增 5 张工具卡片：角色卡预创建、规则书、怪物图鉴、世界设定、token绘制。
+- 新增统一工具弹窗骨架（标题、简介、大厅用途、世界内用途、阶段提示），支持遮罩/按钮关闭与 ESC 关闭。
+- 明确兼容性决策：工具体系采用“大厅与世界内同骨架、不同布局”，论坛不进入世界内。
+- 本次仅实现前端骨架与文案，不新增后端接口、不改 socket 事件。
+- 前端构建验证通过：`npm run build -w client`。
+
 ## 2026-03-16 (Stage 8 - Auth Theme Migration From OLD AAF)
 
 - 迁移旧项目登录视觉资产到新前端：`loginbg.jpg`、`logoae.gif`、`login.png`。

@@ -247,6 +247,102 @@
       "method": "GET",
       "path": "/api/tavern/status",
       "owner": "tavern"
+    },
+    {
+      "name": "talentTreeTemplateList",
+      "method": "GET",
+      "path": "/api/talent-trees/templates",
+      "owner": "talent-tree"
+    },
+    {
+      "name": "talentTreeTemplateCreate",
+      "method": "POST",
+      "path": "/api/talent-trees/templates",
+      "owner": "talent-tree"
+    },
+    {
+      "name": "talentTreeTemplateUpdate",
+      "method": "PUT",
+      "path": "/api/talent-trees/templates/:templateId",
+      "owner": "talent-tree"
+    },
+    {
+      "name": "talentTreeTemplatePublish",
+      "method": "POST",
+      "path": "/api/talent-trees/templates/:templateId/publish",
+      "owner": "talent-tree"
+    },
+    {
+      "name": "talentTreeTemplateDelete",
+      "method": "DELETE",
+      "path": "/api/talent-trees/templates/:templateId",
+      "owner": "talent-tree"
+    },
+    {
+      "name": "rulebookEntryList",
+      "method": "GET",
+      "path": "/api/rulebook/entries",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookExportPdf",
+      "method": "GET",
+      "path": "/api/rulebook/export/pdf",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookEntryCreate",
+      "method": "POST",
+      "path": "/api/rulebook/entries",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookDirectoryCreate",
+      "method": "POST",
+      "path": "/api/rulebook/directories",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookDirectoryReorder",
+      "method": "POST",
+      "path": "/api/rulebook/directories/reorder",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookTreeReorder",
+      "method": "POST",
+      "path": "/api/rulebook/tree/reorder",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookDirectoryDelete",
+      "method": "DELETE",
+      "path": "/api/rulebook/directories",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookEntryReorder",
+      "method": "POST",
+      "path": "/api/rulebook/entries/reorder",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookEntryUpdate",
+      "method": "PUT",
+      "path": "/api/rulebook/entries/:entryId",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookEntryPublish",
+      "method": "POST",
+      "path": "/api/rulebook/entries/:entryId/publish",
+      "owner": "rulebook"
+    },
+    {
+      "name": "rulebookEntryDelete",
+      "method": "DELETE",
+      "path": "/api/rulebook/entries/:entryId",
+      "owner": "rulebook"
     }
   ],
   "socketEvents": [

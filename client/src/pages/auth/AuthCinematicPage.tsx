@@ -21,6 +21,15 @@ type Particle = {
   opacity: number;
 };
 
+type AuthUserProfile = {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  platformRole: string;
+  createdAt: string;
+};
+
 const BUTTON_DROP_MS = 5000;
 
 function mapAuthErrorMessage(raw?: string): string {
@@ -112,6 +121,38 @@ export default function AuthCinematicPage({ initialMode }: Props) {
     };
   }, []);
 
+  const loadCurrentUserProfile = async (
+    token: string,
+    fallback: { userId: string; username: string }
+  ): Promise<AuthUserProfile> => {
+    try {
+      const profileResp = await http.get("/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const profile = profileResp.data?.data;
+      return {
+        id: profile?.id ?? fallback.userId,
+        username: profile?.username ?? fallback.username,
+        displayName: profile?.displayName ?? fallback.username,
+        avatarUrl: profile?.avatarUrl ?? null,
+        platformRole: profile?.platformRole ?? "PLAYER",
+        createdAt: profile?.createdAt ?? new Date().toISOString()
+      };
+    } catch {
+      return {
+        id: fallback.userId,
+        username: fallback.username,
+        displayName: fallback.username,
+        avatarUrl: null,
+        platformRole: "PLAYER",
+        createdAt: new Date().toISOString()
+      };
+    }
+  };
+
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
@@ -136,14 +177,8 @@ export default function AuthCinematicPage({ initialMode }: Props) {
 
       if (response.data.success) {
         const { token, userId, username } = response.data.data;
-        setAuth(token, {
-          id: userId,
-          username,
-          displayName: username,
-          avatarUrl: null,
-          platformRole: "PLAYER",
-          createdAt: new Date().toISOString()
-        });
+        const userProfile = await loadCurrentUserProfile(token, { userId, username });
+        setAuth(token, userProfile);
         navigate("/lobby");
       }
     } catch (err: any) {
@@ -182,14 +217,8 @@ export default function AuthCinematicPage({ initialMode }: Props) {
 
       if (response.data.success) {
         const { token, userId, username } = response.data.data;
-        setAuth(token, {
-          id: userId,
-          username,
-          displayName: username,
-          avatarUrl: null,
-          platformRole: "PLAYER",
-          createdAt: new Date().toISOString()
-        });
+        const userProfile = await loadCurrentUserProfile(token, { userId, username });
+        setAuth(token, userProfile);
         navigate("/lobby");
       }
     } catch (err: any) {

@@ -55,7 +55,8 @@ export async function createWorld(req: Request, res: Response) {
       name: req.body?.name,
       description: req.body?.description,
       visibility,
-      password: req.body?.password
+      password: req.body?.password,
+      coverImageDataUrl: req.body?.coverImageDataUrl
     });
 
     res.status(201).json({
@@ -77,18 +78,18 @@ export async function createWorld(req: Request, res: Response) {
 
 export async function listWorlds(req: Request, res: Response) {
   try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
     const scope = req.query.scope;
     if (scope === "mine") {
-      if (!req.userId) {
-        res.status(401).json({
-          success: false,
-          data: null,
-          error: { code: "UNAUTHORIZED", message: "User not authenticated" },
-          requestId: req.requestId
-        });
-        return;
-      }
-
       const worlds = await worldService.listMyWorlds(req.userId);
       res.status(200).json({
         success: true,
@@ -99,7 +100,13 @@ export async function listWorlds(req: Request, res: Response) {
       return;
     }
 
-    const worlds = await worldService.listPublicWorlds();
+    const visibility = typeof req.query.visibility === "string" ? parseVisibility(req.query.visibility) : undefined;
+    const sortBy = req.query.sortBy === "activeMembers" ? "activeMembers" : "createdAt";
+    const order = req.query.order === "asc" ? "asc" : "desc";
+    const enforceAccess = scope !== "all";
+
+    const worlds = await worldService.listVisibleWorlds(req.userId, visibility, sortBy, order, enforceAccess);
+
     res.status(200).json({
       success: true,
       data: worlds,
@@ -129,7 +136,7 @@ export async function joinWorld(req: Request, res: Response) {
       return;
     }
 
-    const joined = await worldService.joinWorld(req.params.worldId, req.userId, req.body?.password);
+    const joined = await worldService.joinWorld(req.params.worldId, req.userId, req.body?.inviteCode);
 
     res.status(200).json({
       success: true,
@@ -144,6 +151,37 @@ export async function joinWorld(req: Request, res: Response) {
       success: false,
       data: null,
       error: { code: "WORLD_JOIN_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
+export async function deleteWorld(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const result = await worldService.deleteWorld(req.params.worldId, req.userId);
+    res.status(200).json({
+      success: true,
+      data: result,
+      error: null,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    const status = message === "world not found" ? 404 : message === "forbidden" ? 403 : 400;
+    res.status(status).json({
+      success: false,
+      data: null,
+      error: { code: "WORLD_DELETE_ERROR", message },
       requestId: req.requestId
     });
   }

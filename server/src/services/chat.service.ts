@@ -1,6 +1,7 @@
 import { MessageType } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { env } from "../config/env";
+import { resolveWorldChatChannelForUser } from "./world-chat-channel.service";
 
 export type GlobalMessagePayload = {
   id: string;
@@ -51,16 +52,7 @@ async function assertSceneInWorld(worldId: string, sceneId: string) {
   }
 }
 
-const WORLD_CHAT_CHANNELS = new Set(["OOC", "IC", "SYSTEM"]);
 const GLOBAL_CHAT_CHANNELS = new Set(["LOBBY", "SYSTEM", "PRIVATE"]);
-
-function normalizeWorldChatChannel(channelKey?: string): string {
-  const normalized = (channelKey ?? "OOC").toUpperCase().trim();
-  if (!WORLD_CHAT_CHANNELS.has(normalized)) {
-    throw new Error("invalid world chat channel");
-  }
-  return normalized;
-}
 
 function normalizeGlobalChatChannel(channelKey?: string): string {
   const normalized = (channelKey ?? "LOBBY").toUpperCase().trim();
@@ -71,7 +63,7 @@ function normalizeGlobalChatChannel(channelKey?: string): string {
 }
 
 export function canSendWorldChannel(worldRole: string | undefined, channelKey: string): boolean {
-  const normalized = normalizeWorldChatChannel(channelKey);
+  const normalized = (channelKey ?? "CHAT").toUpperCase().trim();
   if (normalized === "SYSTEM") {
     return worldRole === "GM";
   }
@@ -207,7 +199,7 @@ export async function createWorldMessage(
   if (normalized.length > 1000) {
     throw new Error("message content is too long");
   }
-  const normalizedChannel = normalizeWorldChatChannel(channelKey);
+  const normalizedChannel = await resolveWorldChatChannelForUser(worldId, fromUserId, channelKey ?? "CHAT");
 
   const membership = await prisma.worldMember.findUnique({
     where: {
@@ -282,7 +274,7 @@ export async function listRecentWorldMessages(
     throw new Error("not a member of world");
   }
 
-  const normalizedChannel = normalizeWorldChatChannel(channelKey);
+  const normalizedChannel = await resolveWorldChatChannelForUser(worldId, userId, channelKey ?? "CHAT");
   const normalizedSceneId = sceneId?.trim();
   if (normalizedSceneId) {
     await assertSceneInWorld(worldId, normalizedSceneId);

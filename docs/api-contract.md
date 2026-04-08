@@ -1,5 +1,283 @@
 # API Contract
 
+## GET /api/talent-trees/templates
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 返回天赋树模板列表。
+  - 平台 `MASTER/ADMIN` 返回全部模板并附带 `editable=true`。
+  - 普通用户仅返回 `PUBLISHED` 模板（只读预览场景）。
+  - 每条模板包含 `category`（自定义大分类，例如“职业天赋/通用天赋/法师系”），用于目录分组展示。
+
+## POST /api/talent-trees/templates
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "name": "战士职业树",
+  "treeType": "PROFESSION",
+  "category": "职业天赋",
+  "description": "近战职业核心分支"
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可创建。
+  - `category` 可自定义；未传时按 `treeType` 自动回填默认分类。
+  - 初始状态为 `DRAFT`，默认空图（`cells: []`）。
+
+## PUT /api/talent-trees/templates/:templateId
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "name": "战士职业树（v1）",
+  "treeType": "PROFESSION",
+  "category": "战士系",
+  "description": "基础职业分支",
+  "graphData": {
+    "cells": []
+  }
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可更新。
+  - 用于保存编辑器图数据与模板元信息（含 `category` 分类更新）。
+
+## POST /api/talent-trees/templates/:templateId/publish
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可发布。
+  - 发布后状态更新为 `PUBLISHED`，版本号自动递增。
+
+## DELETE /api/talent-trees/templates/:templateId
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可删除。
+  - 删除后模板不可恢复。
+
+## GET /api/rulebook/entries
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 返回规则书条目列表。
+  - 平台 `MASTER/ADMIN` 返回全部条目并附带 `editable=true`。
+  - 普通用户仅返回 `PUBLISHED` 条目（只读阅读）。
+
+## POST /api/rulebook/entries
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "title": "命中与闪避",
+  "summary": "基础命中判定流程",
+  "directoryPath": ["核心规则", "战斗", "判定"],
+  "contentHtml": "<h2>命中判定</h2><p>...</p>"
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可创建。
+  - `directoryPath` 支持多级目录（最多 6 级），用于左侧树形导航。
+
+## PUT /api/rulebook/entries/:entryId
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可更新。
+  - 可更新标题、摘要、目录路径与富文本 HTML 正文。
+  - 可选传入 `sortOrder` 用于持久化条目顺序。
+
+## POST /api/rulebook/directories
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "path": ["核心规则", "战斗", "判定"]
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可创建目录。
+  - `path` 支持多级目录（最多 6 级）。
+
+## DELETE /api/rulebook/directories
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "path": ["核心规则", "战斗"]
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可删除目录。
+  - 删除时会级联删除该目录下的所有子目录与条目。
+
+## POST /api/rulebook/directories/reorder
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "directoryIds": ["rulebook_dir_a", "rulebook_dir_b", "rulebook_dir_c"]
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可重排目录。
+  - 按传入顺序重写目录 `sortOrder`，用于前端目录树与 PDF 导出的目录顺序控制。
+
+## POST /api/rulebook/tree/reorder
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "parentPath": ["核心规则", "战斗"],
+  "items": [
+    { "type": "DIRECTORY", "id": "rulebook_dir_a" },
+    { "type": "ENTRY", "id": "rulebook_entry_x" },
+    { "type": "ENTRY", "id": "rulebook_entry_y" }
+  ]
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可重排。
+  - 用于同级目录与条目混合排序（可互换位置）。
+
+## GET /api/rulebook/export/pdf
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 导出当前用户可见规则书条目为 PDF 文件。
+  - 目录层级会映射到 PDF 导航窗格（书签），并按“目录标题 -> 条目标题/摘要/正文”分页导出。
+
+## POST /api/rulebook/entries/reorder
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- Request
+
+```json
+{
+  "entryIds": ["rulebook_entry_a", "rulebook_entry_b", "rulebook_entry_c"]
+}
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可重排。
+  - `entryIds` 需覆盖当前排序序列，服务端将按顺序重写 `sortOrder`。
+
+## POST /api/rulebook/entries/:entryId/publish
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可发布。
+  - 发布后状态更新为 `PUBLISHED`，版本号自动递增。
+
+## DELETE /api/rulebook/entries/:entryId
+
+- Headers
+
+```text
+Authorization: Bearer <token>
+```
+
+- 说明：
+  - 仅平台 `MASTER/ADMIN` 可删除。
+  - 删除后条目不可恢复。
+
 ## GET /api/health
 
 - Response 200

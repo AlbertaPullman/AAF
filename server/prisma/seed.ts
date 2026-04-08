@@ -5,10 +5,28 @@ import {
   WorldRole,
   WorldVisibility
 } from "@prisma/client";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const masterPasswordHash = await bcrypt.hash("666999", 10);
+
+  await prisma.user.upsert({
+    where: { username: "nubes" },
+    update: {
+      displayName: "Nubes",
+      passwordHash: masterPasswordHash,
+      platformRole: PlatformRole.MASTER
+    },
+    create: {
+      username: "nubes",
+      passwordHash: masterPasswordHash,
+      displayName: "Nubes",
+      platformRole: PlatformRole.MASTER
+    }
+  });
+
   const owner = await prisma.user.upsert({
     where: { username: "seed-master" },
     update: {

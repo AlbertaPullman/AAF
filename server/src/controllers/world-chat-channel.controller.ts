@@ -1,7 +1,11 @@
 import type { Request, Response } from "express";
-import { getWorldMessageById, listRecentGlobalMessages, listRecentWorldMessages } from "../services/chat.service";
+import {
+  createWorldChatChannel,
+  inviteWorldChatChannelMember,
+  listWorldChatChannels
+} from "../services/world-chat-channel.service";
 
-export async function getRecentGlobalMessages(req: Request, res: Response) {
+export async function getWorldChatChannels(req: Request, res: Response) {
   try {
     if (!req.userId) {
       res.status(401).json({
@@ -13,27 +17,26 @@ export async function getRecentGlobalMessages(req: Request, res: Response) {
       return;
     }
 
-    const limit = Number(req.query.limit ?? 30);
-    const messages = await listRecentGlobalMessages(req.userId, limit);
-
+    const data = await listWorldChatChannels(req.params.worldId, req.userId);
     res.status(200).json({
       success: true,
-      data: messages,
+      data,
       error: null,
       requestId: req.requestId
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
-    res.status(500).json({
+    const status = message === "world not found" ? 404 : message === "not a member of world" ? 403 : 400;
+    res.status(status).json({
       success: false,
       data: null,
-      error: { code: "CHAT_RECENT_ERROR", message },
+      error: { code: "WORLD_CHAT_CHANNEL_LIST_ERROR", message },
       requestId: req.requestId
     });
   }
 }
 
-export async function getRecentWorldMessages(req: Request, res: Response) {
+export async function postWorldChatChannel(req: Request, res: Response) {
   try {
     if (!req.userId) {
       res.status(401).json({
@@ -45,35 +48,26 @@ export async function getRecentWorldMessages(req: Request, res: Response) {
       return;
     }
 
-    const limit = Number(req.query.limit ?? 30);
-    const channelKey = typeof req.query.channelKey === "string" ? req.query.channelKey : undefined;
-    const sceneId = typeof req.query.sceneId === "string" ? req.query.sceneId : undefined;
-    const messages = await listRecentWorldMessages(req.params.worldId, req.userId, limit, channelKey, sceneId);
-
-    res.status(200).json({
+    const channel = await createWorldChatChannel(req.params.worldId, req.userId, String(req.body?.name ?? ""));
+    res.status(201).json({
       success: true,
-      data: messages,
+      data: channel,
       error: null,
       requestId: req.requestId
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
-    const status =
-      message === "not a member of world" || message === "channel permission denied"
-        ? 403
-        : message === "invalid world chat channel" || message === "scene not found in world"
-          ? 400
-          : 500;
+    const status = message === "world not found" ? 404 : message === "not a member of world" || message === "forbidden" ? 403 : 400;
     res.status(status).json({
       success: false,
       data: null,
-      error: { code: "CHAT_WORLD_RECENT_ERROR", message },
+      error: { code: "WORLD_CHAT_CHANNEL_CREATE_ERROR", message },
       requestId: req.requestId
     });
   }
 }
 
-export async function getWorldMessage(req: Request, res: Response) {
+export async function postWorldChatChannelInvite(req: Request, res: Response) {
   try {
     if (!req.userId) {
       res.status(401).json({
@@ -85,20 +79,21 @@ export async function getWorldMessage(req: Request, res: Response) {
       return;
     }
 
-    const message = await getWorldMessageById(req.params.worldId, req.userId, req.params.messageId);
+    const targetUserId = String(req.body?.userId ?? "").trim();
+    const channel = await inviteWorldChatChannelMember(req.params.worldId, req.userId, req.params.channelKey, targetUserId);
     res.status(200).json({
       success: true,
-      data: message,
+      data: channel,
       error: null,
       requestId: req.requestId
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
-    const status = message === "not a member of world" ? 403 : message === "world message not found" ? 404 : 500;
+    const status = message === "world not found" || message === "channel not found" ? 404 : message === "not a member of world" || message === "forbidden" ? 403 : 400;
     res.status(status).json({
       success: false,
       data: null,
-      error: { code: "CHAT_WORLD_MESSAGE_ERROR", message },
+      error: { code: "WORLD_CHAT_CHANNEL_INVITE_ERROR", message },
       requestId: req.requestId
     });
   }

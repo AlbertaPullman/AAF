@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth";
-import { createWorld, getWorldDetail, joinWorld, listWorlds } from "../controllers/world.controller";
+import { createWorld, deleteWorld, getWorldDetail, joinWorld, listWorlds } from "../controllers/world.controller";
 import { getWorldCharacters, postWorldCharacter, putWorldCharacter } from "../controllers/character.controller";
 import {
   deleteWorldScene,
@@ -34,6 +34,11 @@ import {
 } from "../controllers/story-event.controller";
 import { getWorldAssistantContextController } from "../controllers/assistant-context.controller";
 import { postWorldAssistantResponseController } from "../controllers/assistant-response.controller";
+import {
+  getWorldChatChannels,
+  postWorldChatChannel,
+  postWorldChatChannelInvite
+} from "../controllers/world-chat-channel.controller";
 
 export const worldRoutes = Router();
 
@@ -41,6 +46,7 @@ worldRoutes.get("/", authMiddleware, listWorlds);
 worldRoutes.post("/", authMiddleware, createWorld);
 worldRoutes.get("/:worldId", authMiddleware, getWorldDetail);
 worldRoutes.post("/:worldId/join", authMiddleware, joinWorld);
+worldRoutes.delete("/:worldId", authMiddleware, deleteWorld);
 worldRoutes.get("/:worldId/characters", authMiddleware, getWorldCharacters);
 worldRoutes.post("/:worldId/characters", authMiddleware, postWorldCharacter);
 worldRoutes.put("/:worldId/characters/:characterId", authMiddleware, putWorldCharacter);
@@ -70,3 +76,6 @@ worldRoutes.post("/:worldId/story-events/:eventId/resolve", authMiddleware, post
 worldRoutes.get("/:worldId/story-events/cards", authMiddleware, getWorldStoryEventCards);
 worldRoutes.get("/:worldId/assistant/context", authMiddleware, getWorldAssistantContextController);
 worldRoutes.post("/:worldId/assistant/respond", authMiddleware, postWorldAssistantResponseController);
+worldRoutes.get("/:worldId/chat-channels", authMiddleware, getWorldChatChannels);
+worldRoutes.post("/:worldId/chat-channels", authMiddleware, postWorldChatChannel);
+worldRoutes.post("/:worldId/chat-channels/:channelKey/invite", authMiddleware, postWorldChatChannelInvite);

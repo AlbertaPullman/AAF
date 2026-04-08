@@ -1,97 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { http } from "../../lib/http";
-import { connectSocket, disconnectSocket, socket, SOCKET_EVENTS } from "../../lib/socket";
+import { connectSocket, disconnectSocket, reconnectSocket, socket, SOCKET_EVENTS } from "../../lib/socket";
 import { useAuthStore } from "../../store/authStore";
-import { WorldCanvas } from "../../world/components/WorldCanvas";
-import { MeasurePanel } from "../../world/components/MeasurePanel";
-import { DrawPanel } from "../../world/components/DrawPanel";
-import { TokenPanel } from "../../world/components/TokenPanel";
-import { CharacterPanel } from "../../world/components/CharacterPanel";
-import { ScenePanel } from "../../world/components/ScenePanel";
-import { RuntimePanel } from "../../world/components/RuntimePanel";
-import { ModulePanel } from "../../world/components/ModulePanel";
-import { SceneVisualPanel } from "../../world/components/SceneVisualPanel";
-import { SceneCombatPanel } from "../../world/components/SceneCombatPanel";
-import { StoryEventPanel } from "../../world/components/StoryEventPanel";
-import { mapWorldRuntimeErrorMessage } from "../../world/i18n/messages";
 
-type TokenItem = {
-  tokenId: string;
-  x: number;
-  y: number;
+type FriendUser = {
+  id: string;
+  username: string;
+  displayName: string | null;
+};
+
+type FriendItem = {
+  id: string;
+  status: "ACCEPTED";
   updatedAt: string;
-  updatedBy: string;
-  ownerUserId?: string | null;
-  characterId?: string | null;
-  characterName?: string | null;
+  user: FriendUser;
 };
 
-type CharacterItem = {
+type FriendRequestItem = {
   id: string;
-  worldId: string;
-  userId: string | null;
-  name: string;
-  type: "PC" | "NPC";
-  stats?: unknown;
-  snapshot?: unknown;
-};
-
-type SceneItem = {
-  id: string;
-  worldId: string;
-  name: string;
-  sortOrder: number;
+  status: "PENDING";
+  createdAt: string;
+  fromUser: FriendUser;
 };
 
 type ChatMessage = {
   id: string;
   worldId?: string;
   channelKey?: string;
-  sceneId?: string;
   content: string;
-  metadata?: {
-    sceneId?: string;
-    storyEventCheckTag?: {
-      eventId: string;
-      optionId: string;
-      eventTitle: string;
-      optionLabel: string;
-      skillKey?: string;
-      dc?: number;
-      finalTotal?: number;
-      success?: boolean;
-    };
-    storyEventCard?: {
-      eventId: string;
-      title: string;
-      summary: string;
-      timeline?: string[];
-      finalOutcome?: string | null;
-      resolvedAt?: string;
-    };
-    storyPointProposalTag?: {
-      eventId: string;
-      eventTitle: string;
-      proposerUserId: string;
-      cost: number;
-      reason: string;
-      status: "PENDING" | "APPROVED" | "REJECTED";
-    };
-    storyPointProposalDecisionTag?: {
-      eventId: string;
-      requestId: string;
-      status: "APPROVED" | "REJECTED";
-      gmNote?: string | null;
-    };
-    aiAssistantContextTag?: {
-      mode: "local-fallback";
-      instruction?: string | null;
-      storyEventCardCount: number;
-      recentMessageCount: number;
-      generatedAt: string;
-    };
-  };
   createdAt: string;
   fromUser: {
     id: string;
@@ -100,211 +37,56 @@ type ChatMessage = {
   };
 };
 
-type WorldDetail = {
-  name: string;
-  myRole: "GM" | "PLAYER" | "OBSERVER" | "ASSISTANT" | null;
-};
-
-type WorldRuntimeState = {
-  worldId: string;
-  status: "loading" | "active" | "sleeping" | "error";
-  message: string | null;
-  updatedAt: string;
-};
-
-type RuntimeModuleState = {
-  worldId: string;
+type WorldChannelItem = {
   key: string;
-  displayName: string;
-  dependencies: string[];
-  status: "enabled" | "disabled";
-  updatedAt: string;
-};
-
-type SceneLightSourceState = {
-  id: string;
-  targetType: "actor" | "object" | "point";
-  targetId?: string | null;
-  x?: number;
-  y?: number;
-  brightRadiusFeet: number;
-  dimRadiusFeet: number;
-  colorHex: string;
-  followTarget: boolean;
-  durationMode: "rounds" | "battle-end" | "concentration" | "manual";
-  durationRounds?: number;
-};
-
-type SceneFogRevealedArea = {
-  id: string;
-  shape: "circle" | "rect" | "polygon";
-  points?: Array<{ x: number; y: number }>;
-  radius?: number;
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-};
-
-type SceneFogState = {
-  enabled: boolean;
-  mode: "full" | "hidden";
-  revealedAreas: SceneFogRevealedArea[];
-};
-
-type SceneVisualState = {
-  sceneId: string;
-  grid: {
-    enabled: boolean;
-    unitFeet: number;
-  };
-  lights: SceneLightSourceState[];
-  fog: SceneFogState;
-  updatedAt: string;
-};
-
-type SceneVisualPatchInput = {
-  grid?: {
-    enabled?: boolean;
-    unitFeet?: number;
-  };
-  lights?: SceneLightSourceState[];
-  fog?: SceneFogState;
-};
-
-type CombatParticipantState = {
-  tokenId: string;
   name: string;
-  initiative: number;
-  rank: number;
+  access: "ALL" | "MEMBERS";
+  isDefault: boolean;
+  memberUserIds: string[];
 };
 
-type SceneCombatState = {
-  sceneId: string;
-  status: "idle" | "active" | "paused" | "ended";
-  round: number;
-  turnIndex: number;
-  participants: CombatParticipantState[];
-  pauseReason: string | null;
-  updatedAt: string;
+type WorldChannelMember = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  worldRole: string;
 };
 
-type SceneCombatInput = {
-  status: "idle" | "active" | "paused" | "ended";
-  round: number;
-  turnIndex: number;
-  participants: CombatParticipantState[];
-  pauseReason?: string | null;
-};
-
-type StoryOptionCheckMode = "SINGLE" | "PER_PLAYER" | "UNLIMITED";
-
-type StoryEventOption = {
+type ChannelOption = {
   id: string;
+  scope: "GLOBAL" | "WORLD";
+  key: string;
   label: string;
-  check?: {
-    skillKey: string;
-    dc: number;
-    checkMode: StoryOptionCheckMode;
-  };
-  closed: boolean;
-  attempts: Array<{
-    id: string;
-    userId: string;
-    finalTotal: number;
-    success: boolean;
-    createdAt: string;
-  }>;
 };
 
-type StoryEventItem = {
-  id: string;
-  title: string;
-  description: string;
-  status: "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED";
-  options: StoryEventOption[];
-  narrativeRequests: Array<{
-    id: string;
-    userId: string;
-    cost: number;
-    reason: string;
-    status: "PENDING" | "APPROVED" | "REJECTED";
-    gmNote?: string;
-    createdAt: string;
-    updatedAt: string;
-  }>;
-};
+const GLOBAL_CHANNELS: ChannelOption[] = [
+  { id: "GLOBAL:LOBBY", scope: "GLOBAL", key: "LOBBY", label: "大厅主频道" }
+];
 
-type StoryEventCardItem = {
-  id: string;
-  content: string;
-  createdAt: string;
-};
-
-type StoryEventSearchResult = {
-  keyword: string;
-  filters: {
-    sceneId?: string;
-    eventStatus: "ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED";
-    channelKey: "ALL" | "OOC" | "IC" | "SYSTEM";
-    hours?: number;
-  };
-  events: StoryEventItem[];
-  messages: Array<{
-    id: string;
-    channelKey?: string;
-    content: string;
-    createdAt: string;
-    linkedEventId?: string;
-    matchedBy: Array<"CHAT_CONTENT" | "EVENT_LINK">;
-    fromUser: {
-      id: string;
-      username: string;
-      displayName: string | null;
-    };
-  }>;
-};
-
-type WorldChatChannel = "OOC" | "IC" | "SYSTEM";
-type ChannelUnreadMap = Record<WorldChatChannel, number>;
-
-function getWorldUnreadStorageKey(worldId: string, sceneId: string, userId?: string) {
-  return `world-chat-unread:${worldId}:${sceneId}:${userId ?? "anonymous"}`;
+function displayNameOf(user: { displayName: string | null; username: string }) {
+  return user.displayName || user.username;
 }
 
-function parseUnread(raw: string | null): ChannelUnreadMap {
-  if (!raw) {
-    return { OOC: 0, IC: 0, SYSTEM: 0 };
+function formatTimeOnly(date: Date): string {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function isSameDate(left: Date, right: Date): boolean {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
+}
+
+function formatCrossDayDivider(date: Date, now: Date): string {
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const targetStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const dayDiff = Math.floor((todayStart - targetStart) / oneDayMs);
+  if (dayDiff === 1) {
+    return `昨天 ${formatTimeOnly(date)}`;
   }
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<ChannelUnreadMap>;
-    return {
-      OOC: Number(parsed.OOC) || 0,
-      IC: Number(parsed.IC) || 0,
-      SYSTEM: Number(parsed.SYSTEM) || 0
-    };
-  } catch {
-    return { OOC: 0, IC: 0, SYSTEM: 0 };
+  if (date.getFullYear() !== now.getFullYear()) {
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${formatTimeOnly(date)}`;
   }
-}
-
-function canCurrentRoleSendChannel(role: WorldDetail["myRole"], channel: WorldChatChannel): boolean {
-  if (channel === "SYSTEM") {
-    return role === "GM";
-  }
-
-  return true;
-}
-
-function mergeLocatedMessageIntoList(messages: ChatMessage[], target: ChatMessage): ChatMessage[] {
-  const merged = [...messages.filter((item) => item.id !== target.id), target];
-  merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  return merged;
-}
-
-function getMyTokenId(userId: string) {
-  return `token:${userId}`;
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${formatTimeOnly(date)}`;
 }
 
 export default function WorldPage() {
@@ -312,551 +94,243 @@ export default function WorldPage() {
   const { worldId = "" } = useParams();
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const updateUser = useAuthStore((state) => state.updateUser);
 
-  const [worldName, setWorldName] = useState("世界");
-  const [myRole, setMyRole] = useState<WorldDetail["myRole"]>(null);
-  const [socketReady, setSocketReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [onlineCount, setOnlineCount] = useState(0);
-  const [tokens, setTokens] = useState<Record<string, TokenItem>>({});
-  const [scenes, setScenes] = useState<SceneItem[]>([]);
-  const [selectedSceneId, setSelectedSceneId] = useState("");
-  const [newSceneName, setNewSceneName] = useState("");
-  const [renameSceneName, setRenameSceneName] = useState("");
-  const [creatingScene, setCreatingScene] = useState(false);
-  const [renamingScene, setRenamingScene] = useState(false);
-  const [deletingScene, setDeletingScene] = useState(false);
-  const [sortingScene, setSortingScene] = useState(false);
-  const [characters, setCharacters] = useState<CharacterItem[]>([]);
-  const [selectedCharacterId, setSelectedCharacterId] = useState("");
-  const [creatingCharacter, setCreatingCharacter] = useState(false);
-  const [newCharacterName, setNewCharacterName] = useState("");
-  const [newCharacterType, setNewCharacterType] = useState<"PC" | "NPC">("PC");
-  const [savingCharacter, setSavingCharacter] = useState(false);
-  const [editCharacterName, setEditCharacterName] = useState("");
-  const [editHp, setEditHp] = useState("0");
-  const [editMp, setEditMp] = useState("0");
-  const [editLevel, setEditLevel] = useState("1");
-  const [editClassName, setEditClassName] = useState("");
-  const [worldMessages, setWorldMessages] = useState<ChatMessage[]>([]);
-  const [worldChatChannel, setWorldChatChannel] = useState<WorldChatChannel>("OOC");
-  const [worldChatUnread, setWorldChatUnread] = useState<ChannelUnreadMap>({ OOC: 0, IC: 0, SYSTEM: 0 });
-  const [worldChatInput, setWorldChatInput] = useState("");
-  const [worldChatSending, setWorldChatSending] = useState(false);
-  const [runtimeState, setRuntimeState] = useState<WorldRuntimeState | null>(null);
-  const [runtimeModules, setRuntimeModules] = useState<RuntimeModuleState[]>([]);
-  const [runtimeLoading, setRuntimeLoading] = useState(false);
-  const [moduleLoading, setModuleLoading] = useState(false);
-  const [togglingModuleKey, setTogglingModuleKey] = useState<string | null>(null);
-  const [sceneVisualState, setSceneVisualState] = useState<SceneVisualState | null>(null);
-  const [sceneCombatState, setSceneCombatState] = useState<SceneCombatState | null>(null);
-  const [sceneVisualLoading, setSceneVisualLoading] = useState(false);
-  const [sceneCombatLoading, setSceneCombatLoading] = useState(false);
-  const [sceneVisualSaving, setSceneVisualSaving] = useState(false);
-  const [sceneCombatSaving, setSceneCombatSaving] = useState(false);
-  const [sceneCombatAdvancing, setSceneCombatAdvancing] = useState(false);
-  const [storyEvents, setStoryEvents] = useState<StoryEventItem[]>([]);
-  const [storyEventCards, setStoryEventCards] = useState<StoryEventCardItem[]>([]);
-  const [storyEventLoading, setStoryEventLoading] = useState(false);
-  const [storySearchKeyword, setStorySearchKeyword] = useState("");
-  const [storySearchEventStatus, setStorySearchEventStatus] = useState<"ALL" | "DRAFT" | "OPEN" | "RESOLVED" | "CLOSED">("ALL");
-  const [storySearchChannelKey, setStorySearchChannelKey] = useState<"ALL" | "OOC" | "IC" | "SYSTEM">("ALL");
-  const [storySearchHours, setStorySearchHours] = useState("24");
-  const [storySearching, setStorySearching] = useState(false);
-  const [storySearchResult, setStorySearchResult] = useState<StoryEventSearchResult | null>(null);
-  const [focusedWorldMessageId, setFocusedWorldMessageId] = useState<string | null>(null);
-  const [focusedStoryEventId, setFocusedStoryEventId] = useState<string | null>(null);
-  const [assistantInstruction, setAssistantInstruction] = useState("");
-  const [assistantGenerating, setAssistantGenerating] = useState(false);
+  const [isSocialOpen, setIsSocialOpen] = useState(false);
+  const [socialTab, setSocialTab] = useState<"friends" | "requests">("friends");
+  const [nicknameInput, setNicknameInput] = useState(user?.displayName || user?.username || "");
+  const [savingNickname, setSavingNickname] = useState(false);
+  const [friends, setFriends] = useState<FriendItem[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<FriendRequestItem[]>([]);
+  const [socialLoading, setSocialLoading] = useState(false);
+  const [socialError, setSocialError] = useState<string | null>(null);
+  const [friendActionId, setFriendActionId] = useState<string | null>(null);
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [friendQuery, setFriendQuery] = useState("");
+  const [sendingFriendRequest, setSendingFriendRequest] = useState(false);
 
-  const tokenList = useMemo(() => Object.values(tokens), [tokens]);
-  const selectedCharacter = useMemo(
-    () => characters.find((item) => item.id === selectedCharacterId) ?? null,
-    [characters, selectedCharacterId]
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const [socketStatus, setSocketStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("disconnected");
+  const [showChannelModal, setShowChannelModal] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState("WORLD:CHAT");
+  const [unreadChannelMap, setUnreadChannelMap] = useState<Record<string, number>>({});
+  const [chatError, setChatError] = useState<string | null>(null);
+
+  const [worldChannels, setWorldChannels] = useState<WorldChannelItem[]>([]);
+  const [worldMembers, setWorldMembers] = useState<WorldChannelMember[]>([]);
+  const [canManageChannels, setCanManageChannels] = useState(false);
+  const [showCreateChannelModal, setShowCreateChannelModal] = useState(false);
+  const [newChannelName, setNewChannelName] = useState("");
+  const [creatingChannel, setCreatingChannel] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteUserId, setInviteUserId] = useState("");
+  const [invitingUser, setInvitingUser] = useState(false);
+
+  const socialDropdownRef = useRef<HTMLElement | null>(null);
+  const socialTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const channelDropdownRef = useRef<HTMLDivElement | null>(null);
+  const channelTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const displayName = useMemo(() => user?.displayName || user?.username || "未知用户", [user]);
+  const userButtonLabel = useMemo(() => {
+    const firstChar = Array.from(displayName.trim())[0] ?? "";
+    if (!firstChar || /^[0-9]$/.test(firstChar)) {
+      return "我";
+    }
+    return firstChar.toUpperCase();
+  }, [displayName]);
+
+  const onlineFriends = useMemo(
+    () => friends.filter((item) => Date.now() - new Date(item.updatedAt).getTime() <= 1000 * 60 * 10),
+    [friends]
   );
-  const canSendCurrentChannel = useMemo(
-    () => canCurrentRoleSendChannel(myRole, worldChatChannel),
-    [myRole, worldChatChannel]
+  const offlineFriends = useMemo(
+    () => friends.filter((item) => Date.now() - new Date(item.updatedAt).getTime() > 1000 * 60 * 10),
+    [friends]
   );
-  const canUseAssistant = myRole === "GM" || myRole === "ASSISTANT";
-  const canManageSceneRuntime = myRole === "GM";
-  const selectedSceneIndex = useMemo(() => scenes.findIndex((item) => item.id === selectedSceneId), [scenes, selectedSceneId]);
-  const canMoveSceneUp = selectedSceneIndex > 0;
-  const canMoveSceneDown = selectedSceneIndex >= 0 && selectedSceneIndex < scenes.length - 1;
 
-  const loadRuntimeState = async () => {
+  const channelOptions = useMemo(() => {
+    const worldOptions: ChannelOption[] = worldChannels.map((item) => ({
+      id: `WORLD:${item.key}`,
+      scope: "WORLD",
+      key: item.key,
+      label: item.name
+    }));
+    return { global: GLOBAL_CHANNELS, world: worldOptions };
+  }, [worldChannels]);
+
+  const selectedChannel = useMemo(() => {
+    const all = [...channelOptions.global, ...channelOptions.world];
+    return all.find((item) => item.id === selectedChannelId) || channelOptions.world[0] || channelOptions.global[0] || null;
+  }, [channelOptions, selectedChannelId]);
+
+  const currentWorldChannel = useMemo(() => {
+    if (!selectedChannel || selectedChannel.scope !== "WORLD") {
+      return null;
+    }
+    return worldChannels.find((item) => item.key === selectedChannel.key) || null;
+  }, [selectedChannel, worldChannels]);
+
+  const inviteCandidates = useMemo(() => {
+    if (!currentWorldChannel || currentWorldChannel.access === "ALL") {
+      return [] as WorldChannelMember[];
+    }
+
+    const joined = new Set(currentWorldChannel.memberUserIds);
+    return worldMembers.filter((member) => !joined.has(member.userId));
+  }, [currentWorldChannel, worldMembers]);
+
+  const selectedChannelName = selectedChannel
+    ? `${selectedChannel.scope === "WORLD" ? "世界" : "全局"} · ${selectedChannel.label}`
+    : "频道";
+
+  const canSendCurrentChannel = useMemo(() => {
+    if (!selectedChannel) {
+      return false;
+    }
+    if (selectedChannel.scope === "GLOBAL") {
+      return selectedChannel.key === "LOBBY";
+    }
+    return true;
+  }, [selectedChannel]);
+
+  const loadSocialData = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    setSocialLoading(true);
+    setSocialError(null);
+    try {
+      const [friendsResp, requestsResp] = await Promise.all([http.get("/social/friends"), http.get("/social/requests/incoming")]);
+      setFriends((friendsResp.data?.data ?? []) as FriendItem[]);
+      setIncomingRequests((requestsResp.data?.data ?? []) as FriendRequestItem[]);
+    } catch (err: any) {
+      setSocialError(err.response?.data?.error?.message || "加载社交数据失败");
+    } finally {
+      setSocialLoading(false);
+    }
+  }, [token]);
+
+  const loadWorldChannels = useCallback(async () => {
     if (!worldId) {
       return;
     }
 
-    setRuntimeLoading(true);
     try {
-      const resp = await http.get(`/worlds/${worldId}/runtime`);
-      setRuntimeState((resp.data?.data ?? null) as WorldRuntimeState | null);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "加载运行状态失败"));
-    } finally {
-      setRuntimeLoading(false);
-    }
-  };
+      const resp = await http.get(`/worlds/${worldId}/chat-channels`);
+      const data = resp.data?.data;
+      const channels = (data?.channels ?? []) as WorldChannelItem[];
+      setWorldChannels(channels);
+      setWorldMembers((data?.members ?? []) as WorldChannelMember[]);
+      setCanManageChannels(!!data?.canManageChannels);
 
-  const loadRuntimeModules = async () => {
-    if (!worldId) {
-      return;
-    }
-
-    setModuleLoading(true);
-    try {
-      const resp = await http.get(`/worlds/${worldId}/runtime/modules`);
-      setRuntimeModules((resp.data?.data ?? []) as RuntimeModuleState[]);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "加载模块列表失败"));
-    } finally {
-      setModuleLoading(false);
-    }
-  };
-
-  const onToggleRuntimeModule = async (module: RuntimeModuleState) => {
-    if (!worldId) {
-      return;
-    }
-
-    const nextStatus = module.status === "enabled" ? "disabled" : "enabled";
-    setTogglingModuleKey(module.key);
-    try {
-      const resp = await http.patch(`/worlds/${worldId}/runtime/modules/${module.key}`, {
-        status: nextStatus
-      });
-      const updated = resp.data?.data as RuntimeModuleState;
-      setRuntimeModules((prev) => prev.map((item) => (item.key === updated.key ? updated : item)));
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "切换模块状态失败"));
-    } finally {
-      setTogglingModuleKey(null);
-    }
-  };
-
-  const loadSceneVisualState = async () => {
-    if (!worldId || !selectedSceneId) {
-      setSceneVisualState(null);
-      return;
-    }
-
-    setSceneVisualLoading(true);
-    try {
-      const resp = await http.get(`/worlds/${worldId}/scenes/${selectedSceneId}/visual`);
-      setSceneVisualState((resp.data?.data ?? null) as SceneVisualState | null);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "加载视觉状态失败"));
-    } finally {
-      setSceneVisualLoading(false);
-    }
-  };
-
-  const onPatchSceneVisualState = async (input: SceneVisualPatchInput) => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    setSceneVisualSaving(true);
-    try {
-      const resp = await http.patch(`/worlds/${worldId}/scenes/${selectedSceneId}/visual`, input);
-      setSceneVisualState((resp.data?.data ?? null) as SceneVisualState | null);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "更新视觉状态失败"));
-    } finally {
-      setSceneVisualSaving(false);
-    }
-  };
-
-  const loadSceneCombatState = async () => {
-    if (!worldId || !selectedSceneId) {
-      setSceneCombatState(null);
-      return;
-    }
-
-    setSceneCombatLoading(true);
-    try {
-      const resp = await http.get(`/worlds/${worldId}/scenes/${selectedSceneId}/combat`);
-      setSceneCombatState((resp.data?.data ?? null) as SceneCombatState | null);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "加载战斗状态失败"));
-    } finally {
-      setSceneCombatLoading(false);
-    }
-  };
-
-  const onSaveSceneCombatState = async (input: SceneCombatInput) => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    setSceneCombatSaving(true);
-    try {
-      const resp = await http.put(`/worlds/${worldId}/scenes/${selectedSceneId}/combat`, input);
-      setSceneCombatState((resp.data?.data ?? null) as SceneCombatState | null);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "保存战斗状态失败"));
-    } finally {
-      setSceneCombatSaving(false);
-    }
-  };
-
-  const onAdvanceSceneCombatTurn = async () => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    setSceneCombatAdvancing(true);
-    try {
-      const resp = await http.post(`/worlds/${worldId}/scenes/${selectedSceneId}/combat/next-turn`);
-      setSceneCombatState((resp.data?.data ?? null) as SceneCombatState | null);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "推进回合失败"));
-    } finally {
-      setSceneCombatAdvancing(false);
-    }
-  };
-
-  const loadStoryEvents = async () => {
-    if (!worldId) {
-      return;
-    }
-
-    setStoryEventLoading(true);
-    try {
-      const [eventsResp, cardsResp] = await Promise.all([
-        http.get(`/worlds/${worldId}/story-events`),
-        http.get(`/worlds/${worldId}/story-events/cards`, { params: { limit: 20 } })
-      ]);
-      setStoryEvents((eventsResp.data?.data ?? []) as StoryEventItem[]);
-      setStoryEventCards((cardsResp.data?.data ?? []) as StoryEventCardItem[]);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "加载剧情事件失败"));
-    } finally {
-      setStoryEventLoading(false);
-    }
-  };
-
-  const onCreateStoryEvent = async (payload: { title: string; description: string }) => {
-    if (!worldId) {
-      return;
-    }
-    try {
-      await http.post(`/worlds/${worldId}/story-events`, payload);
-      await loadStoryEvents();
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "创建剧情事件失败"));
-    }
-  };
-
-  const onAddStoryEventOption = async (
-    eventId: string,
-    payload: { label: string; skillKey: string; dc: number; checkMode: StoryOptionCheckMode }
-  ) => {
-    if (!worldId) {
-      return;
-    }
-    try {
-      await http.post(`/worlds/${worldId}/story-events/${eventId}/options`, {
-        label: payload.label,
-        check: {
-          skillKey: payload.skillKey,
-          dc: payload.dc,
-          checkMode: payload.checkMode
+      setSelectedChannelId((prev) => {
+        if (!prev.startsWith("WORLD:")) {
+          return prev;
         }
+        const key = prev.slice("WORLD:".length);
+        const exists = channels.some((item) => item.key === key);
+        return exists ? prev : "WORLD:CHAT";
       });
-      await loadStoryEvents();
     } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "新增剧情选项失败"));
+      setChatError(err.response?.data?.error?.message || "加载世界频道失败");
     }
-  };
+  }, [worldId]);
 
-  const onSubmitStoryEventCheck = async (eventId: string, optionId: string, payload: { finalTotal: number; chatContent: string }) => {
-    if (!worldId) {
+  const loadCurrentChannelMessages = useCallback(async () => {
+    if (!selectedChannel || !worldId) {
       return;
     }
+
+    setChatError(null);
     try {
-      await http.post(`/worlds/${worldId}/story-events/${eventId}/options/${optionId}/check`, payload);
-      await Promise.all([loadStoryEvents(), http.get(`/chat/worlds/${worldId}/recent`, { params: { limit: 40, channelKey: worldChatChannel, sceneId: selectedSceneId } }).then((chatResp) => setWorldMessages(chatResp.data?.data ?? []))]);
+      if (selectedChannel.scope === "GLOBAL") {
+        const resp = await http.get("/chat/global/recent", { params: { limit: 100 } });
+        const list = (resp.data?.data ?? []) as ChatMessage[];
+        setChatMessages(list.filter((item) => (item.channelKey ?? "LOBBY") === selectedChannel.key));
+      } else {
+        const resp = await http.get(`/chat/worlds/${worldId}/recent`, { params: { limit: 100, channelKey: selectedChannel.key } });
+        setChatMessages((resp.data?.data ?? []) as ChatMessage[]);
+      }
+
+      setUnreadChannelMap((prev) => ({ ...prev, [selectedChannel.id]: 0 }));
     } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "提交检定失败"));
+      setChatError(err.response?.data?.error?.message || "加载频道消息失败");
     }
-  };
+  }, [selectedChannel, worldId]);
 
-  const onResolveStoryEvent = async (eventId: string, payload: { summary: string; finalOutcome: string }) => {
-    if (!worldId) {
-      return;
-    }
-    try {
-      await http.post(`/worlds/${worldId}/story-events/${eventId}/resolve`, payload);
-      await Promise.all([loadStoryEvents(), http.get(`/chat/worlds/${worldId}/recent`, { params: { limit: 40, channelKey: worldChatChannel, sceneId: selectedSceneId } }).then((chatResp) => setWorldMessages(chatResp.data?.data ?? []))]);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "结算剧情事件失败"));
-    }
-  };
+  useEffect(() => {
+    void loadSocialData();
+  }, [loadSocialData]);
 
-  const onCreateStoryNarrativeRequest = async (eventId: string, payload: { cost: number; reason: string }) => {
-    if (!worldId) {
-      return;
-    }
-    try {
-      await http.post(`/worlds/${worldId}/story-events/${eventId}/narrative-requests`, payload);
-      await Promise.all([
-        loadStoryEvents(),
-        http
-          .get(`/chat/worlds/${worldId}/recent`, { params: { limit: 40, channelKey: worldChatChannel, sceneId: selectedSceneId } })
-          .then((chatResp) => setWorldMessages(chatResp.data?.data ?? []))
-      ]);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "提交物语点提案失败"));
-    }
-  };
+  useEffect(() => {
+    void loadWorldChannels();
+  }, [loadWorldChannels]);
 
-  const onDecideStoryNarrativeRequest = async (
-    eventId: string,
-    requestId: string,
-    payload: { status: "APPROVED" | "REJECTED"; gmNote: string }
-  ) => {
-    if (!worldId) {
-      return;
-    }
-    try {
-      await http.post(`/worlds/${worldId}/story-events/${eventId}/narrative-requests/${requestId}/decision`, payload);
-      await Promise.all([
-        loadStoryEvents(),
-        http
-          .get(`/chat/worlds/${worldId}/recent`, { params: { limit: 40, channelKey: worldChatChannel, sceneId: selectedSceneId } })
-          .then((chatResp) => setWorldMessages(chatResp.data?.data ?? []))
-      ]);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "裁决物语点提案失败"));
-    }
-  };
+  useEffect(() => {
+    void loadCurrentChannelMessages();
+  }, [loadCurrentChannelMessages]);
 
-  const onSearchStoryEventContext = async () => {
-    if (!worldId) {
+  useEffect(() => {
+    setNicknameInput(user?.displayName || user?.username || "");
+  }, [user?.id, user?.displayName, user?.username]);
+
+  useEffect(() => {
+    if (!isSocialOpen) {
       return;
     }
 
-    const keyword = storySearchKeyword.trim();
-    if (!keyword) {
-      setStorySearchResult(null);
-      return;
-    }
-
-    setStorySearching(true);
-    try {
-      const resp = await http.get(`/worlds/${worldId}/story-events/search`, {
-        params: {
-          q: keyword,
-          sceneId: selectedSceneId,
-          eventStatus: storySearchEventStatus,
-          channelKey: storySearchChannelKey,
-          hours: Number(storySearchHours) || undefined,
-          limit: 20
-        }
-      });
-      setStorySearchResult((resp.data?.data ?? null) as StoryEventSearchResult | null);
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "检索剧情事件失败"));
-    } finally {
-      setStorySearching(false);
-    }
-  };
-
-  const onClearStoryEventSearch = () => {
-    setStorySearchKeyword("");
-    setStorySearchEventStatus("ALL");
-    setStorySearchChannelKey("ALL");
-    setStorySearchHours("24");
-    setStorySearchResult(null);
-  };
-
-  const onLocateStoryEvent = (eventId: string) => {
-    setFocusedStoryEventId(eventId);
-  };
-
-  const onLocateWorldMessage = async (messageId: string, channelKey?: string) => {
-    if (!worldId) {
-      return;
-    }
-
-    try {
-      const exactResp = await http.get(`/chat/worlds/${worldId}/messages/${messageId}`);
-      const exact = (exactResp.data?.data ?? null) as ChatMessage | null;
-      if (!exact) {
-        setError("定位消息失败：目标消息不存在");
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (socialDropdownRef.current?.contains(target)) {
         return;
       }
-
-      const targetChannel = exact.channelKey === "IC" || exact.channelKey === "SYSTEM" ? exact.channelKey : "OOC";
-      const targetSceneId = exact.sceneId || selectedSceneId;
-
-      setFocusedWorldMessageId(exact.id);
-
-      if (targetSceneId && targetSceneId !== selectedSceneId) {
-        setSelectedSceneId(targetSceneId);
-      }
-      if (worldChatChannel !== targetChannel) {
-        setWorldChatChannel(targetChannel);
-      }
-
-      const chatResp = await http.get(`/chat/worlds/${worldId}/recent`, {
-        params: { limit: 100, channelKey: targetChannel, sceneId: targetSceneId }
-      });
-      const recentList = (chatResp.data?.data ?? []) as ChatMessage[];
-      const merged = mergeLocatedMessageIntoList(recentList, exact);
-      setWorldMessages(merged);
-    } catch {
-      setError("定位聊天消息失败");
-    }
-  };
-
-  const onGenerateAssistantResponse = async () => {
-    if (!worldId || !selectedSceneId || !canUseAssistant) {
-      return;
-    }
-
-    setAssistantGenerating(true);
-    try {
-      const resp = await http.post(`/worlds/${worldId}/assistant/respond`, {
-        sceneId: selectedSceneId,
-        hours: 24,
-        cardLimit: 8,
-        messageLimit: 40,
-        instruction: assistantInstruction.trim() || undefined
-      });
-
-      const created = (resp.data?.data?.message ?? null) as ChatMessage | null;
-      if (!created) {
-        setError("AI 助手生成失败：未返回消息");
+      if (socialTriggerRef.current?.contains(target)) {
         return;
       }
+      setIsSocialOpen(false);
+    };
 
-      setFocusedWorldMessageId(created.id);
-      setWorldChatChannel("SYSTEM");
-      const chatResp = await http.get(`/chat/worlds/${worldId}/recent`, {
-        params: { limit: 100, channelKey: "SYSTEM", sceneId: created.sceneId || selectedSceneId }
-      });
-      const recentList = (chatResp.data?.data ?? []) as ChatMessage[];
-      setWorldMessages(mergeLocatedMessageIntoList(recentList, created));
-      setAssistantInstruction("");
-    } catch (err: any) {
-      setError(mapWorldRuntimeErrorMessage(err?.response?.data?.error?.message || "生成 AI 助手草案失败"));
-    } finally {
-      setAssistantGenerating(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    const key = getWorldUnreadStorageKey(worldId, selectedSceneId, user?.id);
-    const raw = localStorage.getItem(key);
-    setWorldChatUnread(parseUnread(raw));
-  }, [worldId, selectedSceneId, user?.id]);
-
-  useEffect(() => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    const key = getWorldUnreadStorageKey(worldId, selectedSceneId, user?.id);
-    localStorage.setItem(key, JSON.stringify(worldChatUnread));
-  }, [worldId, selectedSceneId, user?.id, worldChatUnread]);
-
-  useEffect(() => {
-    if (!selectedCharacter) {
-      setEditCharacterName("");
-      setEditHp("0");
-      setEditMp("0");
-      setEditLevel("1");
-      setEditClassName("");
-      return;
-    }
-
-    const stats = selectedCharacter.stats as { hp?: unknown; mp?: unknown } | undefined;
-    const snapshot = selectedCharacter.snapshot as { level?: unknown; class?: unknown } | undefined;
-
-    setEditCharacterName(selectedCharacter.name);
-    setEditHp(typeof stats?.hp === "number" ? String(stats.hp) : "0");
-    setEditMp(typeof stats?.mp === "number" ? String(stats.mp) : "0");
-    setEditLevel(typeof snapshot?.level === "number" ? String(snapshot.level) : "1");
-    setEditClassName(typeof snapshot?.class === "string" ? snapshot.class : "");
-  }, [selectedCharacter]);
-
-  useEffect(() => {
-    if (!worldId) {
-      navigate("/lobby");
-      return;
-    }
-
-    void (async () => {
-      try {
-        const resp = await http.get(`/worlds/${worldId}`);
-        const data = resp.data?.data as WorldDetail | undefined;
-        if (data?.name) {
-          setWorldName(data.name);
-          setMyRole(data.myRole);
-        }
-
-        const characterResp = await http.get(`/worlds/${worldId}/characters`);
-        const characterItems = (characterResp.data?.data ?? []) as CharacterItem[];
-        setCharacters(characterItems);
-        if (characterItems.length > 0) {
-          const preferred = user?.id ? characterItems.find((item) => item.userId === user.id) : undefined;
-          setSelectedCharacterId((preferred ?? characterItems[0]).id);
-        }
-
-        const sceneResp = await http.get(`/worlds/${worldId}/scenes`);
-        const sceneItems = (sceneResp.data?.data ?? []) as SceneItem[];
-        setScenes(sceneItems);
-        if (sceneItems.length > 0) {
-          setSelectedSceneId(sceneItems[0].id);
-          setRenameSceneName(sceneItems[0].name);
-        }
-
-        const runtimeResp = await http.get(`/worlds/${worldId}/runtime`);
-        setRuntimeState((runtimeResp.data?.data ?? null) as WorldRuntimeState | null);
-
-        const modulesResp = await http.get(`/worlds/${worldId}/runtime/modules`);
-        setRuntimeModules((modulesResp.data?.data ?? []) as RuntimeModuleState[]);
-      } catch {
-        setError("加载世界信息失败");
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsSocialOpen(false);
       }
-    })();
-  }, [navigate, worldId, user?.id]);
+    };
+
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("keydown", onEscape);
+
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("keydown", onEscape);
+    };
+  }, [isSocialOpen]);
 
   useEffect(() => {
-    if (!worldId || !selectedSceneId) {
+    if (!showChannelModal) {
       return;
     }
 
-    void loadSceneVisualState();
-    void loadSceneCombatState();
-    void loadStoryEvents();
-  }, [worldId, selectedSceneId]);
-
-  useEffect(() => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    void (async () => {
-      try {
-        const chatResp = await http.get(`/chat/worlds/${worldId}/recent`, {
-          params: { limit: 100, channelKey: worldChatChannel, sceneId: selectedSceneId }
-        });
-        setWorldMessages(chatResp.data?.data ?? []);
-        setWorldChatUnread((prev) => ({ ...prev, [worldChatChannel]: 0 }));
-      } catch {
-        setError("加载世界聊天历史失败");
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (channelDropdownRef.current?.contains(target)) {
+        return;
       }
-    })();
-  }, [worldId, worldChatChannel, selectedSceneId]);
+      if (channelTriggerRef.current?.contains(target)) {
+        return;
+      }
+      setShowChannelModal(false);
+    };
+
+    window.addEventListener("mousedown", onPointerDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+    };
+  }, [showChannelModal]);
 
   useEffect(() => {
     if (!token || !worldId) {
@@ -864,79 +338,55 @@ export default function WorldPage() {
     }
 
     connectSocket(token);
+    setSocketStatus("connecting");
 
     const onAck = () => {
-      setSocketReady(true);
-      socket.emit(SOCKET_EVENTS.worldJoin, { worldId }, (result: { ok: boolean; error?: string }) => {
-        if (!result.ok) {
-          setError(result.error || "加入世界房间失败");
-        }
-      });
+      setSocketStatus("connected");
+      socket.emit(SOCKET_EVENTS.worldJoin, { worldId });
     };
 
     const onConnect = () => {
-      setSocketReady(true);
+      setSocketStatus("connected");
       socket.emit(SOCKET_EVENTS.worldJoin, { worldId });
     };
 
     const onDisconnect = () => {
-      setSocketReady(false);
+      setSocketStatus("disconnected");
     };
 
-    const onWorldMembersUpdate = (payload: { worldId: string; onlineCount: number }) => {
-      if (payload.worldId === worldId) {
-        setOnlineCount(payload.onlineCount);
-      }
+    const onReconnectAttempt = () => {
+      setSocketStatus("reconnecting");
     };
 
-    const onTokenMoved = (payload: { worldId: string; sceneId?: string; tokens: TokenItem[] }) => {
-      if (payload.worldId !== worldId) {
+    const onGlobalMessageNew = (message: ChatMessage) => {
+      const channel = (message.channelKey ?? "LOBBY").toUpperCase();
+      const channelId = `GLOBAL:${channel}`;
+      if (selectedChannelId !== channelId) {
+        setUnreadChannelMap((prev) => ({ ...prev, [channelId]: (prev[channelId] ?? 0) + 1 }));
         return;
       }
-      if (payload.sceneId && selectedSceneId && payload.sceneId !== selectedSceneId) {
-        return;
-      }
-
-      setTokens((prev) => {
-        const next = { ...prev };
-        for (const item of payload.tokens ?? []) {
-          next[item.tokenId] = item;
-        }
-        return next;
-      });
+      setChatMessages((prev) => [...prev, message].slice(-100));
     };
 
     const onWorldMessageNew = (message: ChatMessage) => {
       if (message.worldId !== worldId) {
         return;
       }
-      if (selectedSceneId && message.sceneId !== selectedSceneId) {
+
+      const channel = (message.channelKey ?? "CHAT").toUpperCase();
+      const channelId = `WORLD:${channel}`;
+      if (selectedChannelId !== channelId) {
+        setUnreadChannelMap((prev) => ({ ...prev, [channelId]: (prev[channelId] ?? 0) + 1 }));
         return;
       }
-
-      const messageChannel = ((message.channelKey ?? "OOC") as WorldChatChannel);
-      if (messageChannel !== worldChatChannel) {
-        setWorldChatUnread((prev) => ({
-          ...prev,
-          [messageChannel]: prev[messageChannel] + 1
-        }));
-        return;
-      }
-
-      setWorldMessages((prev) => {
-        const next = [...prev, message];
-        if (next.length > 100) {
-          return next.slice(next.length - 100);
-        }
-        return next;
-      });
+      setChatMessages((prev) => [...prev, message].slice(-100));
     };
 
     socket.on(SOCKET_EVENTS.connectionAck, onAck);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
-    socket.on(SOCKET_EVENTS.worldMembersUpdate, onWorldMembersUpdate);
-    socket.on(SOCKET_EVENTS.sceneTokenMoved, onTokenMoved);
+    socket.on("reconnect_attempt", onReconnectAttempt);
+    socket.on(SOCKET_EVENTS.globalMessageNew, onGlobalMessageNew);
     socket.on(SOCKET_EVENTS.worldMessageNew, onWorldMessageNew);
 
     return () => {
@@ -944,552 +394,462 @@ export default function WorldPage() {
       socket.off(SOCKET_EVENTS.connectionAck, onAck);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
-      socket.off(SOCKET_EVENTS.worldMembersUpdate, onWorldMembersUpdate);
-      socket.off(SOCKET_EVENTS.sceneTokenMoved, onTokenMoved);
+      socket.off("reconnect_attempt", onReconnectAttempt);
+      socket.off(SOCKET_EVENTS.globalMessageNew, onGlobalMessageNew);
       socket.off(SOCKET_EVENTS.worldMessageNew, onWorldMessageNew);
       disconnectSocket();
     };
-  }, [token, worldId, worldChatChannel, selectedSceneId]);
+  }, [token, worldId, selectedChannelId]);
 
-  useEffect(() => {
-    if (!worldId || !selectedSceneId || !socketReady) {
+  const onLogout = () => {
+    disconnectSocket();
+    clearAuth();
+    navigate("/login");
+  };
+
+  const onSaveNickname = async () => {
+    const nextName = nicknameInput.trim();
+    if (!nextName) {
+      setSocialError("昵称不能为空");
       return;
     }
 
-    setTokens({});
-    socket.emit(SOCKET_EVENTS.sceneSelect, { worldId, sceneId: selectedSceneId }, (result: { ok: boolean; error?: string }) => {
-      if (!result.ok) {
-        setError(result.error || "切换场景失败");
+    setSavingNickname(true);
+    setSocialError(null);
+    try {
+      const resp = await http.patch("/auth/profile", { displayName: nextName });
+      const profile = resp.data?.data;
+      updateUser({
+        displayName: profile?.displayName || nextName,
+        username: profile?.username || user?.username || ""
+      });
+    } catch (err: any) {
+      setSocialError(err.response?.data?.error?.message || "保存昵称失败");
+    } finally {
+      setSavingNickname(false);
+    }
+  };
+
+  const onSendFriendRequest = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!friendQuery.trim()) {
+      setSocialError("请输入好友昵称或账号");
+      return;
+    }
+
+    setSendingFriendRequest(true);
+    setSocialError(null);
+    try {
+      await http.post("/social/requests", { query: friendQuery.trim() });
+      setShowAddFriendModal(false);
+      setFriendQuery("");
+      await loadSocialData();
+    } catch (err: any) {
+      setSocialError(err.response?.data?.error?.message || "发送好友申请失败");
+    } finally {
+      setSendingFriendRequest(false);
+    }
+  };
+
+  const onHandleFriendRequest = async (requestId: string, action: "accept" | "reject") => {
+    setFriendActionId(requestId);
+    setSocialError(null);
+    try {
+      await http.patch(`/social/requests/${requestId}`, { action });
+      await loadSocialData();
+    } catch (err: any) {
+      setSocialError(err.response?.data?.error?.message || "处理好友申请失败");
+    } finally {
+      setFriendActionId(null);
+    }
+  };
+
+  const onCreateWorldChannel = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!worldId || !newChannelName.trim()) {
+      return;
+    }
+
+    setCreatingChannel(true);
+    setChatError(null);
+    try {
+      await http.post(`/worlds/${worldId}/chat-channels`, { name: newChannelName.trim() });
+      setShowCreateChannelModal(false);
+      setNewChannelName("");
+      await loadWorldChannels();
+    } catch (err: any) {
+      setChatError(err.response?.data?.error?.message || "创建频道失败");
+    } finally {
+      setCreatingChannel(false);
+    }
+  };
+
+  const onInviteToCurrentChannel = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!worldId || !currentWorldChannel || !inviteUserId) {
+      return;
+    }
+
+    setInvitingUser(true);
+    setChatError(null);
+    try {
+      await http.post(`/worlds/${worldId}/chat-channels/${currentWorldChannel.key}/invite`, { userId: inviteUserId });
+      setShowInviteModal(false);
+      setInviteUserId("");
+      await loadWorldChannels();
+    } catch (err: any) {
+      setChatError(err.response?.data?.error?.message || "邀请玩家失败");
+    } finally {
+      setInvitingUser(false);
+    }
+  };
+
+  const onSendChat = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedChannel || !chatInput.trim()) {
+      return;
+    }
+
+    setChatSending(true);
+    setChatError(null);
+    const content = chatInput;
+    setChatInput("");
+
+    if (selectedChannel.scope === "GLOBAL") {
+      socket.emit(SOCKET_EVENTS.globalMessageSend, { content, channelKey: selectedChannel.key }, (result?: { ok?: boolean; error?: string }) => {
+        if (!result?.ok) {
+          setChatError(result?.error || "发送消息失败");
+          setChatInput(content);
+        }
+        setChatSending(false);
+      });
+      return;
+    }
+
+    socket.emit(SOCKET_EVENTS.worldMessageSend, { worldId, content, channelKey: selectedChannel.key }, (result?: { ok?: boolean; error?: string }) => {
+      if (!result?.ok) {
+        setChatError(result?.error || "发送消息失败");
+        setChatInput(content);
       }
+      setChatSending(false);
     });
-  }, [worldId, selectedSceneId, socketReady]);
-
-  useEffect(() => {
-    if (!selectedSceneId) {
-      setRenameSceneName("");
-      return;
-    }
-
-    const selected = scenes.find((item) => item.id === selectedSceneId);
-    setRenameSceneName(selected?.name ?? "");
-  }, [scenes, selectedSceneId]);
-
-  const onMoveToken = (tokenId: string, x: number, y: number, ownerUserId?: string | null, characterId?: string | null) => {
-    if (!worldId) {
-      return;
-    }
-    if (!selectedSceneId) {
-      setError("请先选择场景");
-      return;
-    }
-
-    socket.emit(
-      SOCKET_EVENTS.sceneTokenMove,
-      { worldId, sceneId: selectedSceneId, tokenId, x, y, ownerUserId, characterId },
-      (result: { ok: boolean; error?: string }) => {
-        if (!result.ok) {
-          setError(result.error || "同步 token 失败");
-        }
-      }
-    );
-  };
-
-  const onCenterToken = () => {
-    if (!user?.id) {
-      return;
-    }
-
-    const tokenId = selectedCharacter ? `token:character:${selectedCharacter.id}` : getMyTokenId(user.id);
-    const ownerUserId = selectedCharacter?.userId ?? user.id;
-    onMoveToken(tokenId, 220, 150, ownerUserId, selectedCharacter?.id ?? null);
-  };
-
-  const onAddMyToken = () => {
-    if (!user?.id) {
-      return;
-    }
-
-    const myTokenId = selectedCharacter ? `token:character:${selectedCharacter.id}` : getMyTokenId(user.id);
-    const randomX = 60 + Math.floor(Math.random() * 480);
-    const randomY = 50 + Math.floor(Math.random() * 220);
-    onMoveToken(myTokenId, randomX, randomY, selectedCharacter?.userId ?? user.id, selectedCharacter?.id ?? null);
-  };
-
-  const onCreateCharacter = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!worldId || !newCharacterName.trim()) {
-      return;
-    }
-
-    setCreatingCharacter(true);
-    try {
-      const resp = await http.post(`/worlds/${worldId}/characters`, {
-        name: newCharacterName,
-        type: newCharacterType
-      });
-
-      const created = resp.data?.data as CharacterItem;
-      setCharacters((prev) => [...prev, created]);
-      setSelectedCharacterId(created.id);
-      setNewCharacterName("");
-      setNewCharacterType("PC");
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || "创建角色失败");
-    } finally {
-      setCreatingCharacter(false);
-    }
-  };
-
-  const onSaveCharacter = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!worldId || !selectedCharacterId) {
-      return;
-    }
-
-    const hp = Math.max(0, Number(editHp) || 0);
-    const mp = Math.max(0, Number(editMp) || 0);
-    const level = Math.max(1, Number(editLevel) || 1);
-    const className = editClassName.trim() || "unknown";
-
-    setSavingCharacter(true);
-    try {
-      const resp = await http.put(`/worlds/${worldId}/characters/${selectedCharacterId}`, {
-        name: editCharacterName,
-        stats: {
-          hp,
-          mp
-        },
-        snapshot: {
-          level,
-          class: className
-        }
-      });
-
-      const updated = resp.data?.data as CharacterItem;
-      setCharacters((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || "保存角色失败");
-    } finally {
-      setSavingCharacter(false);
-    }
-  };
-
-  const onCreateScene = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!worldId || !newSceneName.trim()) {
-      return;
-    }
-
-    setCreatingScene(true);
-    try {
-      const resp = await http.post(`/worlds/${worldId}/scenes`, { name: newSceneName });
-      const created = resp.data?.data as SceneItem;
-      setScenes((prev) => [...prev, created]);
-      setSelectedSceneId(created.id);
-      setNewSceneName("");
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || "创建场景失败");
-    } finally {
-      setCreatingScene(false);
-    }
-  };
-
-  const onRenameScene = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!worldId || !selectedSceneId || !renameSceneName.trim()) {
-      return;
-    }
-
-    setRenamingScene(true);
-    try {
-      const resp = await http.put(`/worlds/${worldId}/scenes/${selectedSceneId}`, { name: renameSceneName });
-      const updated = resp.data?.data as SceneItem;
-      setScenes((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-      setRenameSceneName(updated.name);
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || "重命名场景失败");
-    } finally {
-      setRenamingScene(false);
-    }
-  };
-
-  const onDeleteScene = async () => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    if (scenes.length <= 1) {
-      setError("至少保留一个场景");
-      return;
-    }
-
-    setDeletingScene(true);
-    try {
-      await http.delete(`/worlds/${worldId}/scenes/${selectedSceneId}`);
-      const sceneResp = await http.get(`/worlds/${worldId}/scenes`);
-      const sceneItems = (sceneResp.data?.data ?? []) as SceneItem[];
-      setScenes(sceneItems);
-      if (sceneItems.length > 0) {
-        setSelectedSceneId(sceneItems[0].id);
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || "删除场景失败");
-    } finally {
-      setDeletingScene(false);
-    }
-  };
-
-  const onMoveScene = async (direction: "UP" | "DOWN") => {
-    if (!worldId || !selectedSceneId) {
-      return;
-    }
-
-    setSortingScene(true);
-    try {
-      const resp = await http.patch(`/worlds/${worldId}/scenes/${selectedSceneId}/sort`, { direction });
-      const updatedScenes = (resp.data?.data ?? []) as SceneItem[];
-      setScenes(updatedScenes);
-    } catch (err: any) {
-      setError(err?.response?.data?.error?.message || "调整场景顺序失败");
-    } finally {
-      setSortingScene(false);
-    }
-  };
-
-  const onSendWorldMessage = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!worldId || !worldChatInput.trim()) {
-      return;
-    }
-    if (!selectedSceneId) {
-      setError("请先选择场景");
-      return;
-    }
-    if (!canSendCurrentChannel) {
-      setError("当前频道仅 GM 可发送消息");
-      return;
-    }
-
-    setWorldChatSending(true);
-    const content = worldChatInput;
-    setWorldChatInput("");
-
-    socket.emit(
-      SOCKET_EVENTS.worldMessageSend,
-      { worldId, sceneId: selectedSceneId, content, channelKey: worldChatChannel },
-      (result: { ok: boolean; error?: string }) => {
-        if (!result.ok) {
-          setError(result.error || "发送世界聊天失败");
-          setWorldChatInput(content);
-        }
-        setWorldChatSending(false);
-      }
-    );
   };
 
   return (
-    <section className="world-page">
-      <div className="world-hero">
-        <div className="world-hero__copy">
-          <h1>{worldName}</h1>
-          <p>JRPG 式奇幻冒险舞台。这里是场景、角色、事件与战斗的总控制台。</p>
-          <div className="world-hero__actions">
-            <button
-              className="world-hero__back"
-              onClick={() => {
-                navigate("/lobby");
-              }}
-              type="button"
-            >
-              返回大厅
-            </button>
-            <span className="world-hero__hint">当前世界的所有操作都会保留在这一页，离开后也能从大厅重新进入。</span>
-          </div>
-        </div>
-        <div className="world-status-bar">
-          <span className="world-status-pill">联机：{socketReady ? "已连接" : "未连接"}</span>
-          <span className="world-status-pill">在线：{onlineCount}</span>
-          <span className="world-status-pill">身份：{myRole || "未知"}</span>
-          <span className="world-status-pill">场景：{scenes.length}</span>
-        </div>
-      </div>
-      {error ? <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">{error}</div> : null}
-      <div className="world-layout">
-        <aside className="world-column world-column--left">
-          <ScenePanel
-            scenes={scenes}
-            selectedSceneId={selectedSceneId}
-            createName={newSceneName}
-            renameName={renameSceneName}
-            creating={creatingScene}
-            renaming={renamingScene}
-            deleting={deletingScene}
-            sorting={sortingScene}
-            canMoveUp={canMoveSceneUp}
-            canMoveDown={canMoveSceneDown}
-            onSelectScene={setSelectedSceneId}
-            onCreateNameChange={setNewSceneName}
-            onRenameNameChange={setRenameSceneName}
-            onCreateScene={onCreateScene}
-            onRenameScene={onRenameScene}
-            onDeleteScene={onDeleteScene}
-            onMoveSceneUp={() => void onMoveScene("UP")}
-            onMoveSceneDown={() => void onMoveScene("DOWN")}
-          />
-          <TokenPanel
-            tokenCount={tokenList.length}
-            selectedCharacterName={selectedCharacter?.name ?? ""}
-            onAddMyToken={onAddMyToken}
-            onCenterToken={onCenterToken}
-          />
-          <CharacterPanel
-            characters={characters}
-            selectedCharacterId={selectedCharacterId}
-            onSelectCharacter={setSelectedCharacterId}
-            creating={creatingCharacter}
-            createName={newCharacterName}
-            createType={newCharacterType}
-            onCreateNameChange={setNewCharacterName}
-            onCreateTypeChange={setNewCharacterType}
-            onCreateCharacter={onCreateCharacter}
-            editName={editCharacterName}
-            editHp={editHp}
-            editMp={editMp}
-            editLevel={editLevel}
-            editClassName={editClassName}
-            saving={savingCharacter}
-            onEditNameChange={setEditCharacterName}
-            onEditHpChange={setEditHp}
-            onEditMpChange={setEditMp}
-            onEditLevelChange={setEditLevel}
-            onEditClassNameChange={setEditClassName}
-            onSaveCharacter={onSaveCharacter}
-          />
-          <MeasurePanel />
-          <DrawPanel />
-        </aside>
+    <section className="world-refactor-page">
+      <button
+        type="button"
+        className="world-refactor-top-back"
+        onClick={() => {
+          navigate("/lobby");
+        }}
+      >
+        返回大厅
+      </button>
 
-        <div className="world-column world-column--center">
-          <WorldCanvas
-            tokens={tokenList}
-            onMoveToken={onMoveToken}
-            gridEnabled={sceneVisualState?.grid.enabled ?? true}
-            gridUnitFeet={sceneVisualState?.grid.unitFeet ?? 5}
-          />
-          <SceneVisualPanel
-            visualState={sceneVisualState}
-            loading={sceneVisualLoading}
-            saving={sceneVisualSaving}
-            canManage={canManageSceneRuntime}
-            onRefresh={() => {
-              void loadSceneVisualState();
-            }}
-            onPatch={(input) => {
-              void onPatchSceneVisualState(input);
-            }}
-          />
-          <SceneCombatPanel
-            combatState={sceneCombatState}
-            loading={sceneCombatLoading}
-            saving={sceneCombatSaving}
-            advancing={sceneCombatAdvancing}
-            canManage={canManageSceneRuntime}
-            onRefresh={() => {
-              void loadSceneCombatState();
-            }}
-            onSave={(input) => {
-              void onSaveSceneCombatState(input);
-            }}
-            onNextTurn={() => {
-              void onAdvanceSceneCombatTurn();
-            }}
-          />
-        </div>
+      <button
+        className="lobby-user-fab"
+        type="button"
+        ref={socialTriggerRef}
+        title="社交中心"
+        onClick={() => {
+          setIsSocialOpen((prev) => !prev);
+          setSocialTab("friends");
+          setSocialError(null);
+        }}
+        aria-label="打开社交中心"
+      >
+        {userButtonLabel}
+      </button>
 
-        <aside className="world-column world-column--right">
-          <RuntimePanel
-            runtimeState={runtimeState}
-            moduleCount={runtimeModules.length}
-            loading={runtimeLoading}
-            errorSummary={runtimeState?.status === "error" ? runtimeState.message || "运行时异常" : null}
-            onRefresh={() => {
-              void loadRuntimeState();
-            }}
-          />
-          <ModulePanel
-            modules={runtimeModules}
-            myRole={myRole}
-            loading={moduleLoading}
-            togglingModuleKey={togglingModuleKey}
-            onRefresh={() => {
-              void loadRuntimeModules();
-            }}
-            onToggle={(module) => {
-              void onToggleRuntimeModule(module);
-            }}
-          />
-          <StoryEventPanel
-            myRole={myRole}
-            loading={storyEventLoading}
-            events={storyEvents}
-            cards={storyEventCards}
-            searchKeyword={storySearchKeyword}
-            searchEventStatus={storySearchEventStatus}
-            searchChannelKey={storySearchChannelKey}
-            searchHours={storySearchHours}
-            searching={storySearching}
-            searchResult={storySearchResult}
-            onRefresh={() => {
-              void loadStoryEvents();
-            }}
-            onCreateEvent={(payload) => {
-              void onCreateStoryEvent(payload);
-            }}
-            onAddOption={(eventId, payload) => {
-              void onAddStoryEventOption(eventId, payload);
-            }}
-            onSubmitCheck={(eventId, optionId, payload) => {
-              void onSubmitStoryEventCheck(eventId, optionId, payload);
-            }}
-            onResolveEvent={(eventId, payload) => {
-              void onResolveStoryEvent(eventId, payload);
-            }}
-            onCreateNarrativeRequest={(eventId, payload) => {
-              void onCreateStoryNarrativeRequest(eventId, payload);
-            }}
-            onDecideNarrativeRequest={(eventId, requestId, payload) => {
-              void onDecideStoryNarrativeRequest(eventId, requestId, payload);
-            }}
-            onSearchKeywordChange={setStorySearchKeyword}
-            onSearchEventStatusChange={setStorySearchEventStatus}
-            onSearchChannelKeyChange={setStorySearchChannelKey}
-            onSearchHoursChange={setStorySearchHours}
-            onSearch={() => {
-              void onSearchStoryEventContext();
-            }}
-            onClearSearch={onClearStoryEventSearch}
-            onLocateMessage={(messageId, channelKey) => {
-              void onLocateWorldMessage(messageId, channelKey);
-            }}
-            focusedEventId={focusedStoryEventId}
-            onLocateEvent={onLocateStoryEvent}
-          />
-        </aside>
-      </div>
+      <section className="world-refactor-scene-banner" aria-label="场景切换横幅占位">
+        <strong>场景切换横幅占位</strong>
+        <span>世界 ID：{worldId || "未选择"}，后续在这里接入场景列表、切换、排序等能力</span>
+      </section>
 
-      <article className="world-card world-chat-card">
-        <div className="mb-2 flex items-center justify-between">
-          <strong>世界内聊天</strong>
-          <div className="flex items-center gap-2 world-chat-card__toolbar">
-            <select
-              className="rounded border px-2 py-1 text-xs"
-              value={worldChatChannel}
-              onChange={(e) => setWorldChatChannel(e.target.value as WorldChatChannel)}
-            >
-              <option value="OOC">OOC{worldChatUnread.OOC > 0 ? ` (${worldChatUnread.OOC})` : ""}</option>
-              <option value="IC">IC{worldChatUnread.IC > 0 ? ` (${worldChatUnread.IC})` : ""}</option>
-              <option value="SYSTEM">SYSTEM{worldChatUnread.SYSTEM > 0 ? ` (${worldChatUnread.SYSTEM})` : ""}</option>
-            </select>
-            <span className="text-xs text-gray-500 world-chat-card__count">{worldMessages.length} 条</span>
-          </div>
-        </div>
-        {canUseAssistant ? (
-          <div className="mb-3 rounded border border-cyan-200 bg-cyan-50 p-2">
-            <p className="mb-1 text-xs font-semibold text-cyan-900">AI 助手草案生成</p>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 rounded border px-2 py-1 text-xs"
-                value={assistantInstruction}
-                onChange={(e) => setAssistantInstruction(e.target.value)}
-                placeholder="可选：补充本次总结指令，例如“总结本场景冲突与结局”"
-                maxLength={120}
-              />
-              <button
-                className="rounded border px-3 py-1 text-xs disabled:opacity-60"
-                type="button"
-                onClick={() => {
-                  void onGenerateAssistantResponse();
-                }}
-                disabled={assistantGenerating}
-              >
-                {assistantGenerating ? "生成中..." : "生成草案"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-        <div className="mb-3 max-h-60 space-y-2 overflow-y-auto rounded border bg-gray-50 p-2 world-chat-feed">
-          {worldMessages.length === 0 ? <p className="text-sm text-gray-500">暂无世界消息</p> : null}
-          {worldMessages.map((message) => (
-            <div className={`rounded p-2 text-sm world-chat-message ${focusedWorldMessageId === message.id ? "bg-yellow-100 ring-1 ring-yellow-400" : "bg-white"}`} key={message.id}>
-              <p className="text-xs text-gray-500 world-chat-message__meta">
-                <span className="world-channel-badge">{message.channelKey || "OOC"}</span> {message.fromUser.displayName || message.fromUser.username} · {new Date(message.createdAt).toLocaleTimeString()}
-              </p>
-              {message.metadata?.storyEventCheckTag ? (
-                <p
-                  className="mb-1 inline-block rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
-                  title={`事件：${message.metadata.storyEventCheckTag.eventTitle}｜选项：${message.metadata.storyEventCheckTag.optionLabel}｜DC：${message.metadata.storyEventCheckTag.dc ?? "-"}`}
+      <div className="world-refactor-layout">
+        <aside className="world-refactor-col world-refactor-col--left">
+          <section className="lobby-chat-sidebar world-chat-sidebar">
+            <div className="lobby-chat-sidebar__header">
+              <div className="lobby-chat-sidebar__header-main world-chat-sidebar__header-main">
+                <h2>{selectedChannelName}</h2>
+                <button
+                  className="lobby-chat-sidebar__channel-btn"
+                  type="button"
+                  ref={channelTriggerRef}
+                  onClick={() => setShowChannelModal((prev) => !prev)}
                 >
-                  [技能检定-{message.metadata.storyEventCheckTag.optionLabel}-结果{message.metadata.storyEventCheckTag.finalTotal ?? "?"}]
-                </p>
-              ) : null}
-              {message.metadata?.storyEventCard ? (
-                <div className="mb-1 rounded border border-amber-300 bg-amber-50 p-2">
-                  <p className="text-xs font-semibold text-amber-800">事件结算卡片</p>
-                  <p className="text-xs text-amber-700">{message.metadata.storyEventCard.title}</p>
-                  <p className="text-xs text-amber-700">{message.metadata.storyEventCard.summary}</p>
-                  {Array.isArray(message.metadata.storyEventCard.timeline) && message.metadata.storyEventCard.timeline.length > 0 ? (
-                    <p className="text-xs text-amber-700">经过：{message.metadata.storyEventCard.timeline.join("；")}</p>
-                  ) : null}
-                  {message.metadata.storyEventCard.finalOutcome ? <p className="text-xs text-amber-700">后果：{message.metadata.storyEventCard.finalOutcome}</p> : null}
-                </div>
-              ) : null}
-              {message.metadata?.storyPointProposalTag ? (
-                <div className="mb-1 rounded border border-emerald-300 bg-emerald-50 p-2">
-                  <p className="text-xs font-semibold text-emerald-800">物语点提案</p>
-                  <p className="text-xs text-emerald-700">事件：{message.metadata.storyPointProposalTag.eventTitle}</p>
-                  <p className="text-xs text-emerald-700">提案人：{message.metadata.storyPointProposalTag.proposerUserId}</p>
-                  <p className="text-xs text-emerald-700">消耗：{message.metadata.storyPointProposalTag.cost} · 状态：{message.metadata.storyPointProposalTag.status}</p>
-                  <p className="text-xs text-emerald-700">理由：{message.metadata.storyPointProposalTag.reason}</p>
-                </div>
-              ) : null}
-              {message.metadata?.storyPointProposalDecisionTag ? (
-                <div className="mb-1 rounded border border-cyan-300 bg-cyan-50 p-2">
-                  <p className="text-xs font-semibold text-cyan-800">物语点提案裁决</p>
-                  <p className="text-xs text-cyan-700">结果：{message.metadata.storyPointProposalDecisionTag.status}</p>
-                  {message.metadata.storyPointProposalDecisionTag.gmNote ? (
-                    <p className="text-xs text-cyan-700">GM备注：{message.metadata.storyPointProposalDecisionTag.gmNote}</p>
-                  ) : null}
-                </div>
-              ) : null}
-              {message.metadata?.aiAssistantContextTag ? (
-                <div className="mb-1 rounded border border-violet-300 bg-violet-50 p-2">
-                  <p className="text-xs font-semibold text-violet-800">AI 助手草案</p>
-                  <p className="text-xs text-violet-700">
-                    模式：{message.metadata.aiAssistantContextTag.mode} · 事件卡 {message.metadata.aiAssistantContextTag.storyEventCardCount} · 最近聊天 {message.metadata.aiAssistantContextTag.recentMessageCount}
-                  </p>
-                  {message.metadata.aiAssistantContextTag.instruction ? (
-                    <p className="text-xs text-violet-700">指令：{message.metadata.aiAssistantContextTag.instruction}</p>
-                  ) : null}
-                </div>
-              ) : null}
-              <p className="world-chat-message__content">{message.content}</p>
+                  频道列表
+                </button>
+
+                {canManageChannels && selectedChannel?.scope === "WORLD" ? (
+                  <>
+                    <button className="lobby-chat-sidebar__channel-btn" type="button" onClick={() => setShowCreateChannelModal(true)}>建立频道</button>
+                    <button className="lobby-chat-sidebar__channel-btn" type="button" onClick={() => setShowInviteModal(true)}>邀请玩家</button>
+                  </>
+                ) : null}
+
+                {showChannelModal ? (
+                  <div className="lobby-channel-select world-channel-select" ref={channelDropdownRef}>
+                    <p className="world-channel-select__group">全局频道</p>
+                    {channelOptions.global.map((channel) => {
+                      const active = channel.id === selectedChannelId;
+                      const unread = unreadChannelMap[channel.id] ?? 0;
+                      return (
+                        <button
+                          key={channel.id}
+                          className={`lobby-channel-select__item ${active ? "is-active" : ""}`}
+                          type="button"
+                          onClick={() => {
+                            setSelectedChannelId(channel.id);
+                            setShowChannelModal(false);
+                          }}
+                        >
+                          <span>{channel.label}</span>
+                          <span className="lobby-channel-select__meta">{unread > 0 ? <strong>{unread}</strong> : null}</span>
+                        </button>
+                      );
+                    })}
+
+                    <p className="world-channel-select__group">世界频道</p>
+                    {channelOptions.world.length === 0 ? <p className="text-sm text-gray-500">暂无可用世界频道</p> : null}
+                    {channelOptions.world.map((channel) => {
+                      const active = channel.id === selectedChannelId;
+                      const unread = unreadChannelMap[channel.id] ?? 0;
+                      return (
+                        <button
+                          key={channel.id}
+                          className={`lobby-channel-select__item ${active ? "is-active" : ""}`}
+                          type="button"
+                          onClick={() => {
+                            setSelectedChannelId(channel.id);
+                            setShowChannelModal(false);
+                          }}
+                        >
+                          <span>{channel.label}</span>
+                          <span className="lobby-channel-select__meta">{unread > 0 ? <strong>{unread}</strong> : null}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+
+              <span
+                className={`lobby-chat__status ${
+                  socketStatus === "connected" ? "is-connected" : socketStatus === "reconnecting" ? "is-reconnecting" : "is-disconnected"
+                }`}
+                title={socketStatus === "connected" ? "实时连接中" : "连接异常"}
+              >
+                •
+              </span>
             </div>
-          ))}
+
+            {socketStatus !== "connected" ? (
+              <div className="lobby-chat-sidebar__alert">
+                <span>{socketStatus === "reconnecting" ? "实时连接异常，正在自动重连" : "实时连接已断开"}</span>
+                <button type="button" onClick={reconnectSocket}>重连</button>
+              </div>
+            ) : null}
+
+            {chatError ? <div className="lobby-main-content__error world-chat-sidebar__error">{chatError}</div> : null}
+
+            <div className="lobby-chat-sidebar__messages">
+              {chatMessages.length === 0 ? <p className="lobby-chat-sidebar__empty">当前频道暂无消息</p> : null}
+              {chatMessages.map((message, index) => {
+                const now = new Date();
+                const currentDate = new Date(message.createdAt);
+                const prevDate = index > 0 ? new Date(chatMessages[index - 1].createdAt) : null;
+                const showDayDivider = prevDate ? !isSameDate(currentDate, prevDate) : !isSameDate(currentDate, now);
+
+                return (
+                  <Fragment key={message.id}>
+                    {showDayDivider ? <p className="lobby-chat-sidebar__day-divider">{formatCrossDayDivider(currentDate, now)}</p> : null}
+                    <div className="lobby-chat-sidebar__message">
+                      <p className="lobby-chat-sidebar__message-meta">
+                        <span className="lobby-badge">{message.channelKey || "LOBBY"}</span>
+                        <span>{displayNameOf(message.fromUser)}</span>
+                        <span>{formatTimeOnly(currentDate)}</span>
+                      </p>
+                      <p className="lobby-chat-sidebar__message-content">{message.content}</p>
+                    </div>
+                  </Fragment>
+                );
+              })}
+            </div>
+
+            <form className="lobby-chat-sidebar__form" onSubmit={onSendChat}>
+              <textarea
+                className="lobby-chat-sidebar__input"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder={canSendCurrentChannel ? "输入频道消息" : "当前频道暂不支持发送"}
+                maxLength={1000}
+                disabled={!canSendCurrentChannel || socketStatus !== "connected"}
+                rows={3}
+              />
+              <button className="lobby-chat-sidebar__send" type="submit" disabled={chatSending || !canSendCurrentChannel || socketStatus !== "connected"}>
+                {chatSending ? "发送中..." : "发送"}
+              </button>
+            </form>
+          </section>
+        </aside>
+
+        <main className="world-refactor-col world-refactor-col--center">
+          <div className="world-refactor-placeholder">
+            <h3>中央容器</h3>
+            <p>宽度占比 60%</p>
+            <p>当前仅占位，不放业务内容</p>
+          </div>
+        </main>
+
+        <aside className="world-refactor-col world-refactor-col--right">
+          <div className="world-refactor-placeholder">
+            <h3>右侧容器</h3>
+            <p>宽度占比 19%</p>
+            <p>当前仅占位，不放业务内容</p>
+          </div>
+        </aside>
+      </div>
+
+      {showCreateChannelModal ? (
+        <div className="lobby-social-modal-bg" onClick={() => setShowCreateChannelModal(false)}>
+          <div className="lobby-social-modal-inner" onClick={(e) => e.stopPropagation()}>
+            <h3>创建新频道</h3>
+            <form className="space-y-3" onSubmit={onCreateWorldChannel}>
+              <input
+                className="w-full rounded border px-3 py-2"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                placeholder="请输入频道名字"
+                maxLength={40}
+              />
+              <div className="lobby-social-modal__actions">
+                <button type="button" onClick={() => setShowCreateChannelModal(false)}>取消</button>
+                <button type="submit" disabled={creatingChannel}>{creatingChannel ? "创建中..." : "创建"}</button>
+              </div>
+            </form>
+          </div>
         </div>
-        <form className="flex gap-2 world-chat-form" onSubmit={onSendWorldMessage}>
-          <input
-            className="flex-1 rounded border px-3 py-2"
-            value={worldChatInput}
-            onChange={(e) => setWorldChatInput(e.target.value)}
-            placeholder={canSendCurrentChannel ? "输入世界频道消息" : "当前频道仅 GM 可发送"}
-            maxLength={1000}
-            disabled={!canSendCurrentChannel}
-          />
-          <button className="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-60" disabled={worldChatSending || !socketReady || !canSendCurrentChannel} type="submit">
-            {worldChatSending ? "发送中..." : "发送"}
-          </button>
-        </form>
-      </article>
+      ) : null}
+
+      {showInviteModal ? (
+        <div className="lobby-social-modal-bg" onClick={() => setShowInviteModal(false)}>
+          <div className="lobby-social-modal-inner" onClick={(e) => e.stopPropagation()}>
+            <h3>邀请玩家到当前频道</h3>
+            {currentWorldChannel?.access === "ALL" ? (
+              <p className="text-sm text-gray-500">当前频道为公开频道，无需单独邀请。</p>
+            ) : (
+              <form className="space-y-3" onSubmit={onInviteToCurrentChannel}>
+                <select className="w-full rounded border px-3 py-2" value={inviteUserId} onChange={(e) => setInviteUserId(e.target.value)}>
+                  <option value="">请选择玩家</option>
+                  {inviteCandidates.map((member) => (
+                    <option key={member.userId} value={member.userId}>{displayNameOf(member)}（{member.worldRole}）</option>
+                  ))}
+                </select>
+                <div className="lobby-social-modal__actions">
+                  <button type="button" onClick={() => setShowInviteModal(false)}>取消</button>
+                  <button type="submit" disabled={!inviteUserId || invitingUser}>{invitingUser ? "邀请中..." : "发送邀请"}</button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {isSocialOpen ? (
+        <section className="lobby-social-modal lobby-social-modal--dropdown" ref={socialDropdownRef}>
+          <div className="lobby-social__header">
+            <p className="lobby-social__title">社交中心</p>
+            <div className="lobby-social__nickname-row">
+              <input value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder="显示昵称" maxLength={40} />
+              <button type="button" onClick={() => void onSaveNickname()} disabled={savingNickname}>{savingNickname ? "保存中..." : "保存"}</button>
+            </div>
+          </div>
+
+          <div className="lobby-social__tabs">
+            <button type="button" className={socialTab === "friends" ? "is-active" : ""} onClick={() => setSocialTab("friends")}>好友</button>
+            <button type="button" className={socialTab === "requests" ? "is-active" : ""} onClick={() => setSocialTab("requests")}>好友申请</button>
+          </div>
+
+          <div className="lobby-social__body">
+            {socialLoading ? <p className="text-sm text-gray-500">社交数据加载中...</p> : null}
+
+            {!socialLoading && socialTab === "friends" ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="lobby-social__section-title">在线好友</p>
+                  {onlineFriends.length === 0 ? <p className="text-sm text-gray-500">暂无在线好友</p> : null}
+                  {onlineFriends.map((item) => (
+                    <div className="lobby-social__friend-item" key={`online-${item.id}`}>
+                      <span>{displayNameOf(item.user)}</span>
+                      <span className="lobby-social__friend-status is-online">在线</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <p className="lobby-social__section-title">离线好友</p>
+                  {offlineFriends.length === 0 ? <p className="text-sm text-gray-500">暂无离线好友</p> : null}
+                  {offlineFriends.map((item) => (
+                    <div className="lobby-social__friend-item" key={`offline-${item.id}`}>
+                      <span>{displayNameOf(item.user)}</span>
+                      <span className="lobby-social__friend-status">离线</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {!socialLoading && socialTab === "requests" ? (
+              <div className="space-y-2">
+                {incomingRequests.length === 0 ? <p className="text-sm text-gray-500">暂无待处理好友申请</p> : null}
+                {incomingRequests.map((item) => (
+                  <div className="lobby-social__request-item" key={item.id}>
+                    <div>
+                      <p className="lobby-social__request-name">{displayNameOf(item.fromUser)}</p>
+                      <p className="text-xs text-gray-500">账号：{item.fromUser.username}</p>
+                    </div>
+                    <div className="lobby-social__request-actions">
+                      <button type="button" className="lobby-social__accept" onClick={() => { void onHandleFriendRequest(item.id, "accept"); }} disabled={friendActionId === item.id}>✓</button>
+                      <button type="button" className="lobby-social__reject" onClick={() => { void onHandleFriendRequest(item.id, "reject"); }} disabled={friendActionId === item.id}>✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          {socialError ? <div className="lobby-social__error">{socialError}</div> : null}
+
+          <div className="lobby-social__footer">
+            <button type="button" onClick={() => { setShowAddFriendModal(true); setSocialError(null); }}>添加好友</button>
+            <button type="button" className="lobby-social__logout" onClick={onLogout}>退出登录</button>
+          </div>
+        </section>
+      ) : null}
+
+      {showAddFriendModal ? (
+        <div className="lobby-social-modal-bg" onClick={() => setShowAddFriendModal(false)}>
+          <div className="lobby-social-modal-inner" onClick={(e) => e.stopPropagation()}>
+            <h3>添加好友</h3>
+            <p className="text-sm text-gray-600">输入对方昵称或账号名，发送好友申请。</p>
+            <form className="space-y-3" onSubmit={onSendFriendRequest}>
+              <input
+                className="w-full rounded border px-3 py-2"
+                value={friendQuery}
+                onChange={(e) => setFriendQuery(e.target.value)}
+                placeholder="昵称或账号名"
+                maxLength={40}
+              />
+              <div className="lobby-social-modal__actions">
+                <button type="button" onClick={() => { setShowAddFriendModal(false); setFriendQuery(""); }}>取消</button>
+                <button type="submit" disabled={sendingFriendRequest}>{sendingFriendRequest ? "发送中..." : "发送申请"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
