@@ -135,13 +135,13 @@ export function WorldCanvas({
         style={{
           backgroundImage: gridEnabled
             ? `
-              linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
-              radial-gradient(circle at 30% 20%, rgba(56, 189, 248, 0.2), transparent 55%),
-              radial-gradient(circle at 78% 70%, rgba(251, 191, 36, 0.2), transparent 48%),
-              linear-gradient(165deg, rgba(9, 26, 62, 0.95), rgba(7, 15, 36, 0.97))
+              linear-gradient(rgba(47, 127, 216, 0.14) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(47, 127, 216, 0.14) 1px, transparent 1px),
+              radial-gradient(circle at 30% 20%, rgba(120, 190, 255, 0.34), transparent 55%),
+              radial-gradient(circle at 78% 70%, rgba(255, 183, 90, 0.26), transparent 48%),
+              linear-gradient(165deg, rgba(249, 253, 255, 0.96), rgba(225, 240, 255, 0.94))
             `
-            : "radial-gradient(circle at 35% 25%, rgba(56, 189, 248, 0.26), transparent 55%), linear-gradient(165deg, rgba(9, 26, 62, 0.96), rgba(7, 15, 36, 0.98))",
+            : "radial-gradient(circle at 35% 25%, rgba(120, 190, 255, 0.36), transparent 55%), radial-gradient(circle at 80% 72%, rgba(255, 183, 90, 0.24), transparent 48%), linear-gradient(165deg, rgba(249, 253, 255, 0.96), rgba(225, 240, 255, 0.94))",
           backgroundSize: gridEnabled ? `${gridCellSize}px ${gridCellSize}px, ${gridCellSize}px ${gridCellSize}px, auto, auto, auto` : "auto",
         }}
       >

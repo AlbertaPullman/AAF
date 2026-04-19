@@ -10416,6 +10416,540 @@ body,
   line-height: 1.4;
 }
 
+/* Bright JRPG stage theme: blue / white / orange, prioritizing readability. */
+.world-stage-shell {
+  --world-accent: #2f7fd8;
+  --world-accent-strong: #0f5aa5;
+  --world-accent-soft: rgba(80, 158, 244, 0.16);
+  --world-gold: #f59e32;
+  --world-gold-soft: rgba(245, 158, 50, 0.18);
+  --world-panel: rgba(248, 252, 255, 0.94);
+  --world-panel-strong: rgba(255, 255, 255, 0.98);
+  --world-panel-soft: rgba(232, 244, 255, 0.86);
+  --world-panel-border: rgba(93, 145, 211, 0.32);
+  --world-panel-border-strong: rgba(245, 158, 50, 0.46);
+  --world-shadow: 0 18px 34px rgba(56, 111, 184, 0.16);
+  --world-text: #123f73;
+  --world-text-soft: #55759d;
+  --world-text-muted: #7b94b5;
+  background:
+    radial-gradient(circle at 16% 16%, rgba(210, 232, 255, 0.96), rgba(210, 232, 255, 0) 32%),
+    radial-gradient(circle at 82% 78%, rgba(255, 224, 190, 0.72), rgba(255, 224, 190, 0) 34%),
+    linear-gradient(145deg, #f7fbff 0%, #e4f0ff 48%, #f2f7ff 100%);
+}
+
+.world-stage-shell::before {
+  background:
+    linear-gradient(90deg, rgba(47, 127, 216, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(47, 127, 216, 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mix-blend-mode: multiply;
+  opacity: 0.62;
+}
+
+.world-stage-shell::after {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(222, 237, 255, 0.2));
+}
+
+.world-stage-shell--gm {
+  --world-accent: #2f7fd8;
+  --world-accent-strong: #0b579e;
+  --world-accent-soft: rgba(47, 127, 216, 0.16);
+  --world-gold: #ef8f22;
+}
+
+.world-stage-shell--assistant {
+  --world-accent: #278da1;
+  --world-accent-strong: #0f6676;
+  --world-accent-soft: rgba(39, 141, 161, 0.16);
+  --world-gold: #f59e32;
+}
+
+.world-stage-shell--player {
+  --world-accent: #347fd5;
+  --world-accent-strong: #145fa9;
+  --world-accent-soft: rgba(52, 127, 213, 0.16);
+  --world-gold: #f59e32;
+}
+
+.world-stage-shell--observer {
+  --world-accent: #6c89ac;
+  --world-accent-strong: #486989;
+  --world-accent-soft: rgba(108, 137, 172, 0.14);
+  --world-gold: #e69a45;
+}
+
+.world-stage-shell .world-fixed-battle-bar,
+.world-stage-shell .world-fixed-scene-stage,
+.world-stage-shell .world-fixed-system-panel,
+.world-stage-shell .world-fixed-left-middle-rect,
+.world-stage-shell .world-fixed-bottom-left-rect,
+.world-stage-shell .world-fixed-hud__panel,
+.world-stage-shell .world-system-overlay-dialog,
+.world-stage-shell .world-card,
+.world-stage-shell .world-system-window__item,
+.world-stage-shell .world-extension-pack-card,
+.world-stage-shell .world-player-manage-table-wrap,
+.world-stage-shell .world-stage-chat-message,
+.world-stage-shell .world-stage-assistant-card {
+  border-color: var(--world-panel-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 251, 255, 0.84)),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(229, 242, 255, 0.9));
+  box-shadow: var(--world-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.world-stage-shell .world-fixed-system-panel {
+  border-left-color: rgba(93, 145, 211, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(241, 248, 255, 0.96)),
+    radial-gradient(circle at top right, rgba(255, 184, 92, 0.12), transparent 38%);
+}
+
+.world-stage-shell .world-fixed-system-panel,
+.world-stage-shell .world-stage-tab-scroll,
+.world-stage-shell .world-system-config-page,
+.world-stage-shell .world-fixed-left-middle-rect,
+.world-stage-shell .world-fixed-bottom-left-rect,
+.world-stage-shell .world-fixed-party-rail .world-stage-party-stack {
+  scrollbar-color: rgba(245, 158, 50, 0.58) rgba(210, 229, 250, 0.72);
+}
+
+.world-stage-shell .world-fixed-system-panel::-webkit-scrollbar-track,
+.world-stage-shell .world-stage-tab-scroll::-webkit-scrollbar-track,
+.world-stage-shell .world-system-config-page::-webkit-scrollbar-track,
+.world-stage-shell .world-fixed-left-middle-rect::-webkit-scrollbar-track,
+.world-stage-shell .world-fixed-bottom-left-rect::-webkit-scrollbar-track {
+  background: rgba(210, 229, 250, 0.72);
+}
+
+.world-stage-shell .world-fixed-system-panel::-webkit-scrollbar-thumb,
+.world-stage-shell .world-stage-tab-scroll::-webkit-scrollbar-thumb,
+.world-stage-shell .world-system-config-page::-webkit-scrollbar-thumb,
+.world-stage-shell .world-fixed-left-middle-rect::-webkit-scrollbar-thumb,
+.world-stage-shell .world-fixed-bottom-left-rect::-webkit-scrollbar-thumb,
+.world-stage-shell .world-fixed-party-rail .world-stage-party-stack::-webkit-scrollbar-thumb {
+  border-color: rgba(247, 251, 255, 0.92);
+  background: linear-gradient(180deg, rgba(245, 158, 50, 0.7), rgba(77, 145, 222, 0.55));
+}
+
+.world-stage-shell .world-fixed-battle-bar {
+  border-color: rgba(245, 158, 50, 0.38);
+  background:
+    linear-gradient(90deg, rgba(255, 246, 229, 0.96), rgba(232, 244, 255, 0.96)),
+    rgba(255, 255, 255, 0.94);
+}
+
+.world-stage-shell .world-fixed-battle-bar__toggle,
+.world-stage-shell .world-stage-header-btn,
+.world-stage-shell .world-system-action-btn,
+.world-stage-shell .world-system-lobby-btn,
+.world-stage-shell .pack-panel__btn,
+.world-stage-shell .entity-mgr__add-btn,
+.world-stage-shell .entity-mgr__edit-btn,
+.world-stage-shell .entity-mgr__del-btn,
+.world-stage-shell .entity-mgr__close-btn,
+.world-stage-shell .entity-mgr__cancel-btn,
+.world-stage-shell .entity-mgr__save-btn,
+.world-stage-shell .entity-builder-list__add-btn,
+.world-stage-shell .entity-builder-list__remove-btn,
+.world-stage-shell .world-player-manage-save-btn {
+  border-color: rgba(100, 151, 217, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 247, 255, 0.94)),
+    linear-gradient(135deg, rgba(255, 181, 82, 0.14), rgba(75, 149, 231, 0.12));
+  color: var(--world-text);
+  box-shadow: 0 10px 20px rgba(65, 119, 187, 0.14);
+}
+
+.world-stage-shell .world-fixed-battle-bar__toggle {
+  color: #103f73;
+}
+
+.world-stage-shell .world-fixed-battle-slot,
+.world-stage-shell .world-stage-party-card,
+.world-stage-shell .world-online-list__row,
+.world-stage-shell .world-system-role-card,
+.world-stage-shell .pack-panel__preview,
+.world-stage-shell .pack-panel__result,
+.world-stage-shell .world-player-manage-loading,
+.world-stage-shell .world-player-manage-table thead th {
+  border-color: rgba(91, 143, 209, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(238, 247, 255, 0.9)),
+    radial-gradient(circle at top right, rgba(255, 184, 92, 0.12), transparent 44%);
+  color: var(--world-text);
+}
+
+.world-stage-shell .world-fixed-scene-stage {
+  border-color: rgba(76, 133, 207, 0.34);
+  background:
+    radial-gradient(circle at 23% 18%, rgba(109, 179, 255, 0.24), transparent 30%),
+    radial-gradient(circle at 82% 72%, rgba(255, 184, 92, 0.2), transparent 32%),
+    linear-gradient(155deg, rgba(246, 252, 255, 0.88), rgba(225, 238, 253, 0.7));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.72),
+    0 18px 34px rgba(57, 108, 176, 0.18);
+}
+
+.world-stage-shell .world-fixed-scene-stage__inner::before {
+  background:
+    linear-gradient(90deg, rgba(50, 104, 176, 0.06) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(50, 104, 176, 0.06) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.58), transparent 42%);
+  background-size: 32px 32px, 32px 32px, auto;
+}
+
+.world-stage-shell .world-board {
+  border-color: rgba(78, 139, 213, 0.38);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.78),
+    0 18px 32px rgba(57, 108, 176, 0.16);
+}
+
+.world-stage-shell .world-board::before {
+  border-color: rgba(245, 158, 50, 0.2);
+}
+
+.world-stage-shell .world-board::after {
+  box-shadow:
+    inset 0 0 46px rgba(52, 113, 188, 0.12),
+    inset 0 -24px 50px rgba(255, 183, 90, 0.08);
+}
+
+.world-stage-shell .world-board__hud {
+  border-color: rgba(95, 151, 219, 0.3);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--world-text);
+  box-shadow: 0 8px 18px rgba(65, 119, 187, 0.14);
+}
+
+.world-stage-shell .world-board__glow--one {
+  background: rgba(102, 176, 255, 0.2);
+}
+
+.world-stage-shell .world-board__glow--two {
+  background: rgba(255, 183, 90, 0.18);
+}
+
+.world-stage-shell .world-stage-scene-headline__body strong,
+.world-stage-shell .world-stage-header-copy strong,
+.world-stage-shell .world-stage-quick-panel__head strong,
+.world-stage-shell .world-system-role-card__head strong {
+  color: var(--world-text);
+}
+
+.world-stage-shell .world-stage-panel-kicker,
+.world-stage-shell .world-stage-header-copy .world-stage-panel-kicker {
+  color: var(--world-accent-strong);
+}
+
+.world-stage-shell .world-stage-scene-headline__body > span:last-child,
+.world-stage-shell .world-stage-header-copy span,
+.world-stage-shell .world-system-role-card p,
+.world-stage-shell .world-system-window__summary,
+.world-stage-shell .pack-panel__desc,
+.world-stage-shell .world-card p,
+.world-stage-shell .world-stage-notice,
+.world-stage-shell .world-stage-quick-panel__summary,
+.world-stage-shell .world-online-list__meta,
+.world-stage-shell .world-extension-pack-card__desc,
+.world-stage-shell .world-extension-pack-card__meta > span,
+.world-stage-shell .world-extension-pack-card__foot,
+.world-stage-shell .world-stage-readonly-note,
+.world-stage-shell .world-stage-meta-line,
+.world-stage-shell .world-combat-panel__head p,
+.world-stage-shell .world-combat-order__head p,
+.world-stage-shell .world-combat-order__identity p,
+.world-stage-shell .world-ability-exec__head p,
+.world-stage-shell .world-ability-exec__description,
+.world-stage-shell .world-ability-exec__result-head span,
+.world-stage-shell .world-ability-exec__result-lines p {
+  color: var(--world-text-soft);
+}
+
+.world-stage-shell .world-stage-badge,
+.world-stage-shell .world-stage-quick-panel__meta span,
+.world-stage-shell .world-stage-party-card__bars span,
+.world-stage-shell .world-stage-chat-message__badge,
+.world-stage-shell .world-ability-exec__meta span,
+.world-stage-shell .world-ability-exec__facts span,
+.world-stage-shell .world-stage-pill,
+.world-stage-shell .world-ability-exec__tag {
+  border-color: rgba(91, 143, 209, 0.24);
+  background: rgba(238, 247, 255, 0.9);
+  color: var(--world-text);
+}
+
+.world-stage-shell .world-stage-badge--gm,
+.world-stage-shell .world-online-list__role--gm,
+.world-stage-shell .world-stage-badge--clock,
+.world-stage-shell .world-stage-pill--accent {
+  border-color: rgba(245, 158, 50, 0.34);
+  background: rgba(255, 241, 220, 0.9);
+  color: #a55506;
+}
+
+.world-stage-shell .world-stage-badge--assistant,
+.world-stage-shell .world-online-list__role--assistant {
+  border-color: rgba(39, 141, 161, 0.3);
+  background: rgba(224, 250, 255, 0.88);
+  color: #0f6676;
+}
+
+.world-stage-shell .world-stage-badge--player,
+.world-stage-shell .world-online-list__role--player {
+  border-color: rgba(52, 127, 213, 0.3);
+  background: rgba(226, 241, 255, 0.9);
+  color: #145fa9;
+}
+
+.world-stage-shell .world-stage-badge--observer,
+.world-stage-shell .world-online-list__role--observer {
+  border-color: rgba(108, 137, 172, 0.3);
+  background: rgba(239, 244, 250, 0.9);
+  color: #486989;
+}
+
+.world-stage-shell .world-stage-badge--combat {
+  border-color: rgba(219, 91, 73, 0.28);
+  background: rgba(255, 236, 230, 0.9);
+  color: #a43b28;
+}
+
+.world-stage-shell .world-fixed-gauge {
+  border-color: rgba(245, 158, 50, 0.4);
+  background:
+    conic-gradient(from 20deg, rgba(255, 185, 89, 0.4), rgba(126, 185, 247, 0.32), rgba(255, 185, 89, 0.4)),
+    radial-gradient(circle, rgba(255, 255, 255, 0.96) 42%, rgba(228, 242, 255, 0.94) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.76),
+    0 18px 32px rgba(72, 119, 186, 0.16);
+}
+
+.world-stage-shell .world-fixed-gauge__ring {
+  border-color: rgba(47, 127, 216, 0.22);
+}
+
+.world-stage-shell .world-fixed-gauge__center strong,
+.world-stage-shell .world-stage-party-title,
+.world-stage-shell .world-online-list__name,
+.world-stage-shell .world-card strong,
+.world-stage-shell .world-system-window__item,
+.world-stage-shell .entity-mgr__title,
+.world-stage-shell .entity-mgr__editor-header h4,
+.world-stage-shell .pack-panel__title,
+.world-stage-shell .world-stage-chat-message__meta strong,
+.world-stage-shell .world-stage-battle-slot__name,
+.world-stage-shell .world-ability-exec__result-card strong {
+  color: var(--world-text);
+}
+
+.world-stage-shell .world-fixed-gauge__center span,
+.world-stage-shell .world-fixed-left-middle-rect span,
+.world-stage-shell .world-fixed-hud__panel span,
+.world-stage-shell .entity-mgr__summary,
+.world-stage-shell .entity-mgr__editor-header p,
+.world-stage-shell .entity-form__field small,
+.world-stage-shell .entity-form__section-head p,
+.world-stage-shell .pack-panel__preview-row,
+.world-stage-shell .world-player-manage-user-cell span,
+.world-stage-shell .world-player-manage-joined-cell {
+  color: var(--world-text-soft);
+}
+
+.world-stage-shell .world-fixed-party-rail .world-stage-party-title,
+.world-stage-shell .world-fixed-left-middle-rect .world-stage-party-title {
+  background: linear-gradient(180deg, rgba(248, 252, 255, 0.98), rgba(248, 252, 255, 0.76));
+}
+
+.world-stage-shell .world-fixed-party-rail .world-stage-party-title strong,
+.world-stage-shell .world-fixed-left-middle-rect .world-stage-party-title strong {
+  color: var(--world-accent-strong);
+}
+
+.world-stage-shell .world-fixed-party-rail .world-stage-party-title span,
+.world-stage-shell .world-fixed-left-middle-rect .world-stage-party-title span {
+  border-color: rgba(245, 158, 50, 0.28);
+  background: rgba(255, 241, 220, 0.88);
+  color: #a55506;
+}
+
+.world-stage-shell .world-stage-mini-btn,
+.world-stage-shell .world-stage-channel-btn,
+.world-stage-shell .world-card button,
+.world-stage-shell .world-stage-chat-actions button,
+.world-stage-shell .world-stage-assistant-card button {
+  border-color: rgba(95, 145, 211, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(236, 246, 255, 0.94)),
+    linear-gradient(135deg, rgba(255, 184, 92, 0.12), rgba(72, 145, 227, 0.1));
+  color: var(--world-text);
+  box-shadow: 0 10px 20px rgba(65, 119, 187, 0.12);
+}
+
+.world-stage-shell .world-stage-mini-btn:hover,
+.world-stage-shell .world-stage-channel-btn:hover,
+.world-stage-shell .world-card button:hover,
+.world-stage-shell .world-stage-chat-actions button:hover,
+.world-stage-shell .world-stage-assistant-card button:hover,
+.world-stage-shell .world-stage-header-btn:hover,
+.world-stage-shell .world-system-action-btn:hover,
+.world-stage-shell .world-system-lobby-btn:hover {
+  border-color: rgba(245, 158, 50, 0.52);
+  box-shadow: 0 14px 26px rgba(65, 119, 187, 0.18);
+}
+
+.world-stage-shell .world-stage-stat-card,
+.world-stage-shell .world-combat-order,
+.world-stage-shell .world-combat-order__item,
+.world-stage-shell .world-ability-exec__summary,
+.world-stage-shell .world-ability-exec__result {
+  border-color: rgba(91, 143, 209, 0.26);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 248, 255, 0.9)),
+    rgba(255, 255, 255, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.world-stage-shell .world-stage-stat-card span,
+.world-stage-shell .world-combat-order__rank {
+  color: var(--world-text-soft);
+}
+
+.world-stage-shell .world-combat-order__rank {
+  border-color: rgba(91, 143, 209, 0.24);
+  background: rgba(236, 246, 255, 0.9);
+}
+
+.world-stage-shell .world-combat-order__item.is-current {
+  border-color: rgba(245, 158, 50, 0.44);
+  box-shadow: 0 14px 28px rgba(245, 158, 50, 0.16);
+}
+
+.world-stage-shell .world-fixed-system-tab {
+  border-color: rgba(95, 145, 211, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(235, 246, 255, 0.94));
+  color: #376493;
+}
+
+.world-stage-shell .world-fixed-system-tab.is-active {
+  border-color: rgba(245, 158, 50, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 235, 0.98), rgba(232, 244, 255, 0.96)),
+    linear-gradient(135deg, rgba(255, 184, 92, 0.22), rgba(82, 158, 244, 0.13));
+  color: #0f579d;
+  box-shadow: 0 8px 18px rgba(65, 119, 187, 0.16);
+}
+
+.world-stage-shell .world-fixed-system-tab-page,
+.world-stage-shell .entity-mgr__list,
+.world-stage-shell .entity-mgr__editor,
+.world-stage-shell .entity-mgr__placeholder,
+.world-stage-shell .entity-mgr__item,
+.world-stage-shell .entity-form__section,
+.world-stage-shell .entity-builder-card,
+.world-stage-shell .entity-condition {
+  border-color: rgba(95, 145, 211, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 248, 255, 0.92));
+  color: var(--world-text);
+}
+
+.world-stage-shell .world-fixed-system-tab-page__head,
+.world-stage-shell .entity-mgr__editor-header,
+.world-stage-shell .world-system-overlay-dialog__head {
+  border-bottom-color: rgba(95, 145, 211, 0.24);
+}
+
+.world-stage-shell .world-fixed-system-tab-page__view--chat,
+.world-stage-shell .world-fixed-system-tab-page__view--battle,
+.world-stage-shell .world-fixed-system-tab-page__view--scene,
+.world-stage-shell .world-fixed-system-tab-page__view--system {
+  background:
+    radial-gradient(circle at top right, var(--world-accent-soft), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(232, 244, 255, 0.34));
+}
+
+.world-stage-shell .world-system-rule-query {
+  border-color: rgba(95, 145, 211, 0.28);
+  background:
+    radial-gradient(circle at top right, rgba(255, 184, 92, 0.14), transparent 38%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(229, 242, 255, 0.92));
+}
+
+.world-stage-shell .world-system-rule-query__head strong {
+  color: var(--world-text);
+}
+
+.world-stage-shell .world-system-rule-query__head span {
+  color: var(--world-text-soft);
+}
+
+.world-stage-shell .world-stage-chat-composer textarea,
+.world-stage-shell .world-stage-assistant-card textarea,
+.world-stage-shell .world-card input,
+.world-stage-shell .world-card select,
+.world-stage-shell .world-card textarea,
+.world-stage-shell .entity-mgr__search,
+.world-stage-shell .entity-form__input,
+.world-stage-shell .entity-form__textarea,
+.world-stage-shell .world-player-manage-input,
+.world-stage-shell .world-player-manage-select {
+  border-color: rgba(95, 145, 211, 0.34);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--world-text);
+}
+
+.world-stage-shell .world-card input::placeholder,
+.world-stage-shell .world-card textarea::placeholder,
+.world-stage-shell .world-stage-chat-composer textarea::placeholder,
+.world-stage-shell .world-stage-assistant-card textarea::placeholder,
+.world-stage-shell .entity-form__input::placeholder,
+.world-stage-shell .entity-form__textarea::placeholder {
+  color: var(--world-text-muted);
+}
+
+.world-stage-shell .hud-panel {
+  border-color: rgba(95, 145, 211, 0.3);
+  background:
+    radial-gradient(circle at top left, rgba(255, 184, 92, 0.13), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(235, 246, 255, 0.94));
+  box-shadow: 0 18px 32px rgba(56, 111, 184, 0.16);
+  color: var(--world-text);
+}
+
+.world-stage-shell .hud-panel__bar,
+.world-stage-shell .hud-panel__slot,
+.world-stage-shell .hud-panel__tab-btn,
+.world-stage-shell .hud-panel__tab-content,
+.world-stage-shell .hud-panel__mode-toggle {
+  border-color: rgba(95, 145, 211, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(235, 246, 255, 0.92));
+  color: var(--world-text);
+}
+
+.world-stage-shell .hud-panel__tab-btn--active,
+.world-stage-shell .hud-panel__slot:hover {
+  border-color: rgba(245, 158, 50, 0.46);
+  box-shadow: 0 12px 22px rgba(65, 119, 187, 0.16);
+}
+
+.world-stage-shell .hud-panel__slot-label,
+.world-stage-shell .hud-panel__bar-text,
+.world-stage-shell .hud-panel__char-level {
+  color: var(--world-text-soft);
+}
+
+.world-stage-shell .hud-panel__empty-state .hud-panel__char-name {
+  color: var(--world-text);
+}
+
 @media (max-width: 1100px) {
   .world-stage-shell {
     --stage-pad: clamp(6px, 1vw, 10px);
