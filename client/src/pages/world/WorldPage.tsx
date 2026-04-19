@@ -305,6 +305,9 @@ type SystemTabKey = "chat" | "battle" | "scene" | "character" | "pack" | "system
 type OverlayState =
   | { kind: "entity"; entityType: EntityType; title: string }
   | { kind: "players"; title: string }
+  | { kind: "ability"; title: string }
+  | { kind: "story"; title: string }
+  | { kind: "character"; title: string; characterId?: string; mode: "view" | "create" }
   | null;
 
 type WorldMemberManageRole = "PLAYER" | "ASSISTANT" | "OBSERVER" | "GM";
@@ -712,11 +715,6 @@ export default function WorldPage() {
   const canSeeHiddenClocks = role === "GM" || role === "ASSISTANT";
   const canCreateCharacter = hasPermission(role, PERMISSIONS.CHARACTER_CREATE);
   const canCreateNpc = role === "GM";
-  const canEditSelectedCharacter = Boolean(
-    selectedCharacter &&
-      (hasPermission(role, PERMISSIONS.CHARACTER_EDIT_ALL) ||
-        (hasPermission(role, PERMISSIONS.CHARACTER_EDIT_OWN) && selectedCharacter.userId === user?.id))
-  );
   const canDeployToken = Boolean(
     selectedCharacter &&
       (hasPermission(role, PERMISSIONS.TOKEN_CREATE) ||
@@ -887,7 +885,6 @@ export default function WorldPage() {
           id: "token-character",
           label: "打开关联角色卡",
           action: "open-character-from-token",
-          requiredPermission: PERMISSIONS.CHARACTER_VIEW_OWN,
         },
         { id: "divider-1", label: "", divider: true },
         {
@@ -897,6 +894,60 @@ export default function WorldPage() {
           requiredPermission: PERMISSIONS.COMBAT_ADVANCE_TURN,
           disabled: !canAdvanceTurn,
         },
+      ];
+    }
+
+    if (contextMenu.area === "character-card") {
+      return [
+        {
+          id: "character-open",
+          label: "打开角色卡",
+          action: "character-open-sheet",
+        },
+        {
+          id: "character-active",
+          label: "设为当前角色",
+          action: "character-set-active",
+        },
+        {
+          id: "character-deploy",
+          label: "投放到舞台",
+          action: "character-deploy-token",
+          requiredPermission: PERMISSIONS.TOKEN_MOVE_OWN,
+        },
+        { id: "divider-character", label: "", divider: true },
+        {
+          id: "character-create",
+          label: "创建新角色",
+          action: "character-create",
+          requiredPermission: PERMISSIONS.CHARACTER_CREATE,
+          disabled: !canCreateCharacter,
+        },
+      ];
+    }
+
+    if (contextMenu.area === "initiative-entry") {
+      return [
+        {
+          id: "initiative-focus",
+          label: "聚焦棋子",
+          action: "focus-token",
+          requiredPermission: PERMISSIONS.TOKEN_MOVE_OWN,
+        },
+        {
+          id: "initiative-character",
+          label: "打开行动者角色卡",
+          action: "open-character-from-initiative",
+        },
+        {
+          id: "initiative-next-turn",
+          label: "推进当前回合",
+          action: "combat-next-turn",
+          requiredPermission: PERMISSIONS.COMBAT_ADVANCE_TURN,
+          disabled: !canAdvanceTurn,
+        },
+        { id: "divider-initiative", label: "", divider: true },
+        { id: "initiative-ability", label: "打开能力结算台", action: "open-ability-overlay" },
       ];
     }
 
@@ -946,7 +997,7 @@ export default function WorldPage() {
       { id: "canvas-open-chat", label: "打开聊天台", action: "open-chat-tab" },
       { id: "canvas-open-system", label: "打开系统页", action: "open-system-tab" },
     ];
-  }, [canAdvanceClock, canAdvanceTurn, canDeleteClock, contextMenu.area]);
+  }, [canAdvanceClock, canAdvanceTurn, canCreateCharacter, canDeleteClock, contextMenu.area]);
 
   const loadRuntimeState = async () => {
     if (!worldId) {
@@ -1371,6 +1422,30 @@ export default function WorldPage() {
     }
   };
 
+  const openAbilityOverlay = () => {
+    setOverlay({ kind: "ability", title: "能力结算台" });
+    setSystemPanelCollapsed(false);
+  };
+
+  const openStoryOverlay = () => {
+    setOverlay({ kind: "story", title: "剧情事件板" });
+    setSystemPanelCollapsed(false);
+  };
+
+  const openCharacterOverlay = (characterId?: string, mode: "view" | "create" = "view") => {
+    const character = characterId ? characters.find((item) => item.id === characterId) : null;
+    if (characterId) {
+      setSelectedCharacterId(characterId);
+    }
+    setOverlay({
+      kind: "character",
+      characterId,
+      mode,
+      title: mode === "create" ? "创建角色" : `角色卡 · ${character?.name ?? "未选择"}`,
+    });
+    setSystemPanelCollapsed(false);
+  };
+
   const onLocateStoryEvent = (eventId: string) => {
     setFocusedStoryEventId(eventId);
     openTab("battle");
@@ -1511,6 +1586,7 @@ export default function WorldPage() {
       const created = resp.data?.data as CharacterItem;
       setCharacters((prev) => [...prev, created]);
       setSelectedCharacterId(created.id);
+      setOverlay({ kind: "character", characterId: created.id, mode: "view", title: `角色卡 · ${created.name}` });
       setNewCharacterName("");
       setNewCharacterType("PC");
       setStageNotice(`角色“${created.name}”已创建。`);
@@ -1542,6 +1618,11 @@ export default function WorldPage() {
 
       const updated = resp.data?.data as CharacterItem;
       setCharacters((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setOverlay((prev) =>
+        prev?.kind === "character" && prev.characterId === updated.id
+          ? { ...prev, title: `角色卡 · ${updated.name}` }
+          : prev
+      );
       setStageNotice(`角色“${updated.name}”已更新。`);
     } catch (err) {
       setError(resolveErrorMessage(err, "保存角色失败"));
@@ -1804,7 +1885,7 @@ export default function WorldPage() {
       if (targetCharacterId && targetCharacterId !== selectedCharacterId) {
         setAbilityTargetCharacterId(targetCharacterId);
       }
-      openTab("battle");
+      openAbilityOverlay();
     } else {
       openTab("character");
     }
@@ -1882,11 +1963,14 @@ export default function WorldPage() {
   };
 
   const onContextAction = async (action: string, area: ContextMenuArea, targetId?: string) => {
-    if (area === "token" && targetId) {
+    if ((area === "token" || area === "initiative-entry") && targetId) {
       setSelectedTokenId(targetId);
     }
     if (area === "fate-clock" && targetId) {
       setSelectedFateClockId(targetId);
+    }
+    if (area === "character-card" && targetId) {
+      setSelectedCharacterId(targetId);
     }
 
     switch (action) {
@@ -1912,11 +1996,58 @@ export default function WorldPage() {
         }
         const tokenRecord = tokens[targetId];
         if (tokenRecord?.characterId) {
-          setSelectedCharacterId(tokenRecord.characterId);
-          openTab("character");
+          openCharacterOverlay(tokenRecord.characterId);
         }
         break;
       }
+      case "open-character-from-initiative": {
+        if (!targetId) {
+          break;
+        }
+        const tokenRecord = tokens[targetId];
+        if (tokenRecord?.characterId) {
+          openCharacterOverlay(tokenRecord.characterId);
+        } else {
+          setStageNotice("这个先攻条目暂未绑定角色卡。");
+        }
+        break;
+      }
+      case "character-open-sheet":
+        if (targetId) {
+          openCharacterOverlay(targetId);
+        }
+        break;
+      case "character-set-active":
+        if (targetId) {
+          setSelectedCharacterId(targetId);
+          setStageNotice("已切换当前角色。");
+        }
+        break;
+      case "character-create":
+        openCharacterOverlay(undefined, "create");
+        break;
+      case "character-deploy-token": {
+        if (!targetId || !user?.id) {
+          break;
+        }
+        const character = characters.find((item) => item.id === targetId);
+        if (!character) {
+          break;
+        }
+        setSelectedCharacterId(character.id);
+        const tokenId = `token:character:${character.id}`;
+        const randomX = 80 + Math.floor(Math.random() * 420);
+        const randomY = 70 + Math.floor(Math.random() * 220);
+        onMoveToken(tokenId, randomX, randomY, character.userId ?? user.id, character.id);
+        setStageNotice(`已将“${character.name}”投放到当前舞台。`);
+        break;
+      }
+      case "open-ability-overlay":
+        openAbilityOverlay();
+        break;
+      case "open-story-overlay":
+        openStoryOverlay();
+        break;
       case "combat-next-turn":
         if (canAdvanceTurn) {
           await onAdvanceSceneCombatTurn();
@@ -2522,32 +2653,7 @@ export default function WorldPage() {
     </div>
   );
 
-  const renderBattleTab = () => (
-    <div className="world-stage-tab-scroll">
-      <div className="world-card">
-        <strong>战斗总览</strong>
-        <p>
-          {sceneCombatState
-            ? `状态 ${sceneCombatState.status} · 第 ${sceneCombatState.round} 轮 · 参战 ${sceneCombatState.participants.length} 人`
-            : "当前场景尚未载入战斗状态。"}
-        </p>
-      </div>
-      <SceneCombatPanel
-        combatState={sceneCombatState}
-        loading={sceneCombatLoading}
-        saving={sceneCombatSaving}
-        advancing={sceneCombatAdvancing}
-        canManage={canManageCombat}
-        onRefresh={() => {
-          void loadSceneCombatState();
-        }}
-        onSave={(input) => {
-          void onSaveSceneCombatState(input);
-        }}
-        onNextTurn={() => {
-          void onAdvanceSceneCombatTurn();
-        }}
-      />
+  const renderAbilityExecutionPanel = () => (
       <AbilityExecutionPanel
         abilities={abilityRecords as Array<{
           id: string;
@@ -2577,6 +2683,9 @@ export default function WorldPage() {
           void onExecuteSelectedAbility();
         }}
       />
+  );
+
+  const renderStoryEventPanel = () => (
       <StoryEventPanel
         myRole={myRole}
         loading={storyEventLoading}
@@ -2622,6 +2731,163 @@ export default function WorldPage() {
         }}
         focusedEventId={focusedStoryEventId}
         onLocateEvent={onLocateStoryEvent}
+      />
+  );
+
+  const renderCharacterSheetOverlay = () => {
+    const overlayCharacter =
+      overlay?.kind === "character" && overlay.characterId
+        ? characters.find((item) => item.id === overlay.characterId) ?? selectedCharacter
+        : selectedCharacter;
+    const canEditOverlayCharacter = Boolean(
+      overlayCharacter &&
+        (hasPermission(role, PERMISSIONS.CHARACTER_EDIT_ALL) ||
+          (hasPermission(role, PERMISSIONS.CHARACTER_EDIT_OWN) && overlayCharacter.userId === user?.id))
+    );
+
+    return (
+      <div className="world-character-sheet-overlay" data-world-component="character-sheet-overlay" data-world-layer="overlay">
+        {overlay?.kind === "character" && overlay.mode === "create" ? (
+          <form className="world-character-sheet-overlay__form" onSubmit={onCreateCharacter}>
+            <div className="world-stage-overlay-toolbar">
+              <p className="world-system-window__summary">创建一个新的 PC 或 NPC。详情字段创建后可继续在角色卡中编辑。</p>
+            </div>
+            <label>
+              <span>角色名称</span>
+              <input value={newCharacterName} onChange={(event) => setNewCharacterName(event.target.value)} placeholder="角色名称" required />
+            </label>
+            <label>
+              <span>类型</span>
+              <select value={newCharacterType} onChange={(event) => setNewCharacterType(event.target.value as "PC" | "NPC")}>
+                <option value="PC">PC</option>
+                {canCreateNpc ? <option value="NPC">NPC</option> : null}
+              </select>
+            </label>
+            <button type="submit" className="world-system-action-btn" disabled={creatingCharacter || !canCreateCharacter}>
+              {creatingCharacter ? "创建中..." : "创建角色"}
+            </button>
+          </form>
+        ) : overlayCharacter ? (
+          <>
+            <section className="world-character-sheet-overlay__summary">
+              <div>
+                <strong>{overlayCharacter.name}</strong>
+                <p>
+                  {overlayCharacter.type} · Lv.{getRecordNumber(overlayCharacter.snapshot, "level", 1)} ·{" "}
+                  {getRecordString(overlayCharacter.snapshot, "class", "未知职业")}
+                </p>
+              </div>
+              <div className="world-character-sheet-overlay__actions">
+                <button type="button" className="world-stage-header-btn" onClick={() => setSelectedCharacterId(overlayCharacter.id)}>
+                  设为当前角色
+                </button>
+                <button
+                  type="button"
+                  className="world-stage-header-btn"
+                  onClick={() => {
+                    setSelectedCharacterId(overlayCharacter.id);
+                    onMoveToken(`token:character:${overlayCharacter.id}`, 220, 150, overlayCharacter.userId ?? user?.id ?? null, overlayCharacter.id);
+                  }}
+                  disabled={!user?.id}
+                >
+                  投放到舞台
+                </button>
+              </div>
+            </section>
+
+            <div className="world-character-sheet-overlay__stats">
+              <span>HP {getRecordNumber(overlayCharacter.stats, "hp", 0)}</span>
+              <span>MP {getRecordNumber(overlayCharacter.stats, "mp", 0)}</span>
+              <span>AC {getRecordNumber(overlayCharacter.snapshot, "ac", 10)}</span>
+              <span>体力 {getRecordNumber(overlayCharacter.stats, "stamina", 0)}</span>
+            </div>
+
+            {canEditOverlayCharacter ? (
+              <form className="world-character-sheet-overlay__form" onSubmit={onSaveCharacter}>
+                <label>
+                  <span>角色名称</span>
+                  <input value={editCharacterName} onChange={(event) => setEditCharacterName(event.target.value)} placeholder="角色名称" required />
+                </label>
+                <div className="world-character-sheet-overlay__grid">
+                  <label>
+                    <span>HP</span>
+                    <input type="number" min={0} value={editHp} onChange={(event) => setEditHp(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>MP</span>
+                    <input type="number" min={0} value={editMp} onChange={(event) => setEditMp(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>等级</span>
+                    <input type="number" min={1} value={editLevel} onChange={(event) => setEditLevel(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>职业</span>
+                    <input value={editClassName} onChange={(event) => setEditClassName(event.target.value)} placeholder="职业" />
+                  </label>
+                </div>
+                <button type="submit" className="world-system-action-btn" disabled={savingCharacter}>
+                  {savingCharacter ? "保存中..." : "保存角色详情"}
+                </button>
+              </form>
+            ) : (
+              <p className="world-stage-readonly-note">当前身份只能查看这张角色卡，不能改写角色数据。</p>
+            )}
+          </>
+        ) : (
+          <div className="world-stage-empty">请选择一个角色，或使用“创建角色”入口新建角色卡。</div>
+        )}
+      </div>
+    );
+  };
+
+  const renderBattleTab = () => (
+    <div className="world-stage-tab-scroll world-stage-tab-scroll--compact">
+      <section className="world-stage-command-panel" data-world-component="battle-command-surface" data-world-layer="panel">
+        <div>
+          <strong>战斗指挥台</strong>
+          <p>
+            {sceneCombatState
+              ? `第 ${sceneCombatState.round} 轮 · ${sceneCombatState.participants.length} 名参战单位 · ${sceneCombatState.status}`
+              : "当前场景尚未载入战斗状态。"}
+          </p>
+        </div>
+        <div className="world-stage-command-panel__actions">
+          <button type="button" onClick={openAbilityOverlay}>能力结算</button>
+          <button type="button" onClick={openStoryOverlay}>剧情事件</button>
+          <button type="button" onClick={() => setShowBattleBar((prev) => !prev)}>
+            {showBattleBar ? "隐藏先攻条" : "显示先攻条"}
+          </button>
+        </div>
+      </section>
+      {abilityExecutionResult ? (
+        <section className="world-stage-command-panel world-stage-command-panel--result" data-world-component="battle-latest-result">
+          <div>
+            <strong>最近结算</strong>
+            <p>
+              {abilityExecutionResult.actor.name} · {abilityExecutionResult.ability.name}
+              {abilityExecutionResult.targets.length > 0 ? ` → ${abilityExecutionResult.targets.map((item) => item.name).join(" / ")}` : ""}
+            </p>
+          </div>
+          <button type="button" onClick={openAbilityOverlay}>查看详情</button>
+        </section>
+      ) : null}
+      <SceneCombatPanel
+        combatState={sceneCombatState}
+        loading={sceneCombatLoading}
+        saving={sceneCombatSaving}
+        advancing={sceneCombatAdvancing}
+        canManage={canManageCombat}
+        onParticipantContextMenu={(event, tokenId) => contextMenu.open(event, "initiative-entry", tokenId)}
+        onRefresh={() => {
+          void loadSceneCombatState();
+        }}
+        onSave={(input) => {
+          void onSaveSceneCombatState(input);
+        }}
+        onNextTurn={() => {
+          void onAdvanceSceneCombatTurn();
+        }}
       />
     </div>
   );
@@ -2691,41 +2957,16 @@ export default function WorldPage() {
   );
 
   const renderCharacterTab = () => (
-    <div className="world-stage-tab-scroll">
-      <div className="world-card">
-        <strong>{selectedCharacter?.name || "未绑定角色"}</strong>
-        <p>
-          {selectedCharacter
-            ? `${selectedCharacter.type} · Lv.${getRecordNumber(selectedCharacter.snapshot, "level", 1)} · ${getRecordString(selectedCharacter.snapshot, "class", "未知职业")}`
-            : "从此页选择一个角色作为当前主角色。"}
-        </p>
-      </div>
+    <div className="world-stage-tab-scroll world-stage-tab-scroll--compact">
       <CharacterPanel
         characters={characters}
         selectedCharacterId={selectedCharacterId}
         onSelectCharacter={setSelectedCharacterId}
+        onOpenCharacter={(characterId) => openCharacterOverlay(characterId)}
+        onOpenCreate={() => openCharacterOverlay(undefined, "create")}
+        onCharacterContextMenu={(event, characterId) => contextMenu.open(event, "character-card", characterId)}
         canCreateCharacter={canCreateCharacter}
-        canCreateNpc={canCreateNpc}
-        canEditSelectedCharacter={canEditSelectedCharacter}
         readOnlyHint="当前身份只能查看角色资料，不能创建或改写这张角色卡。"
-        creating={creatingCharacter}
-        createName={newCharacterName}
-        createType={newCharacterType}
-        onCreateNameChange={setNewCharacterName}
-        onCreateTypeChange={setNewCharacterType}
-        onCreateCharacter={onCreateCharacter}
-        editName={editCharacterName}
-        editHp={editHp}
-        editMp={editMp}
-        editLevel={editLevel}
-        editClassName={editClassName}
-        saving={savingCharacter}
-        onEditNameChange={setEditCharacterName}
-        onEditHpChange={setEditHp}
-        onEditMpChange={setEditMp}
-        onEditLevelChange={setEditLevel}
-        onEditClassNameChange={setEditClassName}
-        onSaveCharacter={onSaveCharacter}
       />
     </div>
   );
@@ -2956,6 +3197,7 @@ export default function WorldPage() {
               type="button"
               className={`world-fixed-battle-slot world-stage-battle-slot ${entry.isCurrentTurn ? "is-current" : ""}`.trim()}
               onClick={() => onSelectTokenFromBattle(entry.tokenId)}
+              onContextMenu={(event) => contextMenu.open(event, "initiative-entry", entry.tokenId)}
             >
               <strong className="world-stage-battle-slot__name">#{index + 1} {entry.name}</strong>
               <span className="world-stage-battle-slot__meta">先攻 {entry.initiative}{entry.isMine ? " · 你" : ""}</span>
@@ -3204,7 +3446,14 @@ export default function WorldPage() {
       {overlay ? (
         <>
           <button type="button" className="world-system-overlay-mask" onClick={() => setOverlay(null)} aria-label="关闭弹层" />
-          <section className="world-system-overlay-dialog" role="dialog" aria-modal="true" aria-label={overlay.title}>
+          <section
+            className="world-system-overlay-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={overlay.title}
+            data-world-layer="overlay"
+            data-world-component={`overlay-${overlay.kind}`}
+          >
             <div className="world-system-overlay-dialog__head">
               <strong>{overlay.title}</strong>
               <button type="button" className="world-system-overlay-dialog__close" onClick={() => setOverlay(null)}>
@@ -3219,7 +3468,7 @@ export default function WorldPage() {
                   label={overlay.title}
                   canEdit={canEditEntityType(role, overlay.entityType)}
                 />
-              ) : (
+              ) : overlay.kind === "players" ? (
                 <PlayerManagePane
                   members={memberManageData?.members ?? []}
                   characters={memberManageData?.characters ?? []}
@@ -3232,7 +3481,13 @@ export default function WorldPage() {
                   }}
                   onSave={onSaveWorldMemberManage}
                 />
-              )}
+              ) : overlay.kind === "ability" ? (
+                renderAbilityExecutionPanel()
+              ) : overlay.kind === "story" ? (
+                renderStoryEventPanel()
+              ) : overlay.kind === "character" ? (
+                renderCharacterSheetOverlay()
+              ) : null}
             </div>
           </section>
         </>

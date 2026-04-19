@@ -1,3 +1,11 @@
+import type { MouseEvent } from "react";
+
+/**
+ * AAF-WORLD-COMPONENT active:combat-focus-panel
+ * Mount policy: right-side battle tab only. Non-core battle tools are opened
+ * from command buttons or context menus, not stacked inside this panel.
+ */
+
 type CombatParticipantState = {
   tokenId: string;
   name: string;
@@ -29,6 +37,7 @@ type SceneCombatPanelProps = {
   saving: boolean;
   advancing: boolean;
   canManage: boolean;
+  onParticipantContextMenu?: (event: MouseEvent, tokenId: string) => void;
   onRefresh: () => void;
   onSave: (input: SceneCombatInput) => void;
   onNextTurn: () => void;
@@ -80,6 +89,7 @@ export function SceneCombatPanel({
   saving,
   advancing,
   canManage,
+  onParticipantContextMenu,
   onRefresh,
   onSave,
   onNextTurn,
@@ -143,7 +153,7 @@ export function SceneCombatPanel({
       : null;
 
   return (
-    <section className="world-card world-combat-panel">
+    <section className="world-card world-combat-panel" data-world-component="combat-focus-panel" data-world-layer="panel">
       <div className="world-combat-panel__head">
         <div>
           <strong>战斗序列</strong>
@@ -231,6 +241,7 @@ export function SceneCombatPanel({
                     <div
                       className={`world-combat-order__item${isCurrentTurn ? " is-current" : ""}`}
                       key={item.tokenId}
+                      onContextMenu={(event) => onParticipantContextMenu?.(event, item.tokenId)}
                     >
                       <div className="world-combat-order__identity">
                         <span className="world-combat-order__rank">#{index + 1}</span>

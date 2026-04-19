@@ -1,4 +1,10 @@
-import type { FormEvent } from "react";
+import type { MouseEvent } from "react";
+
+/**
+ * AAF-WORLD-COMPONENT active:list-surface
+ * Mount policy: right-side character tab only. Detailed sheets and edit forms
+ * live in overlays so the system panel stays short and scan-friendly.
+ */
 
 type CharacterItem = {
   id: string;
@@ -12,156 +18,98 @@ type CharacterItem = {
 type CharacterPanelProps = {
   characters: CharacterItem[];
   selectedCharacterId: string;
-  onSelectCharacter: (characterId: string) => void;
   canCreateCharacter: boolean;
-  canCreateNpc: boolean;
-  canEditSelectedCharacter: boolean;
   readOnlyHint?: string;
-  creating: boolean;
-  createName: string;
-  createType: "PC" | "NPC";
-  onCreateNameChange: (value: string) => void;
-  onCreateTypeChange: (value: "PC" | "NPC") => void;
-  onCreateCharacter: (event: FormEvent) => void;
-  editName: string;
-  editHp: string;
-  editMp: string;
-  editLevel: string;
-  editClassName: string;
-  saving: boolean;
-  onEditNameChange: (value: string) => void;
-  onEditHpChange: (value: string) => void;
-  onEditMpChange: (value: string) => void;
-  onEditLevelChange: (value: string) => void;
-  onEditClassNameChange: (value: string) => void;
-  onSaveCharacter: (event: FormEvent) => void;
+  onSelectCharacter: (characterId: string) => void;
+  onOpenCharacter: (characterId: string) => void;
+  onOpenCreate: () => void;
+  onCharacterContextMenu: (event: MouseEvent, characterId: string) => void;
 };
 
-export function CharacterPanel(props: CharacterPanelProps) {
-  const {
-    characters,
-    selectedCharacterId,
-    onSelectCharacter,
-    canCreateCharacter,
-    canCreateNpc,
-    canEditSelectedCharacter,
-    readOnlyHint,
-    creating,
-    createName,
-    createType,
-    onCreateNameChange,
-    onCreateTypeChange,
-    onCreateCharacter,
-    editName,
-    editHp,
-    editMp,
-    editLevel,
-    editClassName,
-    saving,
-    onEditNameChange,
-    onEditHpChange,
-    onEditMpChange,
-    onEditLevelChange,
-    onEditClassNameChange,
-    onSaveCharacter
-  } = props;
+function getRecordNumber(record: unknown, key: string, fallback = 0) {
+  if (!record || typeof record !== "object") {
+    return fallback;
+  }
 
-  const hasCharacterChoices = characters.length > 0;
-  const canEditAnyCharacter = canEditSelectedCharacter && Boolean(selectedCharacterId);
+  const value = (record as Record<string, unknown>)[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
 
+function getRecordString(record: unknown, key: string, fallback = "") {
+  if (!record || typeof record !== "object") {
+    return fallback;
+  }
+
+  const value = (record as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+export function CharacterPanel({
+  characters,
+  selectedCharacterId,
+  canCreateCharacter,
+  readOnlyHint,
+  onSelectCharacter,
+  onOpenCharacter,
+  onOpenCreate,
+  onCharacterContextMenu,
+}: CharacterPanelProps) {
   return (
-    <div className="world-card">
-      <strong>角色谱系</strong>
-      <p>当前可见角色数：{characters.length}</p>
-
-      <label className="block text-sm text-gray-700">当前查看角色</label>
-      <select
-        className="mb-2 mt-1 w-full rounded border px-2 py-1.5"
-        value={selectedCharacterId}
-        onChange={(e) => onSelectCharacter(e.target.value)}
-        disabled={!hasCharacterChoices}
-      >
-        <option value="">未绑定</option>
-        {characters.map((character) => (
-          <option key={character.id} value={character.id}>
-            {character.name} ({character.type})
-          </option>
-        ))}
-      </select>
-
-      {canCreateCharacter ? (
-        <form className="space-y-2" onSubmit={onCreateCharacter}>
-          <label className="block text-sm text-gray-700">召唤新角色</label>
-          <input
-            className="w-full rounded border px-2 py-1.5"
-            value={createName}
-            onChange={(e) => onCreateNameChange(e.target.value)}
-            placeholder="角色名称"
-            required
-          />
-          <select className="w-full rounded border px-2 py-1.5" value={createType} onChange={(e) => onCreateTypeChange(e.target.value as "PC" | "NPC")}>
-            <option value="PC">PC</option>
-            {canCreateNpc ? <option value="NPC">NPC</option> : null}
-          </select>
-          <button className="rounded bg-slate-800 px-3 py-1.5 text-sm text-white disabled:opacity-60" disabled={creating} type="submit">
-            {creating ? "创建中..." : "创建角色"}
+    <section className="world-card world-character-roster" data-world-component="character-roster-panel" data-world-layer="panel">
+      <div className="world-character-roster__head">
+        <div>
+          <strong>角色花名册</strong>
+          <p>点击条目打开角色卡，右键条目进行快捷操作。</p>
+        </div>
+        {canCreateCharacter ? (
+          <button type="button" className="world-stage-header-btn" onClick={onOpenCreate}>
+            创建角色
           </button>
-        </form>
+        ) : (
+          <span className="world-stage-pill">只读</span>
+        )}
+      </div>
+
+      {characters.length === 0 ? (
+        <div className="world-stage-empty">{readOnlyHint || "当前世界还没有可见角色。"}</div>
       ) : (
-        <p className="text-xs text-gray-500">{readOnlyHint || "当前身份不能创建角色。"}</p>
+        <div className="world-character-roster__list">
+          {characters.map((character) => {
+            const level = getRecordNumber(character.snapshot, "level", 1);
+            const className = getRecordString(character.snapshot, "class", "未知职业");
+            const hp = getRecordNumber(character.stats, "hp", 0);
+            const mp = getRecordNumber(character.stats, "mp", 0);
+            const ac = getRecordNumber(character.snapshot, "ac", 10);
+            const isActive = character.id === selectedCharacterId;
+
+            return (
+              <button
+                type="button"
+                key={character.id}
+                className={`world-character-roster__row ${isActive ? "is-active" : ""}`.trim()}
+                onClick={() => {
+                  onSelectCharacter(character.id);
+                  onOpenCharacter(character.id);
+                }}
+                onContextMenu={(event) => onCharacterContextMenu(event, character.id)}
+              >
+                <span className="world-character-roster__avatar">{character.name.slice(0, 1).toUpperCase()}</span>
+                <span className="world-character-roster__main">
+                  <strong>{character.name}</strong>
+                  <em>{character.type} · Lv.{level} · {className}</em>
+                </span>
+                <span className="world-character-roster__stats">
+                  <i>HP {hp}</i>
+                  <i>MP {mp}</i>
+                  <i>AC {ac}</i>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
-      {canEditAnyCharacter ? (
-        <form className="mt-4 space-y-2" onSubmit={onSaveCharacter}>
-          <label className="block text-sm text-gray-700">角色资料整备</label>
-          <input
-            className="w-full rounded border px-2 py-1.5"
-            value={editName}
-            onChange={(e) => onEditNameChange(e.target.value)}
-            placeholder="角色名称"
-            required
-          />
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input
-              className="w-full rounded border px-2 py-1.5"
-              type="number"
-              min={0}
-              value={editHp}
-              onChange={(e) => onEditHpChange(e.target.value)}
-              placeholder="HP"
-            />
-            <input
-              className="w-full rounded border px-2 py-1.5"
-              type="number"
-              min={0}
-              value={editMp}
-              onChange={(e) => onEditMpChange(e.target.value)}
-              placeholder="MP"
-            />
-            <input
-              className="w-full rounded border px-2 py-1.5"
-              type="number"
-              min={1}
-              value={editLevel}
-              onChange={(e) => onEditLevelChange(e.target.value)}
-              placeholder="等级"
-            />
-            <input
-              className="w-full rounded border px-2 py-1.5"
-              value={editClassName}
-              onChange={(e) => onEditClassNameChange(e.target.value)}
-              placeholder="职业"
-            />
-          </div>
-          <button className="rounded bg-amber-700 px-3 py-1.5 text-sm text-white disabled:opacity-60" disabled={saving || !selectedCharacterId} type="submit">
-            {saving ? "记录中..." : "保存角色详情"}
-          </button>
-        </form>
-      ) : (
-        <p className="mt-4 text-xs text-gray-500">
-          {selectedCharacterId ? readOnlyHint || "当前身份只能查看该角色，不能修改。" : "选择一个角色后可以在这里查看它的资料。"}
-        </p>
-      )}
-    </div>
+      <p className="world-stage-readonly-note">提示：右键角色可设为当前角色、投放棋子或打开角色卡。</p>
+    </section>
   );
 }

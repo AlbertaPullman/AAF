@@ -1,5 +1,11 @@
 import { useMemo } from "react";
 
+/**
+ * AAF-WORLD-COMPONENT active:overlay-tool
+ * Mount policy: only mounted inside the ability overlay or via HUD shortcut.
+ * Keep this out of the always-visible battle tab to preserve scan speed.
+ */
+
 type AbilityItem = {
   id: string;
   name: string;
