@@ -2193,6 +2193,8 @@ export default function LobbyPage() {
           <CharacterSheetWorkbench
             characterId={activeCharacterDraftId ?? undefined}
             characterName={activeCharacterName}
+            playerName={displayName}
+            characterLevel={1}
             characterTokenDataUrl={activeCharacterTokenDataUrl}
             onClose={() => setActiveLobbyToolKey(null)}
             onTokenConfig={() => {

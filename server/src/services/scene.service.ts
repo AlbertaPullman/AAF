@@ -47,17 +47,34 @@ export type SceneFogRevealedArea = {
 export type SceneFogState = {
   enabled: boolean;
   mode: "full" | "hidden";
+  colorHex: string;
   revealedAreas: SceneFogRevealedArea[];
 };
 
 export type SceneVisualState = {
   sceneId: string;
+  preset: "custom" | "battle" | "rest" | "dungeon" | "narrative";
+  backgroundImageUrl: string | null;
   grid: {
     enabled: boolean;
     unitFeet: number;
+    type: "square" | "hex";
+    sizePx: number;
+    colorHex: string;
+    opacity: number;
+    snap: boolean;
   };
   lights: SceneLightSourceState[];
   fog: SceneFogState;
+  lighting: {
+    globalLight: boolean;
+    darkness: number;
+    gmSeeInvisible: boolean;
+  };
+  elevation: {
+    enabled: boolean;
+    baseLevel: number;
+  };
   updatedAt: string;
 };
 
@@ -87,12 +104,21 @@ export type SceneCombatInput = {
 };
 
 export type SceneVisualInput = {
+  preset?: SceneVisualState["preset"];
+  backgroundImageUrl?: string | null;
   grid?: {
     enabled?: boolean;
     unitFeet?: number;
+    type?: "square" | "hex";
+    sizePx?: number;
+    colorHex?: string;
+    opacity?: number;
+    snap?: boolean;
   };
   lights?: SceneLightSourceState[];
-  fog?: SceneFogState;
+  fog?: Partial<SceneFogState>;
+  lighting?: Partial<SceneVisualState["lighting"]>;
+  elevation?: Partial<SceneVisualState["elevation"]>;
 };
 
 type SceneCanvasState = {
@@ -108,15 +134,32 @@ function toIsoNow() {
 function getDefaultVisualState(sceneId: string): SceneVisualState {
   return {
     sceneId,
+    preset: "custom",
+    backgroundImageUrl: null,
     grid: {
       enabled: true,
-      unitFeet: 5
+      unitFeet: 5,
+      type: "square",
+      sizePx: 64,
+      colorHex: "#7aa2ff",
+      opacity: 0.16,
+      snap: true
     },
     lights: [],
     fog: {
       enabled: false,
       mode: "hidden",
+      colorHex: "#0f1a2d",
       revealedAreas: []
+    },
+    lighting: {
+      globalLight: true,
+      darkness: 0,
+      gmSeeInvisible: true
+    },
+    elevation: {
+      enabled: false,
+      baseLevel: 0
     },
     updatedAt: toIsoNow()
   };
@@ -136,10 +179,82 @@ function getDefaultCombatState(sceneId: string): SceneCombatState {
 
 function toStoredVisualState(input: SceneVisualState): Omit<SceneVisualState, "sceneId"> {
   return {
+    preset: input.preset,
+    backgroundImageUrl: input.backgroundImageUrl,
     grid: input.grid,
     lights: input.lights,
     fog: input.fog,
+    lighting: input.lighting,
+    elevation: input.elevation,
     updatedAt: input.updatedAt
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function normalizeSceneVisualState(sceneId: string, value?: Partial<Omit<SceneVisualState, "sceneId">>): SceneVisualState {
+  const defaults = getDefaultVisualState(sceneId);
+  if (!value) {
+    return defaults;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const gridCandidate = (candidate.grid ?? {}) as Record<string, unknown>;
+  const fogCandidate = (candidate.fog ?? {}) as Record<string, unknown>;
+  const lightingCandidate = (candidate.lighting ?? {}) as Record<string, unknown>;
+  const elevationCandidate = (candidate.elevation ?? {}) as Record<string, unknown>;
+
+  return {
+    sceneId,
+    preset:
+      candidate.preset === "battle" ||
+      candidate.preset === "rest" ||
+      candidate.preset === "dungeon" ||
+      candidate.preset === "narrative"
+        ? candidate.preset
+        : "custom",
+    backgroundImageUrl: typeof candidate.backgroundImageUrl === "string" ? candidate.backgroundImageUrl : null,
+    grid: {
+      enabled: typeof gridCandidate.enabled === "boolean" ? gridCandidate.enabled : defaults.grid.enabled,
+      unitFeet: Number.isFinite(Number(gridCandidate.unitFeet))
+        ? clamp(Math.round(Number(gridCandidate.unitFeet)), 1, 100)
+        : defaults.grid.unitFeet,
+      type: gridCandidate.type === "hex" ? "hex" : "square",
+      sizePx: Number.isFinite(Number(gridCandidate.sizePx))
+        ? clamp(Math.round(Number(gridCandidate.sizePx)), 24, 120)
+        : defaults.grid.sizePx,
+      colorHex: typeof gridCandidate.colorHex === "string" ? gridCandidate.colorHex : defaults.grid.colorHex,
+      opacity: Number.isFinite(Number(gridCandidate.opacity))
+        ? clamp(Number(gridCandidate.opacity), 0.02, 1)
+        : defaults.grid.opacity,
+      snap: typeof gridCandidate.snap === "boolean" ? gridCandidate.snap : defaults.grid.snap
+    },
+    lights: Array.isArray(candidate.lights) ? (candidate.lights as SceneLightSourceState[]) : defaults.lights,
+    fog: {
+      enabled: typeof fogCandidate.enabled === "boolean" ? fogCandidate.enabled : defaults.fog.enabled,
+      mode: fogCandidate.mode === "full" ? "full" : "hidden",
+      colorHex: typeof fogCandidate.colorHex === "string" ? fogCandidate.colorHex : defaults.fog.colorHex,
+      revealedAreas: Array.isArray(fogCandidate.revealedAreas)
+        ? (fogCandidate.revealedAreas as SceneFogRevealedArea[])
+        : defaults.fog.revealedAreas
+    },
+    lighting: {
+      globalLight: typeof lightingCandidate.globalLight === "boolean" ? lightingCandidate.globalLight : defaults.lighting.globalLight,
+      darkness: Number.isFinite(Number(lightingCandidate.darkness))
+        ? clamp(Number(lightingCandidate.darkness), 0, 1)
+        : defaults.lighting.darkness,
+      gmSeeInvisible:
+        typeof lightingCandidate.gmSeeInvisible === "boolean" ? lightingCandidate.gmSeeInvisible : defaults.lighting.gmSeeInvisible
+    },
+    elevation: {
+      enabled: typeof elevationCandidate.enabled === "boolean" ? elevationCandidate.enabled : defaults.elevation.enabled,
+      baseLevel: Number.isFinite(Number(elevationCandidate.baseLevel))
+        ? Number(elevationCandidate.baseLevel)
+        : defaults.elevation.baseLevel
+    },
+    updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : defaults.updatedAt
   };
 }
 
@@ -371,25 +486,36 @@ export async function getSceneVisualState(worldId: string, sceneId: string, user
     return getDefaultVisualState(scene.id);
   }
 
-  return {
-    sceneId: scene.id,
-    ...canvasState.visual
-  };
+  return normalizeSceneVisualState(scene.id, canvasState.visual);
 }
 
 export async function patchSceneVisualState(worldId: string, sceneId: string, userId: string, input: SceneVisualInput): Promise<SceneVisualState> {
   await assertSceneAccess(worldId, userId, true);
   const current = await getSceneVisualState(worldId, sceneId, userId);
-  const next: SceneVisualState = {
+  const next = normalizeSceneVisualState(current.sceneId, {
     ...current,
+    preset: input.preset ?? current.preset,
+    backgroundImageUrl: input.backgroundImageUrl !== undefined ? input.backgroundImageUrl : current.backgroundImageUrl,
     grid: {
-      enabled: input.grid?.enabled ?? current.grid.enabled,
-      unitFeet: input.grid?.unitFeet ?? current.grid.unitFeet
+      ...current.grid,
+      ...(input.grid ?? {})
     },
     lights: Array.isArray(input.lights) ? input.lights : current.lights,
-    fog: input.fog ?? current.fog,
+    fog: {
+      ...current.fog,
+      ...(input.fog ?? {}),
+      revealedAreas: input.fog?.revealedAreas ?? current.fog.revealedAreas
+    },
+    lighting: {
+      ...current.lighting,
+      ...(input.lighting ?? {})
+    },
+    elevation: {
+      ...current.elevation,
+      ...(input.elevation ?? {})
+    },
     updatedAt: toIsoNow()
-  };
+  });
 
   await saveSceneCanvasState(worldId, sceneId, {
     visual: toStoredVisualState(next)

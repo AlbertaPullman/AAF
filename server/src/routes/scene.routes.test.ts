@@ -3,6 +3,7 @@ import test from "node:test";
 import { createServer, type Server } from "node:http";
 import { app } from "../app";
 import { prisma } from "../lib/prisma";
+import { cleanupWorldGraphByOwnerUsername } from "../test-utils/world-cleanup";
 
 type ApiResponse<T = unknown> = {
   status: number;
@@ -131,9 +132,7 @@ test("scene routes support gm-only management and sort/delete boundaries", async
     assert.equal(deleteLastScene.json.error?.message, "cannot delete last scene");
   } finally {
     await stopTestServer(server);
-    await prisma.worldMember.deleteMany({ where: { user: { username: { in: [gmUsername, playerUsername] } } } });
-    await prisma.scene.deleteMany({ where: { world: { owner: { username: gmUsername } } } });
-    await prisma.world.deleteMany({ where: { owner: { username: gmUsername } } });
+    await cleanupWorldGraphByOwnerUsername(gmUsername);
     await prisma.user.deleteMany({ where: { username: { in: [gmUsername, playerUsername] } } });
   }
 });

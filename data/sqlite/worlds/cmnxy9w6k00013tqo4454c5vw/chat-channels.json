@@ -1,0 +1,24 @@
+{
+  "channels": [
+    {
+      "key": "CHAT",
+      "name": "聊天频道",
+      "access": "ALL",
+      "isDefault": true,
+      "memberUserIds": [],
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-04-14T09:50:16.690Z",
+      "updatedAt": "2026-04-14T09:50:16.690Z"
+    },
+    {
+      "key": "BATTLE",
+      "name": "战斗信息频道",
+      "access": "ALL",
+      "isDefault": true,
+      "memberUserIds": [],
+      "createdBy": "cmn6sd8l500003tgg63dkqco7",
+      "createdAt": "2026-04-14T09:50:16.690Z",
+      "updatedAt": "2026-04-14T09:50:16.690Z"
+    }
+  ]
+}

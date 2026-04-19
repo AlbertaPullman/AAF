@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
-type TokenItem = {
+export type TokenItem = {
   tokenId: string;
   x: number;
   y: number;
@@ -14,6 +14,12 @@ type WorldCanvasProps = {
   onMoveToken: (tokenId: string, x: number, y: number, ownerUserId?: string | null, characterId?: string | null) => void;
   gridEnabled?: boolean;
   gridUnitFeet?: number;
+  showHeader?: boolean;
+  canDragToken?: boolean;
+  selectedTokenId?: string | null;
+  onSelectToken?: (tokenId: string) => void;
+  onCanvasContextMenu?: (event: MouseEvent<HTMLDivElement>) => void;
+  onTokenContextMenu?: (event: MouseEvent<HTMLButtonElement>, token: TokenItem) => void;
 };
 
 const BOARD_WIDTH = 1120;
@@ -30,7 +36,18 @@ type DragState = {
   characterId?: string | null;
 };
 
-export function WorldCanvas({ tokens, onMoveToken, gridEnabled = true, gridUnitFeet = 5 }: WorldCanvasProps) {
+export function WorldCanvas({
+  tokens,
+  onMoveToken,
+  gridEnabled = true,
+  gridUnitFeet = 5,
+  showHeader = true,
+  canDragToken = true,
+  selectedTokenId,
+  onSelectToken,
+  onCanvasContextMenu,
+  onTokenContextMenu,
+}: WorldCanvasProps) {
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [draftPositions, setDraftPositions] = useState<Record<string, { x: number; y: number }>>({});
@@ -73,7 +90,7 @@ export function WorldCanvas({ tokens, onMoveToken, gridEnabled = true, gridUnitF
 
       setDraftPositions((prev) => ({
         ...prev,
-        [dragging.tokenId]: position
+        [dragging.tokenId]: position,
       }));
     };
 
@@ -95,21 +112,26 @@ export function WorldCanvas({ tokens, onMoveToken, gridEnabled = true, gridUnitF
   }, [dragging, onMoveToken]);
 
   return (
-    <div className="world-card world-canvas-card">
-      <div className="world-canvas-card__header">
-        <div>
-          <strong>战术场景画布</strong>
-          <div className="world-canvas-card__badges">
-            <span className="world-canvas-card__badge">战术视窗</span>
-            <span className="world-canvas-card__badge">网格 {gridEnabled ? `${gridUnitFeet} 尺` : "关闭"}</span>
-            <span className="world-canvas-card__badge">拖拽即同步</span>
+    <div className={`world-card world-canvas-card ${showHeader ? "" : "world-canvas-card--embedded"}`.trim()}>
+      {showHeader ? (
+        <div className="world-canvas-card__header">
+          <div>
+            <strong>战术场景画布</strong>
+            <div className="world-canvas-card__badges">
+              <span className="world-canvas-card__badge">战术视窗</span>
+              <span className="world-canvas-card__badge">网格 {gridEnabled ? `${gridUnitFeet} 英尺` : "关闭"}</span>
+              <span className="world-canvas-card__badge">拖拽即时同步</span>
+            </div>
           </div>
+          <p>拖拽 token 到目标位置，松手后自动同步到同场景。</p>
         </div>
-        <p>拖拽 token 到目标位置，松手后自动同步到同场景。</p>
-      </div>
+      ) : null}
       <div
         className="world-board"
         ref={boardRef}
+        onContextMenu={(event) => {
+          onCanvasContextMenu?.(event);
+        }}
         style={{
           backgroundImage: gridEnabled
             ? `
@@ -120,29 +142,38 @@ export function WorldCanvas({ tokens, onMoveToken, gridEnabled = true, gridUnitF
               linear-gradient(165deg, rgba(9, 26, 62, 0.95), rgba(7, 15, 36, 0.97))
             `
             : "radial-gradient(circle at 35% 25%, rgba(56, 189, 248, 0.26), transparent 55%), linear-gradient(165deg, rgba(9, 26, 62, 0.96), rgba(7, 15, 36, 0.98))",
-          backgroundSize: gridEnabled ? `${gridCellSize}px ${gridCellSize}px, ${gridCellSize}px ${gridCellSize}px, auto, auto, auto` : "auto"
+          backgroundSize: gridEnabled ? `${gridCellSize}px ${gridCellSize}px, ${gridCellSize}px ${gridCellSize}px, auto, auto, auto` : "auto",
         }}
       >
         <div className="world-board__hud world-board__hud--top-left">主舞台</div>
-        <div className="world-board__hud world-board__hud--top-right">{gridEnabled ? `网格 ${gridUnitFeet} 尺` : "自由舞台"}</div>
+        <div className="world-board__hud world-board__hud--top-right">{gridEnabled ? `网格 ${gridUnitFeet} 英尺` : "自由舞台"}</div>
         <div className="world-board__hud world-board__hud--bottom-left">拖拽棋子可实时调整站位</div>
         <div className="world-board__glow world-board__glow--one" />
         <div className="world-board__glow world-board__glow--two" />
         {tokens.map((token) => (
           <button
-            className="world-token"
+            className={`world-token ${selectedTokenId === token.tokenId ? "world-token--selected" : ""}`.trim()}
             key={token.tokenId}
             onPointerDown={(event) => {
+              if (event.button !== 0 || !canDragToken) {
+                return;
+              }
               event.preventDefault();
               setDragging({
                 tokenId: token.tokenId,
                 ownerUserId: token.ownerUserId,
-                characterId: token.characterId
+                characterId: token.characterId,
               });
+            }}
+            onClick={() => {
+              onSelectToken?.(token.tokenId);
+            }}
+            onContextMenu={(event) => {
+              onTokenContextMenu?.(event, token);
             }}
             style={{
               left: `${draftPositions[token.tokenId]?.x ?? token.x}px`,
-              top: `${draftPositions[token.tokenId]?.y ?? token.y}px`
+              top: `${draftPositions[token.tokenId]?.y ?? token.y}px`,
             }}
             type="button"
             title={`${token.tokenId} (${token.x}, ${token.y})${token.ownerUserId ? ` owner=${token.ownerUserId}` : ""}${token.characterName ? ` character=${token.characterName}` : ""}`}
@@ -154,3 +185,4 @@ export function WorldCanvas({ tokens, onMoveToken, gridEnabled = true, gridUnitF
     </div>
   );
 }
+

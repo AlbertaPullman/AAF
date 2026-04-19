@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
 async function main() {
   const masterPasswordHash = await bcrypt.hash("666999", 10);
 
-  await prisma.user.upsert({
+  const nubes = await prisma.user.upsert({
     where: { username: "nubes" },
     update: {
       displayName: "Nubes",
@@ -89,6 +89,81 @@ async function main() {
     create: {
       worldId: world.id,
       name: "Seed Default Scene",
+      sortOrder: 0,
+      canvasState: {
+        version: 1,
+        objects: []
+      }
+    }
+  });
+
+  const backendWorld = await prisma.world.upsert({
+    where: { inviteCode: "system-backend-template-world" },
+    update: {
+      name: "后台模板世界",
+      description: "用于核心资源录入、规则回归与自动化结算验收的系统后台模板世界。",
+      visibility: WorldVisibility.PRIVATE
+    },
+    create: {
+      name: "后台模板世界",
+      description: "用于核心资源录入、规则回归与自动化结算验收的系统后台模板世界。",
+      visibility: WorldVisibility.PRIVATE,
+      inviteCode: "system-backend-template-world",
+      ownerId: owner.id
+    }
+  });
+
+  await prisma.worldMember.upsert({
+    where: {
+      worldId_userId: {
+        worldId: backendWorld.id,
+        userId: owner.id
+      }
+    },
+    update: {
+      role: WorldRole.GM,
+      status: WorldMemberStatus.ACTIVE
+    },
+    create: {
+      worldId: backendWorld.id,
+      userId: owner.id,
+      role: WorldRole.GM,
+      status: WorldMemberStatus.ACTIVE
+    }
+  });
+
+  await prisma.worldMember.upsert({
+    where: {
+      worldId_userId: {
+        worldId: backendWorld.id,
+        userId: nubes.id
+      }
+    },
+    update: {
+      role: WorldRole.ASSISTANT,
+      status: WorldMemberStatus.ACTIVE
+    },
+    create: {
+      worldId: backendWorld.id,
+      userId: nubes.id,
+      role: WorldRole.ASSISTANT,
+      status: WorldMemberStatus.ACTIVE
+    }
+  });
+
+  await prisma.scene.upsert({
+    where: {
+      worldId_sortOrder: {
+        worldId: backendWorld.id,
+        sortOrder: 0
+      }
+    },
+    update: {
+      name: "后台默认场景"
+    },
+    create: {
+      worldId: backendWorld.id,
+      name: "后台默认场景",
       sortOrder: 0,
       canvasState: {
         version: 1,

@@ -6,6 +6,7 @@ import { app } from "../app";
 import { initSocketServer } from "./index";
 import { prisma } from "../lib/prisma";
 import { SOCKET_EVENTS } from "./events";
+import { cleanupWorldGraphByOwnerUsername } from "../test-utils/world-cleanup";
 
 type ApiResponse<T = unknown> = {
   status: number;
@@ -272,11 +273,7 @@ test("scene socket flow keeps token and world chat isolated by scene", async () 
       socket.disconnect();
     }
     await stopTestServer(server);
-    await prisma.message.deleteMany({ where: { world: { owner: { username } } } });
-    await prisma.character.deleteMany({ where: { world: { owner: { username } } } });
-    await prisma.worldMember.deleteMany({ where: { user: { username } } });
-    await prisma.scene.deleteMany({ where: { world: { owner: { username } } } });
-    await prisma.world.deleteMany({ where: { owner: { username } } });
+    await cleanupWorldGraphByOwnerUsername(username);
     await prisma.user.deleteMany({ where: { username } });
   }
 });
@@ -370,11 +367,7 @@ test("scene socket flow rejects send or move before join and rejects scene misma
       socket.disconnect();
     }
     await stopTestServer(server);
-    await prisma.message.deleteMany({ where: { world: { owner: { username } } } });
-    await prisma.character.deleteMany({ where: { world: { owner: { username } } } });
-    await prisma.worldMember.deleteMany({ where: { user: { username } } });
-    await prisma.scene.deleteMany({ where: { world: { owner: { username } } } });
-    await prisma.world.deleteMany({ where: { owner: { username } } });
+    await cleanupWorldGraphByOwnerUsername(username);
     await prisma.user.deleteMany({ where: { username } });
   }
 });

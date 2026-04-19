@@ -129,6 +129,18 @@
       "owner": "scene"
     },
     {
+      "name": "worldSceneSettlementResolve",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/settlement/resolve",
+      "owner": "settlement"
+    },
+    {
+      "name": "worldSceneSettlementLogs",
+      "method": "GET",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/settlement/logs",
+      "owner": "settlement"
+    },
+    {
       "name": "worldRuntimeGet",
       "method": "GET",
       "path": "/api/worlds/:worldId/runtime",

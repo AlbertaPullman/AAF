@@ -102,6 +102,14 @@ model World {
   messages        Message[]
   aiSessions      AiSession[]
   storyEvents     StoryEvent[]
+  abilities       AbilityDefinition[]
+  races           RaceDefinition[]
+  professions     ProfessionDefinition[]
+  backgrounds     BackgroundDefinition[]
+  items           ItemDefinition[]
+  fateClocks      FateClock[]
+  decks           DeckDefinition[]
+  randomTables    RandomTable[]
 
   @@index([ownerId])
   @@index([visibility])
@@ -111,6 +119,7 @@ model WorldMember {
   id        String            @id @default(cuid())
   worldId   String
   userId    String
+  displayName String?
   role      WorldRole         @default(PLAYER)
   status    WorldMemberStatus @default(ACTIVE)
   joinedAt  DateTime          @default(now())
@@ -232,4 +241,249 @@ model StoryEvent {
   @@index([worldId, createdAt])
   @@index([worldId, status])
   @@index([targetUserId])
+}
+
+// ──────────── 能力系统 ──────────────────────
+
+model AbilityDefinition {
+  id            String   @id @default(cuid())
+  worldId       String
+  name          String
+  category      String   // spell | combatTechnique | feature | racial | item | custom
+  source        String   // race | profession | talent | equipment | item | background | feat | custom
+  sourceName    String   @default("")
+  activation    String   @default("active")
+  actionType    String   @default("standard")
+  description   String   @default("")
+  rulesText     String   @default("")
+  iconUrl       String?
+  tags          Json     @default("[]")
+  levelReq      Int?
+  range         String?  // 数字(尺) | "self" | "touch" | "special"
+  aoeShape      String?  // none | sphere | cube | cone | line | cylinder
+  aoeSize       Int?
+  resourceCosts Json     @default("[]")
+  cooldown      Json?
+  duration      String   @default("instantaneous")
+  durationValue Int?
+  concentration Boolean  @default(false)
+  checkType     String?  // attack | savingThrow | none | contest
+  attackAttr    String?  // strength | dexterity | ...
+  saveDC        Json?
+  damageRolls   Json?
+  trigger       Json?
+  effects       Json     @default("[]")
+  reactionStrat String?  // always-ask | smart-ask | auto
+  spellLevel    Int?
+  spellSchool   String?
+  spellComps    Json?
+  canUpcast     Boolean  @default(false)
+  upcastEffect  String?
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  world         World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId, category])
+  @@index([worldId, source])
+}
+
+// ──────────── 种族定义 ──────────────────────
+
+model RaceDefinition {
+  id            String   @id @default(cuid())
+  worldId       String
+  name          String
+  description   String   @default("")
+  loreText      String   @default("")
+  iconUrl       String?
+  attrBonus     Json     @default("[]")
+  size          String   @default("medium")
+  speed         Int      @default(30)
+  darkvision    Int      @default(0)
+  creatureType  String   @default("humanoid")
+  languages     Json     @default("[]")
+  ageDesc       String   @default("")
+  traits        Json     @default("[]")
+  subtypes      Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  world         World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId])
+}
+
+// ──────────── 职业定义 ──────────────────────
+
+model ProfessionDefinition {
+  id                  String   @id @default(cuid())
+  worldId             String
+  name                String
+  description         String   @default("")
+  loreText            String   @default("")
+  iconUrl             String?
+  type                String   @default("combat")
+  hitDie              String   @default("1d10")
+  primaryAttribute    String   @default("strength")
+  saveProficiencies   Json     @default("[]")
+  armorProficiencies  Json     @default("[]")
+  weaponProficiencies Json     @default("[]")
+  toolProficiencies   Json     @default("[]")
+  skillChoices        Json     @default("[]")
+  startingEquipment   Json     @default("[]")
+  startingWealth      String?
+  spellcastingAttr    String?
+  furyPerLevel        Float    @default(0)
+  levelFeatures       Json     @default("[]")
+  talentTreeIds       Json     @default("[]")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  world               World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId])
+}
+
+// ──────────── 背景定义 ──────────────────────
+
+model BackgroundDefinition {
+  id               String   @id @default(cuid())
+  worldId          String
+  name             String
+  description      String   @default("")
+  loreText         String   @default("")
+  iconUrl          String?
+  skillPoints      Int      @default(0)
+  bonusLanguages   Int      @default(0)
+  toolProficiencies Json    @default("[]")
+  startingEquipment Json    @default("[]")
+  features         Json     @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  world            World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId])
+}
+
+// ──────────── 物品定义 ──────────────────────
+
+model ItemDefinition {
+  id            String   @id @default(cuid())
+  worldId       String
+  name          String
+  description   String   @default("")
+  category      String   @default("gear")
+  subcategory   String?
+  rarity        String   @default("common")
+  iconUrl       String?
+  weight        Float    @default(0)
+  price         Float    @default(0)
+  stackable     Boolean  @default(false)
+  maxStack      Int?
+  requiresIdent Boolean  @default(false)
+  requiresAttune Boolean @default(false)
+  attuneReq     String?
+  weaponProps   Json?
+  armorProps    Json?
+  enchantments  Json?
+  enhanceSlots  Int      @default(0)
+  gemSlots      Int      @default(0)
+  tags          Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  world         World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId, category])
+}
+
+// ──────────── 命刻 ──────────────────────
+
+model FateClock {
+  id              String   @id @default(cuid())
+  worldId         String
+  name            String
+  description     String   @default("")
+  segments        Int      @default(6)
+  filledSegments  Int      @default(0)
+  visibleToPlayers Boolean @default(true)
+  direction       String   @default("advance")
+  successThreshold Int?
+  failureThreshold Int?
+  status          String   @default("active")
+  sceneId         String?
+  history         Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  world           World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId])
+}
+
+// ──────────── 牌堆 ──────────────────────
+
+model DeckDefinition {
+  id            String   @id @default(cuid())
+  worldId       String
+  name          String
+  description   String   @default("")
+  cards         Json     @default("[]")
+  replacement   Boolean  @default(true)
+  drawnHistory  Json     @default("[]")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  world         World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId])
+}
+
+// ──────────── 随机表 ──────────────────────
+
+model RandomTable {
+  id           String   @id @default(cuid())
+  worldId      String
+  name         String
+  description  String   @default("")
+  diceFormula  String   @default("1d100")
+  entries      Json     @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  world        World    @relation(fields: [worldId], references: [id])
+
+  @@index([worldId])
+}
+
+// ──────────── 世界天赋树实例 ──────────────────────
+
+model WorldTalentTreeInstance {
+  id              String   @id @default(cuid())
+  worldId         String
+  templateId      String
+  templateVersion Int
+  name            String
+  treeType        String   @default("PROFESSION") // PROFESSION | GENERAL
+  category        String   @default("")
+  graphSnapshot   Json     // 模板快照（不可变）
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  allocations     CharacterTalentAllocation[]
+
+  @@index([worldId])
+  @@unique([worldId, templateId])
+}
+
+// ──────────── 角色天赋分配 ──────────────────────
+
+model CharacterTalentAllocation {
+  id           String   @id @default(cuid())
+  characterId  String
+  instanceId   String
+  ranks        Json     // Record<nodeId, rank> — application default: {}
+  pointsSpent  Int      @default(0)
+  resetCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  instance     WorldTalentTreeInstance @relation(fields: [instanceId], references: [id])
+
+  @@unique([characterId, instanceId])
+  @@index([characterId])
 }

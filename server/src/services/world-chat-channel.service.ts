@@ -21,6 +21,8 @@ export type WorldChatChannelMember = {
   userId: string;
   username: string;
   displayName: string | null;
+  worldDisplayName: string | null;
+  boundCharacterName: string | null;
   worldRole: WorldRole;
 };
 
@@ -221,6 +223,7 @@ async function listWorldActiveMembers(worldId: string): Promise<WorldChatChannel
     select: {
       userId: true,
       role: true,
+      displayName: true,
       user: {
         select: {
           username: true,
@@ -231,10 +234,45 @@ async function listWorldActiveMembers(worldId: string): Promise<WorldChatChannel
     orderBy: { joinedAt: "asc" }
   });
 
+  const memberUserIds = rows.map((item) => item.userId);
+  const characterRows = memberUserIds.length
+    ? await prisma.character.findMany({
+      where: {
+        worldId,
+        userId: { in: memberUserIds }
+      },
+      select: {
+        userId: true,
+        name: true,
+        type: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: "asc" }
+    })
+    : [];
+
+  const boundCharacterByUserId = new Map<string, { name: string; type: "PC" | "NPC" }>();
+  for (const row of characterRows) {
+    const userId = row.userId?.trim();
+    if (!userId) {
+      continue;
+    }
+
+    const current = boundCharacterByUserId.get(userId);
+    if (!current || (current.type === "NPC" && row.type === "PC")) {
+      boundCharacterByUserId.set(userId, {
+        name: row.name,
+        type: row.type
+      });
+    }
+  }
+
   return rows.map((item) => ({
     userId: item.userId,
     username: item.user.username,
     displayName: item.user.displayName,
+    worldDisplayName: item.displayName,
+    boundCharacterName: boundCharacterByUserId.get(item.userId)?.name ?? null,
     worldRole: item.role
   }));
 }

@@ -17,9 +17,19 @@ type RateLimitState = {
   count: number;
 };
 
+type WorldLatencyEntry = {
+  latencyMs: number;
+  updatedAt: number;
+};
+
 const chatRateLimitByUser = new Map<string, RateLimitState>();
 const worldPresenceByWorld = new Map<string, Map<string, number>>();
 const sceneTokenStateCache = new Map<string, Map<string, SceneTokenState>>();
+const worldLatencyByWorld = new Map<string, Map<string, WorldLatencyEntry>>();
+const worldLatencyEmitTimerByWorld = new Map<string, ReturnType<typeof setTimeout>>();
+
+const WORLD_LATENCY_STALE_MS = 30_000;
+const WORLD_LATENCY_EMIT_DELAY_MS = 220;
 
 function getSceneCacheKey(worldId: string, sceneId: string) {
   return `${worldId}:${sceneId}`;
@@ -71,6 +81,112 @@ function emitWorldPresence(io: Server, worldId: string, memberUserIds: string[])
     onlineCount: memberUserIds.length,
     updatedAt: new Date().toISOString()
   });
+}
+
+function sanitizeLatencyMs(input: unknown): number | null {
+  const numeric = Number(input);
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+
+  const normalized = Math.trunc(numeric);
+  if (normalized < 0 || normalized > 120_000) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function clearWorldLatencyEmitTimer(worldId: string) {
+  const timer = worldLatencyEmitTimerByWorld.get(worldId);
+  if (timer) {
+    clearTimeout(timer);
+    worldLatencyEmitTimerByWorld.delete(worldId);
+  }
+}
+
+function upsertWorldLatency(worldId: string, userId: string, latencyMs: number): boolean {
+  const byUser = worldLatencyByWorld.get(worldId) ?? new Map<string, WorldLatencyEntry>();
+  const current = byUser.get(userId) ?? null;
+  const now = Date.now();
+
+  byUser.set(userId, {
+    latencyMs,
+    updatedAt: now
+  });
+  worldLatencyByWorld.set(worldId, byUser);
+
+  return !current || current.latencyMs !== latencyMs;
+}
+
+function removeWorldLatency(worldId: string, userId: string): boolean {
+  const byUser = worldLatencyByWorld.get(worldId);
+  if (!byUser) {
+    return false;
+  }
+
+  const deleted = byUser.delete(userId);
+  if (!deleted) {
+    return false;
+  }
+
+  if (byUser.size === 0) {
+    worldLatencyByWorld.delete(worldId);
+  } else {
+    worldLatencyByWorld.set(worldId, byUser);
+  }
+
+  return true;
+}
+
+function emitWorldLatency(io: Server, worldId: string) {
+  const byUser = worldLatencyByWorld.get(worldId) ?? new Map<string, WorldLatencyEntry>();
+  const now = Date.now();
+
+  const latencies: Array<{ userId: string; latencyMs: number; updatedAt: string }> = [];
+  for (const [userId, entry] of byUser.entries()) {
+    if (now - entry.updatedAt > WORLD_LATENCY_STALE_MS) {
+      byUser.delete(userId);
+      continue;
+    }
+
+    latencies.push({
+      userId,
+      latencyMs: entry.latencyMs,
+      updatedAt: new Date(entry.updatedAt).toISOString()
+    });
+  }
+
+  if (byUser.size === 0) {
+    worldLatencyByWorld.delete(worldId);
+  } else {
+    worldLatencyByWorld.set(worldId, byUser);
+  }
+
+  io.to(`world:${worldId}`).emit(SOCKET_EVENTS.worldLatencyUpdate, {
+    worldId,
+    latencies,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+function scheduleWorldLatencyEmit(io: Server, worldId: string, immediate = false) {
+  if (!worldId) {
+    return;
+  }
+
+  const existing = worldLatencyEmitTimerByWorld.get(worldId);
+  if (existing && !immediate) {
+    return;
+  }
+
+  clearWorldLatencyEmitTimer(worldId);
+  const timer = setTimeout(() => {
+    worldLatencyEmitTimerByWorld.delete(worldId);
+    emitWorldLatency(io, worldId);
+  }, immediate ? 0 : WORLD_LATENCY_EMIT_DELAY_MS);
+
+  worldLatencyEmitTimerByWorld.set(worldId, timer);
 }
 
 function upsertTokenState(cacheKey: string, token: SceneTokenState): SceneTokenState {
@@ -178,6 +294,7 @@ export function initSocketServer(server: HttpServer) {
         joinedWorldIds.add(worldId);
         const memberUserIds = updateWorldPresence(worldId, userId, 1);
         emitWorldPresence(io, worldId, memberUserIds);
+        scheduleWorldLatencyEmit(io, worldId, true);
 
         const { sceneId, tokens } = await ensureSceneTokenStateLoaded(worldId);
         selectedSceneByWorld.set(worldId, sceneId);
@@ -213,6 +330,11 @@ export function initSocketServer(server: HttpServer) {
           socket.leave(`world:${worldId}`);
           const memberUserIds = updateWorldPresence(worldId, userId, -1);
           emitWorldPresence(io, worldId, memberUserIds);
+
+          const latencyRemoved = removeWorldLatency(worldId, userId);
+          if (latencyRemoved) {
+            scheduleWorldLatencyEmit(io, worldId, true);
+          }
         }
 
         if (ack) {
@@ -225,6 +347,41 @@ export function initSocketServer(server: HttpServer) {
         }
       }
     });
+
+    socket.on(
+      SOCKET_EVENTS.worldLatencyProbe,
+      (
+        payload: { worldId?: string; latencyMs?: number },
+        ack?: (result: { ok: boolean; error?: string; serverAt?: string }) => void
+      ) => {
+        try {
+          const worldId = payload?.worldId?.trim();
+          if (!worldId) {
+            throw new Error("worldId is required");
+          }
+          if (!joinedWorldIds.has(worldId)) {
+            throw new Error("must join world before reporting latency");
+          }
+
+          const latencyMs = sanitizeLatencyMs(payload?.latencyMs);
+          if (latencyMs !== null) {
+            const changed = upsertWorldLatency(worldId, userId, latencyMs);
+            if (changed) {
+              scheduleWorldLatencyEmit(io, worldId);
+            }
+          }
+
+          if (ack) {
+            ack({ ok: true, serverAt: new Date().toISOString() });
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "latency probe failed";
+          if (ack) {
+            ack({ ok: false, error: message });
+          }
+        }
+      }
+    );
 
     socket.on(
       SOCKET_EVENTS.worldMessageSend,
@@ -247,6 +404,26 @@ export function initSocketServer(server: HttpServer) {
           }
           if (payload?.sceneId?.trim() && payload.sceneId.trim() !== activeSceneId) {
             throw new Error("scene mismatch");
+          }
+
+          const membership = await prisma.worldMember.findUnique({
+            where: {
+              worldId_userId: {
+                worldId,
+                userId
+              }
+            },
+            select: {
+              role: true,
+              status: true
+            }
+          });
+
+          if (!membership || membership.status !== "ACTIVE") {
+            throw new Error("not a member of world");
+          }
+          if (membership.role === "OBSERVER") {
+            throw new Error("observer cannot send world message");
           }
 
           const message = await createWorldMessage(userId, worldId, payload?.content ?? "", payload?.channelKey, activeSceneId);
@@ -347,6 +524,13 @@ export function initSocketServer(server: HttpServer) {
             throw new Error("not a member of world");
           }
 
+          if (membership.role === "OBSERVER") {
+            throw new Error("observer cannot move token");
+          }
+
+          const canMoveAnyToken = membership.role === "GM" || membership.role === "ASSISTANT";
+          const canAssignOwner = membership.role === "GM";
+
           const cacheKey = getSceneCacheKey(worldId, activeSceneId);
           const { tokens } = await ensureSceneTokenStateLoaded(worldId, activeSceneId);
           const existingToken = tokens.get(tokenId);
@@ -367,7 +551,7 @@ export function initSocketServer(server: HttpServer) {
             if (!character || character.worldId !== worldId) {
               throw new Error("character not found in world");
             }
-            if (membership.role !== "GM" && character.userId !== userId) {
+            if (!canMoveAnyToken && character.userId !== userId) {
               throw new Error("permission denied for character");
             }
 
@@ -375,11 +559,13 @@ export function initSocketServer(server: HttpServer) {
             characterOwnerUserId = character.userId ?? null;
           }
 
-          if (membership.role !== "GM") {
+          if (!canMoveAnyToken) {
             if (existingToken?.ownerUserId && existingToken.ownerUserId !== userId) {
               throw new Error("permission denied for token");
             }
+          }
 
+          if (!canAssignOwner) {
             if (payload.ownerUserId && payload.ownerUserId !== userId) {
               throw new Error("cannot assign token owner to another user");
             }
@@ -389,7 +575,7 @@ export function initSocketServer(server: HttpServer) {
           const ownerUserId =
             characterOwnerUserId ??
             existingToken?.ownerUserId ??
-            (membership.role === "GM" ? requestedOwner : userId);
+            (canAssignOwner ? requestedOwner : userId);
 
           const tokenState = upsertTokenState(cacheKey, {
             tokenId,
@@ -431,6 +617,11 @@ export function initSocketServer(server: HttpServer) {
       joinedWorldIds.forEach((worldId) => {
         const memberUserIds = updateWorldPresence(worldId, userId, -1);
         emitWorldPresence(io, worldId, memberUserIds);
+
+        const latencyRemoved = removeWorldLatency(worldId, userId);
+        if (latencyRemoved) {
+          scheduleWorldLatencyEmit(io, worldId, true);
+        }
       });
       joinedWorldIds.clear();
       logger.info(`socket disconnected: ${socket.id}, userId=${userId}`);

@@ -2,6 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { http } from "../../lib/http";
 import { useAuthStore } from "../../store/authStore";
+import {
+  type AffixMeta,
+  type ParsedAffixMeta,
+  type RequirementItem,
+  parseAffixMeta,
+  formatAffixText,
+  normalizeStudyDescription,
+  parseRequirementItems,
+  rankOf,
+  canUnlockNode,
+  canLearnNode,
+  pruneInvalidLearnedNodes,
+  getNodeLearningStatusText
+} from "../../world/lib/talentTree";
 
 type TalentTreeType = "PROFESSION" | "GENERAL";
 type TalentTreeStatus = "DRAFT" | "PUBLISHED";
@@ -21,19 +35,6 @@ type TalentTreeTemplate = {
 type TemplateListResponse = {
   editable: boolean;
   templates: TalentTreeTemplate[];
-};
-
-type AffixMeta = Record<string, unknown>;
-
-type RequirementItem = {
-  profession: string;
-  level: number;
-};
-
-type ParsedAffixMeta = {
-  mastery: boolean;
-  exclusive: boolean;
-  studyMax: number;
 };
 
 type TalentNode = {
@@ -96,146 +97,7 @@ const PROFESSION_LIST = [
 
 const STORAGE_PREFIX = "talent-trial-state-v1:";
 
-function parseAffixMeta(value: unknown, rawMeta?: AffixMeta): ParsedAffixMeta {
-  let mastery = false;
-  let exclusive = false;
-  let studyMax = 0;
 
-  if (rawMeta && typeof rawMeta === "object") {
-    const legacyType = typeof rawMeta.type === "string" ? rawMeta.type : "";
-    if (legacyType === "MASTERY") {
-      mastery = true;
-    }
-    if (legacyType === "EXCLUSIVE") {
-      exclusive = true;
-    }
-    if (legacyType === "STUDY") {
-      studyMax = Math.max(1, Number(rawMeta.studyMax || 1));
-    }
-    if (rawMeta.mastery === true) {
-      mastery = true;
-    }
-    if (rawMeta.exclusive === true) {
-      exclusive = true;
-    }
-    if (Number.isFinite(Number(rawMeta.studyMax)) && Number(rawMeta.studyMax) > 0) {
-      studyMax = Math.max(studyMax, Number(rawMeta.studyMax));
-    }
-  }
-
-  const text = typeof value === "string" ? value.trim() : "";
-  if (text) {
-    const parts = text
-      .split(/[，,]/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-
-    parts.forEach((item) => {
-      if (item.startsWith("通晓")) {
-        mastery = true;
-        return;
-      }
-      if (item.startsWith("排他")) {
-        exclusive = true;
-        return;
-      }
-      const studyMatch = item.match(/^研习\s*(\d+)$/);
-      if (studyMatch) {
-        studyMax = Math.max(studyMax, Math.max(1, Number(studyMatch[1])));
-      }
-    });
-  }
-
-  return { mastery, exclusive, studyMax };
-}
-
-function formatAffixText(meta: ParsedAffixMeta): string {
-  const parts: string[] = [];
-  if (meta.mastery) {
-    parts.push("通晓");
-  }
-  if (meta.studyMax > 0) {
-    parts.push(`研习${meta.studyMax}`);
-  }
-  if (meta.exclusive) {
-    parts.push("排他");
-  }
-  return parts.join("，");
-}
-
-function normalizeStudyDescription(value: string, studyMax: number): string {
-  if (studyMax <= 0) {
-    return value;
-  }
-
-  const normalized = (value || "").replace(/\r\n/g, "\n").trim();
-  const lines = normalized.split("\n").map((item) => item.trim()).filter(Boolean);
-  const rows = Array.from({ length: studyMax }, () => "");
-  let hasPrefixed = false;
-
-  lines.forEach((line) => {
-    const matched = line.match(/^level\s*(\d+)\s*[:：]?\s*(.*)$/i);
-    if (!matched) {
-      return;
-    }
-    hasPrefixed = true;
-    const level = Math.max(1, Number(matched[1]));
-    if (level <= studyMax) {
-      rows[level - 1] = matched[2] ?? "";
-    }
-  });
-
-  if (!hasPrefixed && normalized) {
-    rows[0] = normalized;
-  }
-
-  return rows.map((row, index) => `level${index + 1} ${row}`).join("\n");
-}
-
-function parseRequirementItems(value: unknown): RequirementItem[] {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text || text === "无") {
-    return [];
-  }
-
-  return text
-    .split("/")
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => {
-      const match = item.match(/^(\d+)\s*(.+)$/);
-      if (!match) {
-        return null;
-      }
-      const level = Number(match[1]);
-      const profession = match[2].trim();
-      if (!Number.isFinite(level) || level < 0 || !profession || !PROFESSION_LIST.includes(profession as any)) {
-        return null;
-      }
-      return { level, profession };
-    })
-    .filter((item): item is RequirementItem => !!item);
-}
-
-function rankOf(ranks: Record<string, number>, nodeId: string): number {
-  return Math.max(0, Number(ranks[nodeId] || 0));
-}
-
-function getNodeLearningStatusText(node: TalentNode, unlocked: boolean, rank: number) {
-  if (!unlocked) {
-    return "未解锁";
-  }
-  if (node.affixMeta.studyMax > 0) {
-    if (rank > 0) {
-      return `已学习${rank}次`;
-    }
-    return "未学习";
-  }
-  if (rank > 0) {
-    return "已学习";
-  }
-  return "未学习";
-}
 
 function buildProjection(graphData: unknown, mode: TalentPreviewMode): TalentProjection {
   if (!graphData || typeof graphData !== "object") {
@@ -302,7 +164,7 @@ function buildProjection(graphData: unknown, mode: TalentPreviewMode): TalentPro
       affixMeta: parsedAffix,
       requirementMeta: Array.isArray(data.requirementMeta)
         ? (data.requirementMeta as RequirementItem[])
-        : parseRequirementItems(data.requirement),
+        : parseRequirementItems(data.requirement, PROFESSION_LIST),
       parentNodeIds: Array.isArray(data.parentNodeIds)
         ? (data.parentNodeIds as string[])
         : [],
@@ -564,38 +426,9 @@ export default function TalentTrialPage() {
   }, [projection.nodes]);
 
   const isNodeUnlocked = useMemo(() => {
-    const cache = new Map<string, boolean>();
-
-    const canUnlock = (node: TalentNode): boolean => {
-      const cached = cache.get(node.id);
-      if (cached !== undefined) {
-        return cached;
-      }
-
-      if (rankOf(activeRanks, node.id) > 0) {
-        cache.set(node.id, true);
-        return true;
-      }
-
-      const requirementPass = node.requirementMeta.every((item) => {
-        const currentLevel = professionLevels[item.profession] ?? 0;
-        return currentLevel >= item.level;
-      });
-
-      const parentPass = node.parentNodeIds.every((parentId) => rankOf(activeRanks, parentId) > 0);
-
-      const masteryPass = node.affixMeta.mastery
-        ? projection.nodes.some((other) => other.id !== node.id && other.title === node.title && rankOf(activeRanks, other.id) > 0)
-        : false;
-
-      const result = masteryPass || (requirementPass && parentPass);
-      cache.set(node.id, result);
-      return result;
-    };
-
     const result = new Map<string, boolean>();
     projection.nodes.forEach((node) => {
-      result.set(node.id, canUnlock(node));
+      result.set(node.id, canUnlockNode(node, activeRanks, professionLevels, projection.nodes));
     });
     return result;
   }, [activeRanks, professionLevels, projection.nodes]);
@@ -635,50 +468,14 @@ export default function TalentTrialPage() {
       return;
     }
 
-    if (!isNodeUnlocked.get(node.id)) {
-      setNotice("该节点尚未解锁，无法学习。");
+    const result = canLearnNode(node, draftRanks, committedRanks, availablePoints, projection.nodes, professionLevels);
+    if (!result.allowed) {
+      setNotice(result.reason);
       return;
     }
 
     const currentRank = rankOf(draftRanks, node.id);
     const committedRank = rankOf(committedRanks, node.id);
-    const maxRank = node.affixMeta.studyMax > 0 ? Math.max(1, Number(node.affixMeta.studyMax || 1)) : 1;
-
-    if (currentRank >= maxRank) {
-      setNotice("该节点已达到可学习上限。");
-      return;
-    }
-
-    if (node.affixMeta.exclusive) {
-      const otherExclusive = projection.nodes.some((item) => {
-        if (item.id === node.id || !item.affixMeta.exclusive) {
-          return false;
-        }
-        return rankOf(draftRanks, item.id) > 0;
-      });
-      if (otherExclusive) {
-        setNotice("本天赋树已有已学习的排他天赋，无法再学习其他排他天赋。");
-        return;
-      }
-    }
-
-    if (node.affixMeta.mastery) {
-      const sameTitleLearned = projection.nodes.some((item) => {
-        if (item.id === node.id || item.title !== node.title) {
-          return false;
-        }
-        return rankOf(draftRanks, item.id) > 0;
-      });
-      if (sameTitleLearned) {
-        setNotice("通晓同名效果不会叠加，无需重复学习。");
-        return;
-      }
-    }
-
-    if (availablePoints < node.cost) {
-      setNotice("天赋点不足，无法学习该节点。");
-      return;
-    }
 
     const next = {
       ...draftRanks,
@@ -716,52 +513,7 @@ export default function TalentTrialPage() {
       next[node.id] = nextRank;
     }
 
-    const isLearnStateValid = (target: TalentNode, ranks: Record<string, number>) => {
-      const requirementPass = target.requirementMeta.every((item) => {
-        const currentLevel = professionLevels[item.profession] ?? 0;
-        return currentLevel >= item.level;
-      });
-
-      const parentPass = target.parentNodeIds.every((parentId) => rankOf(ranks, parentId) > 0);
-
-      const masteryPass = target.affixMeta.mastery
-        ? projection.nodes.some(
-          (other) => other.id !== target.id && other.title === target.title && rankOf(ranks, other.id) > 0
-        )
-        : false;
-
-      return masteryPass || (requirementPass && parentPass);
-    };
-
-    const pruned = { ...next };
-    let changed = false;
-    do {
-      changed = false;
-      projection.nodes.forEach((item) => {
-        const current = rankOf(pruned, item.id);
-        if (current <= 0) {
-          return;
-        }
-
-        if (isLearnStateValid(item, pruned)) {
-          return;
-        }
-
-        const floorRank = rankOf(committedRanks, item.id);
-        if (current <= floorRank) {
-          return;
-        }
-
-        if (floorRank <= 0) {
-          delete pruned[item.id];
-        } else {
-          pruned[item.id] = floorRank;
-        }
-        changed = true;
-      });
-    } while (changed);
-
-    setDraftRanks(pruned);
+    setDraftRanks(pruneInvalidLearnedNodes(next, committedRanks, professionLevels, projection.nodes));
   };
 
   const onResetTrial = () => {

@@ -88,6 +88,8 @@ export async function listWorlds(req: Request, res: Response) {
       return;
     }
 
+    await worldService.ensureBackendTemplateWorldForPlatformAdmin(req.userId);
+
     const scope = req.query.scope;
     if (scope === "mine") {
       const worlds = await worldService.listMyWorlds(req.userId);
@@ -213,6 +215,118 @@ export async function getWorldDetail(req: Request, res: Response) {
       success: false,
       data: null,
       error: { code: "WORLD_GET_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
+export async function getWorldMemberManage(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const data = await worldService.listWorldMemberManageData(req.params.worldId, req.userId);
+    res.status(200).json({
+      success: true,
+      data,
+      error: null,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    const status =
+      message === "world not found"
+        ? 404
+        : message === "not a member of world" || message === "forbidden"
+          ? 403
+          : 400;
+    res.status(status).json({
+      success: false,
+      data: null,
+      error: { code: "WORLD_MEMBER_MANAGE_LIST_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
+export async function getWorldRoster(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const data = await worldService.listWorldRosterData(req.params.worldId, req.userId);
+    res.status(200).json({
+      success: true,
+      data,
+      error: null,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    const status = message === "not a member of world" ? 403 : 400;
+    res.status(status).json({
+      success: false,
+      data: null,
+      error: { code: "WORLD_ROSTER_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
+export async function patchWorldMemberManage(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const data = await worldService.updateWorldMemberManageData(
+      req.params.worldId,
+      req.userId,
+      req.params.memberUserId,
+      (req.body ?? {}) as worldService.UpdateWorldMemberManageInput
+    );
+
+    res.status(200).json({
+      success: true,
+      data,
+      error: null,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    const status =
+      message === "world not found" || message === "character not found"
+        ? 404
+        : message === "not a member of world" || message === "forbidden"
+          ? 403
+          : message === "character already bound"
+            ? 409
+            : 400;
+
+    res.status(status).json({
+      success: false,
+      data: null,
+      error: { code: "WORLD_MEMBER_MANAGE_PATCH_ERROR", message },
       requestId: req.requestId
     });
   }

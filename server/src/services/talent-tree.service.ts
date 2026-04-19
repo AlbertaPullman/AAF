@@ -345,6 +345,11 @@ function canManageTemplate(platformRole: PlatformRole) {
   return platformRole === PlatformRole.MASTER || platformRole === PlatformRole.ADMIN;
 }
 
+export async function getTemplateById(templateId: string): Promise<TalentTreeTemplateItem | null> {
+  const store = await readStore();
+  return store.templates.find((item) => item.id === templateId) ?? null;
+}
+
 export async function listTalentTreeTemplates(userId: string) {
   const actor = await getActor(userId);
   const store = await readStore();

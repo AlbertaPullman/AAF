@@ -12,6 +12,8 @@ export const SOCKET_EVENTS = {
   worldJoin: "world:join",
   worldLeave: "world:leave",
   worldMembersUpdate: "world:members:update",
+  worldLatencyProbe: "world:latency:probe",
+  worldLatencyUpdate: "world:latency:update",
   sceneSelect: "scene:select",
   sceneTokenMove: "scene:token:move",
   sceneTokenMoved: "scene:token:moved"

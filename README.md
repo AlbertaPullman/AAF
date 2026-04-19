@@ -1,14 +1,21 @@
-# AAF Monorepo
+# AAF
 
-本仓库当前处于阶段 8 迭代中，已具备多人 TRPG 最小链路与世界内核心能力，并持续推进天赋树、规则书与 AI 辅助能力。
+AAF 是一个面向中文 TRPG 团务的 Web 平台，采用前后端分离架构，核心能力覆盖账号体系、世界管理、场景与角色、世界内聊天、运行时模块，以及阶段 8 持续建设中的世界扩展能力。
+
+## 当前状态
+
+- 代码仓库：前后端可独立开发与构建。
+- 服务端：`npm test -w server` 通过。
+- 全量构建：`npm run build` 通过。
+- 当前主线：世界内系统深化，包括战斗、结算、实体管理、天赋与规则相关能力。
 
 ## 目录结构
 
-- `client`: React 前端
-- `server`: Express + Socket.IO 后端
-- `data`: 数据目录（数据库、备份、上传）
-- `shared`: 前后端共享常量
-- `docs`: 协议和变更文档
+- `client`：React + TypeScript + Vite 前端
+- `server`：Express + Socket.IO + Prisma 后端
+- `shared`：前后端共享常量、规则和类型
+- `data`：SQLite 数据与运行数据
+- `docs`：协议、规范、总计划与专题文档
 
 ## 快速开始
 
@@ -26,35 +33,41 @@ npm run db:migrate:init
 npm run db:seed
 ```
 
-后续新增迁移时使用：
-
-```bash
-npm run prisma:migrate -w server -- --name <migration-name>
-```
-
-3. 启动前后端
+3. 启动开发环境
 
 ```bash
 npm run dev
 ```
 
-4. 单独启动
+4. 单独启动前后端
 
 ```bash
 npm run dev -w server
 npm run dev -w client
 ```
 
+5. 运行验证
+
+```bash
+npm test -w server
+npm run build
+```
+
 ## 环境变量
 
-复制 `.env.example` 到 `.env`，按需修改。数据库默认落在 `data/sqlite/aaf.db`。
+复制根目录 `.env.example` 为 `.env`，再按本地环境补充配置。SQLite 默认使用 `data/sqlite/aaf.db`。
 
-## 阶段说明
+## 文档入口
 
-当前是阶段 8：在阶段 7 核心链路完成基础上，继续推进世界内扩展能力（天赋树、规则书、剧情事件与 AI 辅助）。
+- 总计划：`docs/AAF总计划.md`
+- 技术说明：`技术栈.md`
+- AI 开发记忆：`AI上下文记忆文档.md`
+- 世界需求源文档：`世界需求与填写清单.md`
+- 规则规格：`docs/规则规格-战斗与造物系统-v1.md`
 
-当前已具备：登录鉴权、世界创建与加入、全局聊天、世界内聊天、多频道、最小 Token 同步、角色卡基础读写、多 Scene 切换与隔离、关键单元/HTTP/Socket 测试。
+## 文档治理约定
 
-阶段 8 已开始并持续迭代中；酒馆与 AI 助手能力按已确认边界分步接入。
-
-酒馆模块已独立目录占位，可在后续阶段直接替换为外部 API 方案或禁用。
+- 计划、路线图、验收、优化池统一收敛到 `docs/AAF总计划.md`
+- 需求文档保留“为什么做”
+- 协议/规则文档保留“怎么做”
+- AI 记忆文档只保留“下一次继续开发必须知道什么”

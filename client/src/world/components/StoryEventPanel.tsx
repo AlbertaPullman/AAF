@@ -134,6 +134,8 @@ export function StoryEventPanel({
   onLocateEvent
 }: StoryEventPanelProps) {
   const gm = isGm(myRole);
+  const canParticipate = myRole === "GM" || myRole === "ASSISTANT" || myRole === "PLAYER";
+  const observer = myRole === "OBSERVER";
 
   useEffect(() => {
     if (!focusedEventId) {
@@ -158,6 +160,8 @@ export function StoryEventPanel({
       </div>
 
       <p>这里汇总剧情事件、技能检定、物语点提案与事件检索结果。</p>
+
+      {observer ? <p className="text-xs text-gray-500">旁观者可查看事件与结算，但不能提交检定或改写提案。</p> : null}
 
       <form
         className="mb-3 rounded border p-2"
@@ -334,7 +338,7 @@ export function StoryEventPanel({
                 ))}
               </div>
 
-              {!gm && event.status === "OPEN" ? (
+              {!gm && canParticipate && event.status === "OPEN" ? (
                 <form
                   className="mt-2 flex flex-wrap items-center gap-2"
                   onSubmit={(e) => {
@@ -370,7 +374,7 @@ export function StoryEventPanel({
                   ) : null}
                   <p className="text-xs text-gray-600">尝试次数：{option.attempts.length}{option.closed ? "（已关闭）" : ""}</p>
 
-                  {!gm && event.status === "OPEN" && !option.closed ? (
+                  {!gm && canParticipate && event.status === "OPEN" && !option.closed ? (
                     <form
                       className="mt-1 flex flex-wrap items-center gap-2"
                       onSubmit={(e) => {

@@ -3,6 +3,7 @@ import test from "node:test";
 import { createServer, type Server } from "node:http";
 import { app } from "../app";
 import { prisma } from "../lib/prisma";
+import { cleanupWorldGraphByOwnerUsername } from "../test-utils/world-cleanup";
 
 type ApiResponse<T = unknown> = {
   status: number;
@@ -164,11 +165,7 @@ test("scene visual and combat runtime routes enforce permissions and support tur
     assert.equal((getCombatByPlayer.json.data as any).status, "active");
   } finally {
     await stopTestServer(server);
-    await prisma.message.deleteMany({ where: { world: { owner: { username: gmUsername } } } });
-    await prisma.character.deleteMany({ where: { world: { owner: { username: gmUsername } } } });
-    await prisma.worldMember.deleteMany({ where: { user: { username: { in: [gmUsername, playerUsername] } } } });
-    await prisma.scene.deleteMany({ where: { world: { owner: { username: gmUsername } } } });
-    await prisma.world.deleteMany({ where: { owner: { username: gmUsername } } });
+    await cleanupWorldGraphByOwnerUsername(gmUsername);
     await prisma.user.deleteMany({ where: { username: { in: [gmUsername, playerUsername] } } });
   }
 });

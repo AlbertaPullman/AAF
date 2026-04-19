@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type CharacterSheetTabKey =
   | "DETAIL"
@@ -16,6 +16,8 @@ type CharacterSheetTabKey =
 type CharacterSheetWorkbenchProps = {
   characterId?: string;
   characterName?: string;
+  playerName?: string;
+  characterLevel?: number;
   characterTokenDataUrl?: string | null;
   onClose: () => void;
   onTokenConfig?: () => void;
@@ -67,14 +69,41 @@ const CHARACTER_CLASS_LEVEL_ITEMS: CharacterClassLevelItem[] = [
   { id: "class_mechanist", name: "机兵士", level: 0 }
 ];
 
-const PRIMARY_ATTRIBUTES = [
-  { key: "STR", label: "力量", value: 10, adjustment: "+0", saveBonus: "+0" },
-  { key: "DEX", label: "敏捷", value: 10, adjustment: "+0", saveBonus: "+0" },
-  { key: "CON", label: "体质", value: 10, adjustment: "+0", saveBonus: "+0" },
-  { key: "INT", label: "智力", value: 10, adjustment: "+0", saveBonus: "+0" },
-  { key: "WIS", label: "感知", value: 10, adjustment: "+0", saveBonus: "+0" },
-  { key: "CHA", label: "魅力", value: 10, adjustment: "+0", saveBonus: "+0" }
-] as const;
+type SkillAttributeKey = "STR" | "DEX" | "CON" | "INT" | "WIS" | "CHA";
+
+type PrimaryAttributeItem = {
+  key: SkillAttributeKey;
+  label: string;
+  value: number;
+};
+
+const PRIMARY_ATTRIBUTES: PrimaryAttributeItem[] = [
+  { key: "STR", label: "力量", value: 10 },
+  { key: "DEX", label: "敏捷", value: 10 },
+  { key: "CON", label: "体质", value: 10 },
+  { key: "INT", label: "智力", value: 10 },
+  { key: "WIS", label: "感知", value: 10 },
+  { key: "CHA", label: "魅力", value: 10 }
+];
+
+const PRIMARY_ATTRIBUTE_LABEL_MAP: Record<SkillAttributeKey, string> = {
+  STR: "力量",
+  DEX: "敏捷",
+  CON: "体质",
+  INT: "智力",
+  WIS: "感知",
+  CHA: "魅力"
+};
+
+const SKILL_ATTRIBUTE_OPTIONS: Array<{ key: SkillAttributeKey; label: string }> = PRIMARY_ATTRIBUTES.map((attr) => ({
+  key: attr.key,
+  label: attr.label
+}));
+
+const DEFAULT_PROFICIENCY_BONUS = 2;
+const CHARACTER_SHEET_EXPORT_SCHEMA_VERSION = "1.0.0";
+const CHARACTER_SHEET_EXPORT_SOURCE = "AAF_CHARACTER_SHEET";
+const CHARACTER_SHEET_WORKBENCH_STORAGE_PREFIX = "aaf-character-sheet-workbench";
 
 const SECONDARY_METRICS = [
   { key: "AC", label: "AC", value: "10" },
@@ -87,51 +116,94 @@ const SECONDARY_METRICS = [
 
 type SkillProficiencyLevel = "NONE" | "PROFICIENT" | "EXPERTISE";
 
+type DetailSkillCategory = "CORE" | "PROFESSION";
+
+type DetailSkillSeedItem = {
+  key: string;
+  name: string;
+  defaultAttributeKey: SkillAttributeKey;
+  description: string;
+  category: DetailSkillCategory;
+};
+
 type DetailSkillItem = {
   key: string;
   name: string;
-  defaultAttribute: string;
-  linkedAttribute: string | null;
+  defaultAttributeKey: SkillAttributeKey;
+  linkedAttributeKey: SkillAttributeKey | null;
   proficiency: SkillProficiencyLevel;
-  adjustment: number;
+  permanentCustomAdjustmentText: string;
+  temporaryCustomAdjustmentText: string;
+  category: DetailSkillCategory;
   description: string;
 };
 
-const DETAIL_CORE_SKILL_ITEMS: DetailSkillItem[] = [
-  { key: "athletics", name: "运动", defaultAttribute: "力量", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "高体力运动时（如游泳，狂奔，攀岩，跳跃等）需要进行的检定。" },
-  { key: "break", name: "破坏", defaultAttribute: "力量", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于撞开门扉、踹倒栅栏、掀翻重物、撬断锁链，或是以纯粹的力量摧毁器物结构。" },
-  { key: "stealth", name: "隐匿", defaultAttribute: "敏捷", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于在敌人视线、听觉或其他感知中避开侦测，常见于潜行、埋伏、掩藏气息、或在阴影与掩体中移动。" },
-  { key: "sleight", name: "巧手", defaultAttribute: "敏捷", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于偷窃、藏匿物品、调包、投掷小物、暗中布置机关等行动。" },
-  { key: "lockpick", name: "撬锁", defaultAttribute: "敏捷", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于开锁、拆除简单机关、解除封印等行为，前提是你手中有合适的工具，且目标未被复杂的魔法保护。" },
-  { key: "acrobatics", name: "特技", defaultAttribute: "敏捷", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于翻滚、疾跑穿越危险地形、攀爬时保持平衡，或在被推撞、绊倒时维持站姿。" },
-  { key: "awareness", name: "察觉", defaultAttribute: "感知", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于发现隐藏的敌人、陷阱、异动、声音或气味，也用于对抗他人的隐匿和潜行行为。" },
-  { key: "insight", name: "洞悉", defaultAttribute: "感知", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于判断某人是否在说谎、是否隐瞒真相，或读出对方的情绪、意图与内心冲突。" },
-  { key: "nature", name: "自然", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于识别野生动植物、预估天气、理解自然现象或辨认天然毒物。" },
-  { key: "survival", name: "生存", defaultAttribute: "感知", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于追踪野兽与敌人、寻找食物与水源、导航地形、建立营地，或在恶劣环境中抵御自然威胁。" },
-  { key: "medicine", name: "医疗", defaultAttribute: "感知", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于治疗同伴、识别疾病与毒素、解除部分生理异常或实施应急包扎。" },
-  { key: "animal", name: "驯兽", defaultAttribute: "感知", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于控制坐骑、安抚狂暴野兽、训练特定行为，或与动物进行简易交流。" },
-  { key: "investigation", name: "调查", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于解谜、寻找隐藏物品或通路，分析现场情形，推断事件真相。" },
-  { key: "arcana", name: "奥秘", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于回忆关于法术、奥秘符文、魔法学派、位面、位面住民等相关知识的能力。" },
-  { key: "lore", name: "通识", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于了解古代文明、名人轶事、重要事件和流行文化。" },
-  { key: "appraisal", name: "鉴定", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于估价宝物、识别假货。" },
-  { key: "religion", name: "宗教", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于辨识圣物、诵念仪轨、识别教派符号或与神力有关的事件。" },
-  { key: "persuasion", name: "说服", defaultAttribute: "魅力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于谈判、请求帮忙、调解冲突或影响他人决策。" },
-  { key: "deception", name: "欺瞒", defaultAttribute: "魅力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于骗取情报、隐藏意图或掩盖事实。" },
-  { key: "intimidation", name: "威吓", defaultAttribute: "魅力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于恐吓敌人、逼迫妥协或控制局势。" },
-  { key: "performance", name: "表演", defaultAttribute: "魅力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于唱歌、跳舞、戏剧或其他艺术展示。" },
-  { key: "charm", name: "魅惑", defaultAttribute: "魅力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于吸引或分散目标的注意力。" },
-  { key: "disguise", name: "伪装", defaultAttribute: "魅力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于掩藏耳目、易容换装、伪装声音等。" }
+const DETAIL_CORE_SKILL_ITEMS: DetailSkillSeedItem[] = [
+  { key: "athletics", name: "运动", defaultAttributeKey: "STR", category: "CORE", description: "高体力运动时（如游泳，狂奔，攀岩，跳跃等）需要进行的检定。" },
+  { key: "break", name: "破坏", defaultAttributeKey: "STR", category: "CORE", description: "用于撞开门扉、踹倒栅栏、掀翻重物、撬断锁链，或是以纯粹的力量摧毁器物结构。" },
+  { key: "stealth", name: "隐匿", defaultAttributeKey: "DEX", category: "CORE", description: "用于在敌人视线、听觉或其他感知中避开侦测，常见于潜行、埋伏、掩藏气息、或在阴影与掩体中移动。" },
+  { key: "sleight", name: "巧手", defaultAttributeKey: "DEX", category: "CORE", description: "用于偷窃、藏匿物品、调包、投掷小物、暗中布置机关等行动。" },
+  { key: "lockpick", name: "撬锁", defaultAttributeKey: "DEX", category: "CORE", description: "用于开锁、拆除简单机关、解除封印等行为，前提是你手中有合适的工具，且目标未被复杂的魔法保护。" },
+  { key: "acrobatics", name: "特技", defaultAttributeKey: "DEX", category: "CORE", description: "用于翻滚、疾跑穿越危险地形、攀爬时保持平衡，或在被推撞、绊倒时维持站姿。" },
+  { key: "awareness", name: "察觉", defaultAttributeKey: "WIS", category: "CORE", description: "用于发现隐藏的敌人、陷阱、异动、声音或气味，也用于对抗他人的隐匿和潜行行为。" },
+  { key: "insight", name: "洞悉", defaultAttributeKey: "WIS", category: "CORE", description: "用于判断某人是否在说谎、是否隐瞒真相，或读出对方的情绪、意图与内心冲突。" },
+  { key: "nature", name: "自然", defaultAttributeKey: "INT", category: "CORE", description: "用于识别野生动植物、预估天气、理解自然现象或辨认天然毒物。" },
+  { key: "survival", name: "生存", defaultAttributeKey: "WIS", category: "CORE", description: "用于追踪野兽与敌人、寻找食物与水源、导航地形、建立营地，或在恶劣环境中抵御自然威胁。" },
+  { key: "medicine", name: "医疗", defaultAttributeKey: "WIS", category: "CORE", description: "用于治疗同伴、识别疾病与毒素、解除部分生理异常或实施应急包扎。" },
+  { key: "animal", name: "驯兽", defaultAttributeKey: "WIS", category: "CORE", description: "用于控制坐骑、安抚狂暴野兽、训练特定行为，或与动物进行简易交流。" },
+  { key: "investigation", name: "调查", defaultAttributeKey: "INT", category: "CORE", description: "用于解谜、寻找隐藏物品或通路，分析现场情形，推断事件真相。" },
+  { key: "arcana", name: "奥秘", defaultAttributeKey: "INT", category: "CORE", description: "用于回忆关于法术、奥秘符文、魔法学派、位面、位面住民等相关知识的能力。" },
+  { key: "lore", name: "通识", defaultAttributeKey: "INT", category: "CORE", description: "用于了解古代文明、名人轶事、重要事件和流行文化。" },
+  { key: "appraisal", name: "鉴定", defaultAttributeKey: "INT", category: "CORE", description: "用于估价宝物、识别假货。" },
+  { key: "religion", name: "宗教", defaultAttributeKey: "INT", category: "CORE", description: "用于辨识圣物、诵念仪轨、识别教派符号或与神力有关的事件。" },
+  { key: "persuasion", name: "说服", defaultAttributeKey: "CHA", category: "CORE", description: "用于谈判、请求帮忙、调解冲突或影响他人决策。" },
+  { key: "deception", name: "欺瞒", defaultAttributeKey: "CHA", category: "CORE", description: "用于骗取情报、隐藏意图或掩盖事实。" },
+  { key: "intimidation", name: "威吓", defaultAttributeKey: "CHA", category: "CORE", description: "用于恐吓敌人、逼迫妥协或控制局势。" },
+  { key: "performance", name: "表演", defaultAttributeKey: "CHA", category: "CORE", description: "用于唱歌、跳舞、戏剧或其他艺术展示。" },
+  { key: "charm", name: "魅惑", defaultAttributeKey: "CHA", category: "CORE", description: "用于吸引或分散目标的注意力。" },
+  { key: "disguise", name: "伪装", defaultAttributeKey: "CHA", category: "CORE", description: "用于掩藏耳目、易容换装、伪装声音等。" }
 ];
 
-const DETAIL_PROFESSION_SKILL_ITEMS: DetailSkillItem[] = [
-  { key: "smithing", name: "锻造", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于生活职业—锻造的制造魔法物品检定。" },
-  { key: "enchanting", name: "附魔", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于生活职业—附魔的制造魔法物品检定。" },
-  { key: "inscription", name: "铭文", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于生活职业—铭文的制造魔法物品检定。" },
-  { key: "jewelry", name: "珠宝", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于生活职业—珠宝的制造魔法物品检定。" },
-  { key: "tanning", name: "鞣织", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于生活职业—鞣织的制造魔法物品检定。" },
-  { key: "alchemy", name: "炼金", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于生活职业—炼金的制造魔法物品检定。" },
-  { key: "engineering", name: "工程学", defaultAttribute: "智力", linkedAttribute: null, proficiency: "NONE", adjustment: 0, description: "用于生活职业—工程学的制造魔法物品检定。" }
+const DETAIL_PROFESSION_SKILL_ITEMS: DetailSkillSeedItem[] = [
+  { key: "smithing", name: "锻造", defaultAttributeKey: "INT", category: "PROFESSION", description: "用于生活职业—锻造的制造魔法物品检定。" },
+  { key: "enchanting", name: "附魔", defaultAttributeKey: "INT", category: "PROFESSION", description: "用于生活职业—附魔的制造魔法物品检定。" },
+  { key: "inscription", name: "铭文", defaultAttributeKey: "INT", category: "PROFESSION", description: "用于生活职业—铭文的制造魔法物品检定。" },
+  { key: "jewelry", name: "珠宝", defaultAttributeKey: "INT", category: "PROFESSION", description: "用于生活职业—珠宝的制造魔法物品检定。" },
+  { key: "tanning", name: "鞣织", defaultAttributeKey: "INT", category: "PROFESSION", description: "用于生活职业—鞣织的制造魔法物品检定。" },
+  { key: "alchemy", name: "炼金", defaultAttributeKey: "INT", category: "PROFESSION", description: "用于生活职业—炼金的制造魔法物品检定。" },
+  { key: "engineering", name: "工程学", defaultAttributeKey: "INT", category: "PROFESSION", description: "用于生活职业—工程学的制造魔法物品检定。" }
 ];
+
+const INITIAL_DETAIL_SKILL_ITEMS: DetailSkillItem[] = [...DETAIL_CORE_SKILL_ITEMS, ...DETAIL_PROFESSION_SKILL_ITEMS].map((skill) => ({
+  key: skill.key,
+  name: skill.name,
+  category: skill.category,
+  defaultAttributeKey: skill.defaultAttributeKey,
+  linkedAttributeKey: null,
+  proficiency: "NONE",
+  permanentCustomAdjustmentText: "",
+  temporaryCustomAdjustmentText: "",
+  description: skill.description
+}));
+
+type CharacterSheetExportPayload = {
+  source: typeof CHARACTER_SHEET_EXPORT_SOURCE;
+  schemaVersion: string;
+  exportedAt: string;
+  characterId: string | null;
+  characterName: string;
+  characterLevel: number;
+  playerName: string;
+  proficiencyBonus: number;
+  tokenDataUrl: string | null;
+  skills: Array<{
+    key: string;
+    linkedAttributeKey: SkillAttributeKey | null;
+    proficiency: SkillProficiencyLevel;
+    permanentCustomAdjustmentText: string;
+    temporaryCustomAdjustmentText: string;
+  }>;
+};
 
 type EquipmentSlotItem = {
   key: string;
@@ -531,6 +603,10 @@ function formatSignedValue(value: number) {
   return value >= 0 ? `+${value}` : `${value}`;
 }
 
+function getAttributeAdjustment(value: number) {
+  return Math.floor((value - 10) / 2);
+}
+
 function getPassiveCheckValue(adjustment: number) {
   return 10 + adjustment;
 }
@@ -543,6 +619,205 @@ function getSkillProficiencyLabel(level: SkillProficiencyLevel) {
     return "拥有熟练与专精";
   }
   return "未拥有熟练";
+}
+
+function getSkillProficiencyText(level: SkillProficiencyLevel) {
+  if (level === "PROFICIENT") {
+    return "熟练";
+  }
+  if (level === "EXPERTISE") {
+    return "专精";
+  }
+  return "无";
+}
+
+function splitExpressionTerms(expression: string) {
+  const compact = expression.replace(/\s+/g, "");
+  if (!compact) {
+    return [] as string[];
+  }
+  return compact.match(/[+-]?[^+-]+/g) ?? [];
+}
+
+function normalizeExpression(expression: string) {
+  const terms = splitExpressionTerms(expression).filter((term) => term.trim().length > 0);
+  if (terms.length === 0) {
+    return "";
+  }
+
+  return terms
+    .map((term, index) => {
+      const normalized = term.trim();
+      if (index === 0 && !normalized.startsWith("+") && !normalized.startsWith("-")) {
+        return `+${normalized}`;
+      }
+      return normalized;
+    })
+    .join("");
+}
+
+function composeExpression(terms: string[]) {
+  return terms
+    .map((term) => normalizeExpression(term))
+    .filter(Boolean)
+    .join("");
+}
+
+function evaluateAdjustmentExpression(
+  expression: string,
+  attributeModifiers: Record<SkillAttributeKey, number>,
+  proficiencyBonus: number
+) {
+  const terms = splitExpressionTerms(expression);
+  let total = 0;
+  const sources: string[] = [];
+
+  terms.forEach((rawTerm) => {
+    const term = rawTerm.trim();
+    if (!term) {
+      return;
+    }
+
+    const sign = term.startsWith("-") ? -1 : 1;
+    const body = term.replace(/^[+-]/, "").toLowerCase();
+
+    if (!body) {
+      return;
+    }
+
+    if (/^\d+$/.test(body)) {
+      const amount = Number(body) * sign;
+      total += amount;
+      sources.push(`无来源输入：${formatSignedValue(amount)}`);
+      return;
+    }
+
+    if (body === "pb") {
+      const amount = proficiencyBonus * sign;
+      total += amount;
+      sources.push(`无来源输入（pb）：${formatSignedValue(amount)}`);
+      return;
+    }
+
+    const multiPbMatch = body.match(/^(\d+)pb$/);
+    if (multiPbMatch) {
+      const multiplier = Number(multiPbMatch[1]);
+      const amount = proficiencyBonus * multiplier * sign;
+      total += amount;
+      sources.push(`无来源输入（${multiplier}pb）：${formatSignedValue(amount)}`);
+      return;
+    }
+
+    const attrAliasMap: Record<string, SkillAttributeKey> = {
+      str: "STR",
+      dex: "DEX",
+      con: "CON",
+      int: "INT",
+      wis: "WIS",
+      cha: "CHA"
+    };
+
+    const attributeKey = attrAliasMap[body];
+    if (attributeKey) {
+      const amount = attributeModifiers[attributeKey] * sign;
+      total += amount;
+      sources.push(`无来源输入（${body}）：${formatSignedValue(amount)}`);
+      return;
+    }
+
+    sources.push(`无来源输入（${term}）：+0`);
+  });
+
+  return {
+    total,
+    sources
+  };
+}
+
+function getSkillAutoAdjustment(skill: DetailSkillItem, attributeModifiers: Record<SkillAttributeKey, number>, proficiencyBonus: number) {
+  const sources: string[] = [];
+  const tokens: string[] = [];
+  let total = 0;
+
+  if (skill.linkedAttributeKey) {
+    const attrAmount = attributeModifiers[skill.linkedAttributeKey];
+    total += attrAmount;
+    sources.push(`来自${PRIMARY_ATTRIBUTE_LABEL_MAP[skill.linkedAttributeKey]}调整值：${formatSignedValue(attrAmount)}`);
+    tokens.push(skill.linkedAttributeKey.toLowerCase());
+  }
+
+  if (skill.proficiency === "PROFICIENT") {
+    total += proficiencyBonus;
+    sources.push(`来自熟练加值：${formatSignedValue(proficiencyBonus)}`);
+    tokens.push("pb");
+  }
+
+  if (skill.proficiency === "EXPERTISE") {
+    const expertiseAmount = proficiencyBonus * 2;
+    total += expertiseAmount;
+    sources.push(`来自熟练加值（专精双倍）：${formatSignedValue(expertiseAmount)}`);
+    tokens.push("2pb");
+  }
+
+  return {
+    total,
+    sources,
+    tokenExpression: composeExpression(tokens)
+  };
+}
+
+function sanitizeFileNameSegment(value: string) {
+  return value
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, "")
+    .slice(0, 40) || "未命名";
+}
+
+function formatExportDateStamp(date: Date) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  const second = String(date.getSeconds()).padStart(2, "0");
+  return `${year}年${month}月${day}日_${hour}${minute}${second}`;
+}
+
+function isCharacterSheetExportPayload(value: unknown): value is CharacterSheetExportPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<CharacterSheetExportPayload>;
+  if (
+    candidate.source !== CHARACTER_SHEET_EXPORT_SOURCE
+    || typeof candidate.schemaVersion !== "string"
+    || typeof candidate.exportedAt !== "string"
+    || typeof candidate.characterName !== "string"
+    || typeof candidate.characterLevel !== "number"
+    || typeof candidate.playerName !== "string"
+    || typeof candidate.proficiencyBonus !== "number"
+    || !Array.isArray(candidate.skills)
+  ) {
+    return false;
+  }
+
+  return candidate.skills.every((item) => {
+    if (!item || typeof item !== "object") {
+      return false;
+    }
+
+    const skill = item as CharacterSheetExportPayload["skills"][number];
+    const linkedAttrValid = skill.linkedAttributeKey == null || Object.keys(PRIMARY_ATTRIBUTE_LABEL_MAP).includes(skill.linkedAttributeKey);
+    return (
+      typeof skill.key === "string"
+      && linkedAttrValid
+      && (skill.proficiency === "NONE" || skill.proficiency === "PROFICIENT" || skill.proficiency === "EXPERTISE")
+      && typeof skill.permanentCustomAdjustmentText === "string"
+      && typeof skill.temporaryCustomAdjustmentText === "string"
+    );
+  });
 }
 
 function getEquipmentHandLabel(hand: EquipmentQuickEquippedHand) {
@@ -576,16 +851,37 @@ function splitItemsIntoColumns(items: CharacterItemEntry[]) {
 }
 
 export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
-  const { characterId, characterName, characterTokenDataUrl, onClose, onTokenConfig, onTokenUpload, onExport, onImport } = props;
+  const {
+    characterId,
+    characterName,
+    playerName,
+    characterLevel,
+    characterTokenDataUrl,
+    onClose,
+    onTokenConfig,
+    onTokenUpload,
+    onExport,
+    onImport
+  } = props;
   const panelRef = useRef<HTMLElement | null>(null);
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
   const tokenInputRef = useRef<HTMLInputElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [activeTab, setActiveTab] = useState<CharacterSheetTabKey>("DETAIL");
   const [position, setPosition] = useState<DragPosition | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [isSkillPointListOpen, setIsSkillPointListOpen] = useState(false);
   const [isProfessionSkillGroupExpanded, setIsProfessionSkillGroupExpanded] = useState(false);
+  const [detailSkills, setDetailSkills] = useState<DetailSkillItem[]>(INITIAL_DETAIL_SKILL_ITEMS);
+  const [activeSkillConfigKey, setActiveSkillConfigKey] = useState<string | null>(null);
+  const [sheetCharacterName, setSheetCharacterName] = useState((characterName?.trim() || "未命名角色"));
+  const [sheetCharacterLevel, setSheetCharacterLevel] = useState(characterLevel ?? 1);
+  const [proficiencyBonus] = useState(DEFAULT_PROFICIENCY_BONUS);
   const [tokenPreviewUrl, setTokenPreviewUrl] = useState<string | null>(characterTokenDataUrl ?? null);
   const [equipmentQuickExpanded, setEquipmentQuickExpanded] = useState<Record<EquipmentQuickSectionKey, boolean>>(
     DEFAULT_EQUIPMENT_QUICK_EXPANDED
@@ -609,7 +905,58 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
     () => CHARACTER_SHEET_TABS.find((item) => item.key === activeTab) ?? CHARACTER_SHEET_TABS[0],
     [activeTab]
   );
-  const displayCharacterName = characterName?.trim() || "未命名角色";
+  const displayCharacterName = sheetCharacterName.trim() || "未命名角色";
+  const attributeModifierMap = useMemo(() => {
+    return PRIMARY_ATTRIBUTES.reduce((acc, attr) => {
+      acc[attr.key] = getAttributeAdjustment(attr.value);
+      return acc;
+    }, {} as Record<SkillAttributeKey, number>);
+  }, []);
+  const coreDetailSkills = useMemo(
+    () => detailSkills.filter((skill) => skill.category === "CORE"),
+    [detailSkills]
+  );
+  const professionDetailSkills = useMemo(
+    () => detailSkills.filter((skill) => skill.category === "PROFESSION"),
+    [detailSkills]
+  );
+  const activeSkillConfig = useMemo(
+    () => detailSkills.find((skill) => skill.key === activeSkillConfigKey) ?? null,
+    [activeSkillConfigKey, detailSkills]
+  );
+  const skillComputedMap = useMemo(() => {
+    return detailSkills.reduce((acc, skill) => {
+      const auto = getSkillAutoAdjustment(skill, attributeModifierMap, proficiencyBonus);
+      const permanent = evaluateAdjustmentExpression(skill.permanentCustomAdjustmentText, attributeModifierMap, proficiencyBonus);
+      const temporary = evaluateAdjustmentExpression(skill.temporaryCustomAdjustmentText, attributeModifierMap, proficiencyBonus);
+      const adjustment = auto.total + permanent.total + temporary.total;
+      const passive = getPassiveCheckValue(adjustment);
+      const autoExpression = auto.tokenExpression;
+      const permanentExpression = composeExpression([autoExpression, skill.permanentCustomAdjustmentText]);
+      const totalExpression = composeExpression([autoExpression, skill.permanentCustomAdjustmentText, skill.temporaryCustomAdjustmentText]);
+
+      acc[skill.key] = {
+        adjustment,
+        passive,
+        tooltip: [...auto.sources, ...permanent.sources, ...temporary.sources].join("\n") || "暂无来源",
+        passiveTooltip: `10 + 技能加值(${formatSignedValue(adjustment)}) = ${passive}`,
+        permanentExpression,
+        totalExpression,
+        autoExpression,
+        autoSourceText: auto.sources.join("；") || "暂无来源"
+      };
+      return acc;
+    }, {} as Record<string, {
+      adjustment: number;
+      passive: number;
+      tooltip: string;
+      passiveTooltip: string;
+      permanentExpression: string;
+      totalExpression: string;
+      autoExpression: string;
+      autoSourceText: string;
+    }>);
+  }, [attributeModifierMap, detailSkills, proficiencyBonus]);
   const activeCollectionTabKey = isCollectionPageTab(activeTab) ? activeTab : null;
   const activeCollectionConfig = activeCollectionTabKey ? COLLECTION_PAGE_CONFIGS[activeCollectionTabKey] : null;
   const activeCollectionCategoryKey = activeCollectionTabKey ? activeCollectionCategory[activeCollectionTabKey] : "";
@@ -618,6 +965,14 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
     : [];
   const activeCollectionColumns = useMemo(() => splitItemsIntoColumns(activeCollectionEntries), [activeCollectionEntries]);
   const activeTalentTreeList = activeTalentListColumn ? TALENT_TREE_LIBRARY[activeTalentListColumn] : [];
+  const workbenchStorageKey = useMemo(
+    () => `${CHARACTER_SHEET_WORKBENCH_STORAGE_PREFIX}:${characterId ?? (characterName?.trim() || "draft")}`,
+    [characterId, characterName]
+  );
+
+  const updateSkill = useCallback((skillKey: string, updater: (skill: DetailSkillItem) => DetailSkillItem) => {
+    setDetailSkills((prev) => prev.map((skill) => (skill.key === skillKey ? updater(skill) : skill)));
+  }, []);
 
   useEffect(() => {
     const panel = panelRef.current;
@@ -700,7 +1055,16 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
     if (activeTab !== "DETAIL" && isProfessionSkillGroupExpanded) {
       setIsProfessionSkillGroupExpanded(false);
     }
-  }, [activeTab, isSkillPointListOpen, isProfessionSkillGroupExpanded]);
+    if (activeTab !== "DETAIL" && activeSkillConfigKey) {
+      setActiveSkillConfigKey(null);
+    }
+  }, [activeTab, isSkillPointListOpen, isProfessionSkillGroupExpanded, activeSkillConfigKey]);
+
+  useEffect(() => {
+    if (!isEditMode && activeSkillConfigKey) {
+      setActiveSkillConfigKey(null);
+    }
+  }, [isEditMode, activeSkillConfigKey]);
 
   useEffect(() => {
     if (activeTab !== "TALENTS") {
@@ -713,13 +1077,120 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
     setTokenPreviewUrl(characterTokenDataUrl ?? null);
   }, [characterTokenDataUrl]);
 
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(workbenchStorageKey);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as unknown;
+      if (!isCharacterSheetExportPayload(parsed)) {
+        return;
+      }
+
+      setSheetCharacterName(parsed.characterName || "未命名角色");
+      setSheetCharacterLevel(parsed.characterLevel || 1);
+      setTokenPreviewUrl(parsed.tokenDataUrl ?? null);
+      setDetailSkills((prev) => {
+        const skillMap = new Map(parsed.skills.map((item) => [item.key, item]));
+        return prev.map((skill) => {
+          const stored = skillMap.get(skill.key);
+          if (!stored) {
+            return skill;
+          }
+          return {
+            ...skill,
+            linkedAttributeKey: stored.linkedAttributeKey,
+            proficiency: stored.proficiency,
+            permanentCustomAdjustmentText: stored.permanentCustomAdjustmentText,
+            temporaryCustomAdjustmentText: stored.temporaryCustomAdjustmentText
+          };
+        });
+      });
+    } catch {
+      // ignore malformed cache and continue with defaults
+    }
+  }, [workbenchStorageKey]);
+
+  useEffect(() => {
+    const cachePayload: CharacterSheetExportPayload = {
+      source: CHARACTER_SHEET_EXPORT_SOURCE,
+      schemaVersion: CHARACTER_SHEET_EXPORT_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      characterId: characterId ?? null,
+      characterName: displayCharacterName,
+      characterLevel: sheetCharacterLevel,
+      playerName: playerName?.trim() || "未知玩家",
+      proficiencyBonus,
+      tokenDataUrl: tokenPreviewUrl,
+      skills: detailSkills.map((skill) => ({
+        key: skill.key,
+        linkedAttributeKey: skill.linkedAttributeKey,
+        proficiency: skill.proficiency,
+        permanentCustomAdjustmentText: normalizeExpression(skill.permanentCustomAdjustmentText),
+        temporaryCustomAdjustmentText: normalizeExpression(skill.temporaryCustomAdjustmentText)
+      }))
+    };
+
+    window.localStorage.setItem(workbenchStorageKey, JSON.stringify(cachePayload));
+  }, [
+    characterId,
+    detailSkills,
+    displayCharacterName,
+    playerName,
+    proficiencyBonus,
+    sheetCharacterLevel,
+    tokenPreviewUrl,
+    workbenchStorageKey
+  ]);
+
+  useEffect(() => {
+    const hasCache = Boolean(window.localStorage.getItem(workbenchStorageKey));
+    if (hasCache) {
+      return;
+    }
+    setSheetCharacterName(characterName?.trim() || "未命名角色");
+  }, [characterName, workbenchStorageKey]);
+
+  useEffect(() => {
+    const hasCache = Boolean(window.localStorage.getItem(workbenchStorageKey));
+    if (hasCache) {
+      return;
+    }
+    if (typeof characterLevel === "number" && Number.isFinite(characterLevel)) {
+      setSheetCharacterLevel(characterLevel);
+    }
+  }, [characterLevel, workbenchStorageKey]);
+
+  useEffect(() => {
+    if (!isSettingsMenuOpen) {
+      return;
+    }
+
+    const handleWindowMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (settingsButtonRef.current?.contains(target)) {
+        return;
+      }
+      if (settingsMenuRef.current?.contains(target)) {
+        return;
+      }
+      setIsSettingsMenuOpen(false);
+    };
+
+    window.addEventListener("mousedown", handleWindowMouseDown);
+    return () => {
+      window.removeEventListener("mousedown", handleWindowMouseDown);
+    };
+  }, [isSettingsMenuOpen]);
+
   const handleHeaderMouseDown = (event: React.MouseEvent<HTMLElement>) => {
     if (event.button !== 0) {
       return;
     }
 
     const target = event.target as HTMLElement;
-    if (target.closest(".character-sheet-dock__action-btn")) {
+    if (target.closest(".character-sheet-dock__action-btn") || target.closest(".character-sheet-dock__settings-menu")) {
       return;
     }
 
@@ -738,6 +1209,10 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
   };
 
   const handleTokenUploadClick = () => {
+    if (!isEditMode) {
+      window.alert("请先在设置中开启编辑模式，再上传 Token。");
+      return;
+    }
     tokenInputRef.current?.click();
   };
 
@@ -774,6 +1249,156 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
 
     reader.readAsDataURL(file);
     event.currentTarget.value = "";
+  };
+
+  const handleToggleEditMode = () => {
+    setIsEditMode((prev) => {
+      const next = !prev;
+      if (!next) {
+        setActiveSkillConfigKey(null);
+      }
+      return next;
+    });
+  };
+
+  const handleOpenSettingsMenu = () => {
+    setIsSettingsMenuOpen((prev) => !prev);
+  };
+
+  const handleSettingsTokenConfig = () => {
+    onTokenConfig?.();
+    setIsSettingsMenuOpen(false);
+  };
+
+  const handleExportSheet = () => {
+    const exportPayload: CharacterSheetExportPayload = {
+      source: CHARACTER_SHEET_EXPORT_SOURCE,
+      schemaVersion: CHARACTER_SHEET_EXPORT_SCHEMA_VERSION,
+      exportedAt: new Date().toISOString(),
+      characterId: characterId ?? null,
+      characterName: displayCharacterName,
+      characterLevel: sheetCharacterLevel,
+      playerName: (playerName?.trim() || "未知玩家"),
+      proficiencyBonus,
+      tokenDataUrl: tokenPreviewUrl,
+      skills: detailSkills.map((skill) => ({
+        key: skill.key,
+        linkedAttributeKey: skill.linkedAttributeKey,
+        proficiency: skill.proficiency,
+        permanentCustomAdjustmentText: normalizeExpression(skill.permanentCustomAdjustmentText),
+        temporaryCustomAdjustmentText: normalizeExpression(skill.temporaryCustomAdjustmentText)
+      }))
+    };
+
+    const json = JSON.stringify(exportPayload, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const dateStamp = formatExportDateStamp(new Date());
+    const fileName = `${sanitizeFileNameSegment(displayCharacterName)}_${sanitizeFileNameSegment(String(sheetCharacterLevel))}_${sanitizeFileNameSegment(exportPayload.playerName)}_${dateStamp}.json`;
+
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+
+    onExport?.();
+  };
+
+  const handleImportSheetClick = () => {
+    if (!isEditMode) {
+      window.alert("请先在设置中开启编辑模式，再导入角色卡。\n导入会覆盖当前角色卡字段。");
+      return;
+    }
+    importInputRef.current?.click();
+  };
+
+  const handleImportFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = typeof reader.result === "string" ? reader.result : "";
+        const parsed = JSON.parse(raw) as unknown;
+        if (!isCharacterSheetExportPayload(parsed)) {
+          throw new Error("导入文件格式不正确");
+        }
+
+        setSheetCharacterName(parsed.characterName || "未命名角色");
+        setSheetCharacterLevel(parsed.characterLevel || 1);
+        setTokenPreviewUrl(parsed.tokenDataUrl ?? null);
+        if (parsed.tokenDataUrl) {
+          onTokenUpload?.(parsed.tokenDataUrl);
+        }
+
+        setDetailSkills((prev) => {
+          const skillMap = new Map(parsed.skills.map((skill) => [skill.key, skill]));
+          return prev.map((skill) => {
+            const imported = skillMap.get(skill.key);
+            if (!imported) {
+              return skill;
+            }
+            return {
+              ...skill,
+              linkedAttributeKey: imported.linkedAttributeKey,
+              proficiency: imported.proficiency,
+              permanentCustomAdjustmentText: normalizeExpression(imported.permanentCustomAdjustmentText),
+              temporaryCustomAdjustmentText: normalizeExpression(imported.temporaryCustomAdjustmentText)
+            };
+          });
+        });
+
+        onImport?.();
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : "导入失败，请检查 JSON 内容。");
+      }
+    };
+
+    reader.readAsText(file, "utf-8");
+    event.currentTarget.value = "";
+  };
+
+  const handleOpenSkillConfig = (skillKey: string) => {
+    if (!isEditMode) {
+      return;
+    }
+    setActiveSkillConfigKey(skillKey);
+  };
+
+  const handleCloseSkillConfig = () => {
+    setActiveSkillConfigKey(null);
+  };
+
+  const handleSkillLinkedAttributeChange = (skillKey: string, nextValue: string) => {
+    updateSkill(skillKey, (skill) => ({
+      ...skill,
+      linkedAttributeKey: nextValue ? (nextValue as SkillAttributeKey) : null
+    }));
+  };
+
+  const handleSkillProficiencyChange = (skillKey: string, nextValue: SkillProficiencyLevel) => {
+    updateSkill(skillKey, (skill) => ({
+      ...skill,
+      proficiency: nextValue
+    }));
+  };
+
+  const handleSkillPermanentCustomChange = (skillKey: string, value: string) => {
+    updateSkill(skillKey, (skill) => ({
+      ...skill,
+      permanentCustomAdjustmentText: value
+    }));
+  };
+
+  const handleSkillTemporaryCustomChange = (skillKey: string, value: string) => {
+    updateSkill(skillKey, (skill) => ({
+      ...skill,
+      temporaryCustomAdjustmentText: value
+    }));
   };
 
   const toggleEquipmentQuickSection = (sectionKey: EquipmentQuickSectionKey) => {
@@ -864,13 +1489,16 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
   };
 
   const handleEditableFieldClick = (_fieldKey: string) => {
+    if (!isEditMode) {
+      return;
+    }
     // 占位：后续在此处挂载字段编辑弹窗。
   };
 
   return (
     <section
       ref={panelRef}
-      className="character-sheet-dock"
+      className={`character-sheet-dock ${isEditMode ? "is-edit-mode" : ""}`}
       data-character-id={characterId ?? undefined}
       style={position ? { left: position.x, top: position.y, transform: "none" } : undefined}
       aria-label="角色卡预创建"
@@ -881,25 +1509,51 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
       >
         <div className="character-sheet-dock__header-left">
           <h3>{displayCharacterName}</h3>
+          <span className={`character-sheet-dock__mode-tag ${isEditMode ? "is-edit" : "is-readonly"}`}>
+            {isEditMode ? "编辑模式" : "只读模式"}
+          </span>
         </div>
         <div className="character-sheet-dock__header-actions" role="toolbar" aria-label="角色卡操作">
-          <button type="button" className="character-sheet-dock__action-btn" onClick={onImport} title="导入角色卡" aria-label="导入角色卡">
+          <button type="button" className="character-sheet-dock__action-btn" onClick={handleImportSheetClick} title="导入角色卡" aria-label="导入角色卡">
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M8 1a.75.75 0 0 1 .75.75v6.69l2.47-2.47a.75.75 0 1 1 1.06 1.06l-3.75 3.75a.75.75 0 0 1-1.06 0L3.72 7.03a.75.75 0 0 1 1.06-1.06l2.47 2.47V1.75A.75.75 0 0 1 8 1Z" />
               <path d="M2.5 11.5a.75.75 0 0 1 .75.75v.25h9.5v-.25a.75.75 0 0 1 1.5 0v.75a1 1 0 0 1-1 1h-10.5a1 1 0 0 1-1-1v-.75a.75.75 0 0 1 .75-.75Z" />
             </svg>
           </button>
-          <button type="button" className="character-sheet-dock__action-btn" onClick={onExport} title="导出角色卡" aria-label="导出角色卡">
+          <button type="button" className="character-sheet-dock__action-btn" onClick={handleExportSheet} title="导出角色卡" aria-label="导出角色卡">
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M8 15a.75.75 0 0 1-.75-.75V7.56l-2.47 2.47a.75.75 0 0 1-1.06-1.06l3.75-3.75a.75.75 0 0 1 1.06 0l3.75 3.75a.75.75 0 0 1-1.06 1.06L8.75 7.56v6.69A.75.75 0 0 1 8 15Z" />
               <path d="M2.5 1.5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v2a.75.75 0 0 1-1.5 0V2h-8v1.5a.75.75 0 0 1-1.5 0v-2Z" />
             </svg>
           </button>
-          <button type="button" className="character-sheet-dock__action-btn" onClick={onTokenConfig} title="Token 配置" aria-label="Token 配置">
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M6.5 1.25a.75.75 0 0 1 .75.75v.54a5.5 5.5 0 0 1 1.5 0V2a.75.75 0 0 1 1.5 0v.77a5.55 5.55 0 0 1 1.35.78l.55-.56a.75.75 0 0 1 1.06 1.06l-.56.55a5.55 5.55 0 0 1 .78 1.35H14a.75.75 0 0 1 0 1.5h-.54a5.5 5.5 0 0 1 0 1.5H14a.75.75 0 0 1 0 1.5h-.77a5.55 5.55 0 0 1-.78 1.35l.56.55a.75.75 0 1 1-1.06 1.06l-.55-.56a5.55 5.55 0 0 1-1.35.78V14a.75.75 0 0 1-1.5 0v-.54a5.5 5.5 0 0 1-1.5 0V14a.75.75 0 0 1-1.5 0v-.77a5.55 5.55 0 0 1-1.35-.78l-.55.56a.75.75 0 0 1-1.06-1.06l.56-.55a5.55 5.55 0 0 1-.78-1.35H2a.75.75 0 0 1 0-1.5h.54a5.5 5.5 0 0 1 0-1.5H2a.75.75 0 0 1 0-1.5h.77a5.55 5.55 0 0 1 .78-1.35l-.56-.55A.75.75 0 1 1 4.05 3l.55.56a5.55 5.55 0 0 1 1.35-.78V2a.75.75 0 0 1 .75-.75Zm1.5 4A2.75 2.75 0 1 0 8 10.75a2.75 2.75 0 0 0 0-5.5Z" />
-            </svg>
-          </button>
+          <div className="character-sheet-dock__settings-wrap">
+            <button
+              ref={settingsButtonRef}
+              type="button"
+              className={`character-sheet-dock__action-btn ${isSettingsMenuOpen ? "is-active" : ""}`}
+              onClick={handleOpenSettingsMenu}
+              title="设置"
+              aria-label="设置"
+              aria-expanded={isSettingsMenuOpen}
+            >
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M6.5 1.25a.75.75 0 0 1 .75.75v.54a5.5 5.5 0 0 1 1.5 0V2a.75.75 0 0 1 1.5 0v.77a5.55 5.55 0 0 1 1.35.78l.55-.56a.75.75 0 0 1 1.06 1.06l-.56.55a5.55 5.55 0 0 1 .78 1.35H14a.75.75 0 0 1 0 1.5h-.54a5.5 5.5 0 0 1 0 1.5H14a.75.75 0 0 1 0 1.5h-.77a5.55 5.55 0 0 1-.78 1.35l.56.55a.75.75 0 1 1-1.06 1.06l-.55-.56a5.55 5.55 0 0 1-1.35.78V14a.75.75 0 0 1-1.5 0v-.54a5.5 5.5 0 0 1-1.5 0V14a.75.75 0 0 1-1.5 0v-.77a5.55 5.55 0 0 1-1.35-.78l-.55.56a.75.75 0 0 1-1.06-1.06l.56-.55a5.55 5.55 0 0 1-.78-1.35H2a.75.75 0 0 1 0-1.5h.54a5.5 5.5 0 0 1 0-1.5H2a.75.75 0 0 1 0-1.5h.77a5.55 5.55 0 0 1 .78-1.35l-.56-.55A.75.75 0 1 1 4.05 3l.55.56a5.55 5.55 0 0 1 1.35-.78V2a.75.75 0 0 1 .75-.75Zm1.5 4A2.75 2.75 0 1 0 8 10.75a2.75 2.75 0 0 0 0-5.5Z" />
+              </svg>
+            </button>
+
+            {isSettingsMenuOpen ? (
+              <div ref={settingsMenuRef} className="character-sheet-dock__settings-menu" role="menu" aria-label="角色卡设置">
+                <button type="button" role="menuitem" onClick={handleToggleEditMode} className="character-sheet-dock__settings-item">
+                  <span>编辑模式</span>
+                  <strong>{isEditMode ? "开启" : "关闭"}</strong>
+                </button>
+                <button type="button" role="menuitem" onClick={handleSettingsTokenConfig} className="character-sheet-dock__settings-item">
+                  <span>Token 设置</span>
+                  <strong>配置</strong>
+                </button>
+              </div>
+            ) : null}
+          </div>
           <button type="button" className="character-sheet-dock__action-btn is-danger" onClick={onClose} title="关闭角色卡" aria-label="关闭角色卡">
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M3.22 3.22a.75.75 0 0 1 1.06 0L8 6.94l3.72-3.72a.75.75 0 1 1 1.06 1.06L9.06 8l3.72 3.72a.75.75 0 1 1-1.06 1.06L8 9.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06L6.94 8 3.22 4.28a.75.75 0 0 1 0-1.06Z" />
@@ -907,6 +1561,15 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
           </button>
         </div>
       </header>
+
+      <input
+        ref={importInputRef}
+        type="file"
+        accept="application/json,.json"
+        className="character-sheet-dock__token-input"
+        onChange={handleImportFileChange}
+        aria-label="导入角色卡JSON文件"
+      />
 
       <section className="character-sheet-dock__body">
         <section className="character-sheet-dock__primary" aria-label="主要数据区域">
@@ -936,7 +1599,7 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
               <div className="character-sheet-dock__major-line1">
                 <h4>{displayCharacterName}</h4>
                 <p>经验值 1300 / 2700</p>
-                <p>等级 3</p>
+                <p>等级 {sheetCharacterLevel}</p>
               </div>
 
               <div className="character-sheet-dock__vitals-inline" aria-label="生命与魔力">
@@ -1008,28 +1671,47 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
                   </header>
 
                   <div className="character-sheet-dock__skill-list" role="list" aria-label="角色技能项列表">
-                    {DETAIL_CORE_SKILL_ITEMS.map((skill) => (
-                      <article key={skill.key} className="character-sheet-dock__skill-row" role="listitem">
-                        <span
-                          className={`character-sheet-dock__skill-proficiency is-${skill.proficiency.toLowerCase()}`}
-                          aria-label={getSkillProficiencyLabel(skill.proficiency)}
-                          title={getSkillProficiencyLabel(skill.proficiency)}
-                        >
-                          {skill.proficiency === "EXPERTISE" ? "★" : ""}
-                        </span>
-                        <span
-                          className="character-sheet-dock__skill-attr"
-                          title={`默认属性：${skill.defaultAttribute}`}
-                        >
-                          {skill.linkedAttribute ?? "无"}
-                        </span>
-                        <span className="character-sheet-dock__skill-name" title={skill.description}>{skill.name}</span>
-                        <span className={`character-sheet-dock__skill-adjust ${skill.adjustment >= 0 ? "is-positive" : "is-negative"}`}>
-                          {formatSignedValue(skill.adjustment)}
-                        </span>
-                        <span className="character-sheet-dock__skill-passive">{getPassiveCheckValue(skill.adjustment)}</span>
-                      </article>
-                    ))}
+                    <div className="character-sheet-dock__skill-columns-head" aria-hidden="true">
+                      <span>熟练项</span>
+                      <span>技能</span>
+                      <span>技能加值</span>
+                      <span>被动检定</span>
+                    </div>
+
+                    {coreDetailSkills.map((skill) => {
+                      const computed = skillComputedMap[skill.key];
+                      const adjustment = computed?.adjustment ?? 0;
+                      const passive = computed?.passive ?? getPassiveCheckValue(adjustment);
+                      return (
+                        <article key={skill.key} className="character-sheet-dock__skill-row" role="listitem">
+                          <span
+                            className={`character-sheet-dock__skill-proficiency is-${skill.proficiency.toLowerCase()}`}
+                            aria-label={getSkillProficiencyLabel(skill.proficiency)}
+                            title={`熟练项：${getSkillProficiencyText(skill.proficiency)}`}
+                          >
+                            {skill.proficiency === "EXPERTISE" ? "★" : ""}
+                          </span>
+                          <button
+                            type="button"
+                            className={`character-sheet-dock__skill-name-btn ${isEditMode ? "is-editable" : "is-readonly"}`}
+                            title={isEditMode ? `点击配置技能：${skill.name}` : `${skill.description}\n只读模式：请先开启编辑模式`}
+                            onClick={() => handleOpenSkillConfig(skill.key)}
+                            disabled={!isEditMode}
+                          >
+                            <span className="character-sheet-dock__skill-name">{skill.name}</span>
+                          </button>
+                          <span
+                            className={`character-sheet-dock__skill-adjust ${adjustment >= 0 ? "is-positive" : "is-negative"}`}
+                            title={computed?.tooltip}
+                          >
+                            {formatSignedValue(adjustment)}
+                          </span>
+                          <span className="character-sheet-dock__skill-passive" title={computed?.passiveTooltip}>
+                            {passive}
+                          </span>
+                        </article>
+                      );
+                    })}
 
                     <section className={`character-sheet-dock__skill-profession-section ${isProfessionSkillGroupExpanded ? "is-expanded" : ""}`}>
                       <button
@@ -1049,25 +1731,40 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
                         aria-label="生活职业检定列表"
                         aria-hidden={!isProfessionSkillGroupExpanded}
                       >
-                        {DETAIL_PROFESSION_SKILL_ITEMS.map((skill) => (
-                          <article key={skill.key} className="character-sheet-dock__skill-row is-profession" role="listitem">
-                            <span
-                              className={`character-sheet-dock__skill-proficiency is-${skill.proficiency.toLowerCase()}`}
-                              aria-label={getSkillProficiencyLabel(skill.proficiency)}
-                              title={getSkillProficiencyLabel(skill.proficiency)}
-                            >
-                              {skill.proficiency === "EXPERTISE" ? "★" : ""}
-                            </span>
-                            <span className="character-sheet-dock__skill-attr" title={`默认属性：${skill.defaultAttribute}`}>
-                              {skill.linkedAttribute ?? "无"}
-                            </span>
-                            <span className="character-sheet-dock__skill-name" title={skill.description}>{skill.name}</span>
-                            <span className={`character-sheet-dock__skill-adjust ${skill.adjustment >= 0 ? "is-positive" : "is-negative"}`}>
-                              {formatSignedValue(skill.adjustment)}
-                            </span>
-                            <span className="character-sheet-dock__skill-passive">{getPassiveCheckValue(skill.adjustment)}</span>
-                          </article>
-                        ))}
+                        {professionDetailSkills.map((skill) => {
+                          const computed = skillComputedMap[skill.key];
+                          const adjustment = computed?.adjustment ?? 0;
+                          const passive = computed?.passive ?? getPassiveCheckValue(adjustment);
+                          return (
+                            <article key={skill.key} className="character-sheet-dock__skill-row is-profession" role="listitem">
+                              <span
+                                className={`character-sheet-dock__skill-proficiency is-${skill.proficiency.toLowerCase()}`}
+                                aria-label={getSkillProficiencyLabel(skill.proficiency)}
+                                title={`熟练项：${getSkillProficiencyText(skill.proficiency)}`}
+                              >
+                                {skill.proficiency === "EXPERTISE" ? "★" : ""}
+                              </span>
+                              <button
+                                type="button"
+                                className={`character-sheet-dock__skill-name-btn ${isEditMode ? "is-editable" : "is-readonly"}`}
+                                title={isEditMode ? `点击配置技能：${skill.name}` : `${skill.description}\n只读模式：请先开启编辑模式`}
+                                onClick={() => handleOpenSkillConfig(skill.key)}
+                                disabled={!isEditMode}
+                              >
+                                <span className="character-sheet-dock__skill-name">{skill.name}</span>
+                              </button>
+                              <span
+                                className={`character-sheet-dock__skill-adjust ${adjustment >= 0 ? "is-positive" : "is-negative"}`}
+                                title={computed?.tooltip}
+                              >
+                                {formatSignedValue(adjustment)}
+                              </span>
+                              <span className="character-sheet-dock__skill-passive" title={computed?.passiveTooltip}>
+                                {passive}
+                              </span>
+                            </article>
+                          );
+                        })}
                       </div>
                     </section>
                   </div>
@@ -1081,20 +1778,20 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
                           type="button"
                           className="character-sheet-dock__editable-label"
                           onClick={() => handleEditableFieldClick(attr.key)}
-                          title={`点击编辑${attr.label}（功能待接入）`}
+                          title={isEditMode ? `点击编辑${attr.label}（功能待接入）` : `${attr.label}当前只读`}
                           aria-label={`编辑${attr.label}`}
                         >
                           {attr.label}
                         </button>
                         <div className="character-sheet-dock__attribute-value-row">
-                          <div className="character-sheet-dock__attribute-badge is-adjustment">
+                          <div className="character-sheet-dock__attribute-badge is-adjustment" title={`来自${attr.label}属性值：(${attr.value}-10)/2`}>
                             <span>调整</span>
-                            <b>{attr.adjustment}</b>
+                            <b>{formatSignedValue(getAttributeAdjustment(attr.value))}</b>
                           </div>
                           <strong>{attr.value}</strong>
-                          <div className="character-sheet-dock__attribute-badge is-save">
+                          <div className="character-sheet-dock__attribute-badge is-save" title={`来自${attr.label}豁免：沿用${attr.label}调整值`}>
                             <span>豁免</span>
-                            <b>{attr.saveBonus}</b>
+                            <b>{formatSignedValue(getAttributeAdjustment(attr.value))}</b>
                           </div>
                         </div>
                       </article>
@@ -1105,7 +1802,7 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
                     <div className="character-sheet-dock__detail-meta-column">
                       <article className="character-sheet-dock__detail-mini-card">
                         <p>熟练加值</p>
-                        <strong>+2</strong>
+                        <strong title={`来自角色等级：当前熟练加值为${formatSignedValue(proficiencyBonus)}`}>{formatSignedValue(proficiencyBonus)}</strong>
                       </article>
                       <article className="character-sheet-dock__detail-mini-card">
                         <p>专注</p>
@@ -1159,6 +1856,94 @@ export function CharacterSheetWorkbench(props: CharacterSheetWorkbenchProps) {
                     </div>
                   </article>
                 </section>
+
+                {activeSkillConfig ? (
+                  <div className="character-sheet-dock__skill-config-mask" role="presentation" onClick={handleCloseSkillConfig}>
+                    <article className="character-sheet-dock__skill-config-modal" role="dialog" aria-label={`配置技能 ${activeSkillConfig.name}`} onClick={(event) => event.stopPropagation()}>
+                      <header className="character-sheet-dock__skill-config-header">
+                        <strong>{activeSkillConfig.name} 配置</strong>
+                        <button type="button" onClick={handleCloseSkillConfig} aria-label="关闭技能配置弹窗">关闭</button>
+                      </header>
+
+                      <div className="character-sheet-dock__skill-config-body">
+                        <label className="character-sheet-dock__skill-config-field">
+                          <span>关联属性</span>
+                          <select
+                            value={activeSkillConfig.linkedAttributeKey ?? ""}
+                            disabled={!isEditMode}
+                            onChange={(event) => handleSkillLinkedAttributeChange(activeSkillConfig.key, event.target.value)}
+                          >
+                            <option value="">无</option>
+                            {SKILL_ATTRIBUTE_OPTIONS.map((item) => (
+                              <option key={item.key} value={item.key}>{item.label}</option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <div className="character-sheet-dock__skill-config-field">
+                          <span>熟练项（三选一）</span>
+                          <div className="character-sheet-dock__skill-proficiency-options">
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={activeSkillConfig.proficiency === "NONE"}
+                                disabled={!isEditMode}
+                                onChange={() => handleSkillProficiencyChange(activeSkillConfig.key, "NONE")}
+                              />
+                              <span>无</span>
+                            </label>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={activeSkillConfig.proficiency === "PROFICIENT"}
+                                disabled={!isEditMode}
+                                onChange={() => handleSkillProficiencyChange(activeSkillConfig.key, "PROFICIENT")}
+                              />
+                              <span>熟练</span>
+                            </label>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={activeSkillConfig.proficiency === "EXPERTISE"}
+                                disabled={!isEditMode}
+                                onChange={() => handleSkillProficiencyChange(activeSkillConfig.key, "EXPERTISE")}
+                              />
+                              <span>专精</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <label className="character-sheet-dock__skill-config-field">
+                          <span>常驻调整值（可输入）</span>
+                          <input
+                            type="text"
+                            value={activeSkillConfig.permanentCustomAdjustmentText}
+                            placeholder="例如：+pb+3"
+                            disabled={!isEditMode}
+                            onChange={(event) => handleSkillPermanentCustomChange(activeSkillConfig.key, event.target.value)}
+                          />
+                          <small>当前常驻合并：{skillComputedMap[activeSkillConfig.key]?.permanentExpression || "无"}</small>
+                        </label>
+
+                        <label className="character-sheet-dock__skill-config-field">
+                          <span>临时调整值（可输入）</span>
+                          <input
+                            type="text"
+                            value={activeSkillConfig.temporaryCustomAdjustmentText}
+                            placeholder="例如：+2"
+                            disabled={!isEditMode}
+                            onChange={(event) => handleSkillTemporaryCustomChange(activeSkillConfig.key, event.target.value)}
+                          />
+                          <small>当前总合并：{skillComputedMap[activeSkillConfig.key]?.totalExpression || "无"}</small>
+                        </label>
+
+                        <p className="character-sheet-dock__skill-config-hint">
+                          来源预览：{skillComputedMap[activeSkillConfig.key]?.autoSourceText || "暂无来源"}
+                        </p>
+                      </div>
+                    </article>
+                  </div>
+                ) : null}
               </div>
             ) : activeTab === "CLASS" ? (
               <div className="character-sheet-dock__class-layout" aria-label="职业等级页面">
