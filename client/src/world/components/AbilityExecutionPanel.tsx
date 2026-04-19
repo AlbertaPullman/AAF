@@ -165,9 +165,33 @@ export function AbilityExecutionPanel({
   const abilityTags = toTextList(selectedAbility?.tags);
   const canSubmitExecution = canExecuteAction && Boolean(selectedAbilityId && actorCharacterId) && !executing;
   const latestSummary = describeExecutionResult(latestResult);
+  const selectedAbilityMeta = selectedAbility
+    ? [
+        { label: "分类", value: String(selectedAbility.category ?? "custom") },
+        { label: "动作", value: String(selectedAbility.actionType ?? "standard") },
+        { label: "激活", value: String(selectedAbility.activation ?? "active") },
+        { label: "来源", value: selectedAbility.sourceName ? String(selectedAbility.sourceName) : "未指定" },
+      ]
+    : [];
+  const selectedAbilityFacts = selectedAbility
+    ? [
+        { label: "资源消耗", value: summarizeJsonArray(selectedAbility.resourceCosts, "无") },
+        { label: "效果数量", value: summarizeJsonArray(selectedAbility.effects, "0") },
+        {
+          label: "当前施放者",
+          value: actorCharacter
+            ? `${actorCharacter.name} · HP ${getRecordNumber(actorCharacter.stats, "hp", 0)} / ${getRecordNumber(
+                actorCharacter.snapshot,
+                "maxHp",
+                getRecordNumber(actorCharacter.stats, "hp", 0)
+              )}`
+            : "尚未选择",
+        },
+      ]
+    : [];
 
   return (
-    <section className="world-card world-ability-exec">
+    <section className="world-ability-exec world-tool-panel">
       <div className="world-ability-exec__head">
         <div>
           <strong>能力结算台</strong>
@@ -178,7 +202,7 @@ export function AbilityExecutionPanel({
             {executing ? "执行中..." : "执行能力"}
           </button>
         ) : (
-          <span className="world-stage-pill">只读观战</span>
+          <span className="world-tool-status">只读观战</span>
         )}
       </div>
 
@@ -232,15 +256,17 @@ export function AbilityExecutionPanel({
 
       {selectedAbility ? (
         <div className="world-ability-exec__summary">
-          <div className="world-ability-exec__meta">
-            <span>{String(selectedAbility.category ?? "custom")}</span>
-            <span>{String(selectedAbility.actionType ?? "standard")}</span>
-            <span>{String(selectedAbility.activation ?? "active")}</span>
-            {selectedAbility.sourceName ? <span>{String(selectedAbility.sourceName)}</span> : null}
-          </div>
+          <dl className="world-ability-exec__kv" aria-label="能力基础信息">
+            {selectedAbilityMeta.map((item) => (
+              <div key={item.label}>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
           <p className="world-ability-exec__description">{String(selectedAbility.description ?? "暂无描述")}</p>
           {abilityTags.length > 0 ? (
-            <div className="world-ability-exec__tags">
+            <div className="world-ability-exec__tag-list" aria-label="能力标签">
               {abilityTags.map((tag) => (
                 <span className="world-ability-exec__tag" key={tag}>
                   {tag}
@@ -248,16 +274,14 @@ export function AbilityExecutionPanel({
               ))}
             </div>
           ) : null}
-          <div className="world-ability-exec__facts">
-            <span>资源消耗：{summarizeJsonArray(selectedAbility.resourceCosts, "无")}</span>
-            <span>效果数量：{summarizeJsonArray(selectedAbility.effects, "0")}</span>
-            {actorCharacter ? (
-              <span>
-                当前施放者：{actorCharacter.name} · HP {getRecordNumber(actorCharacter.stats, "hp", 0)} /{" "}
-                {getRecordNumber(actorCharacter.snapshot, "maxHp", getRecordNumber(actorCharacter.stats, "hp", 0))}
-              </span>
-            ) : null}
-          </div>
+          <dl className="world-ability-exec__facts" aria-label="结算事实摘要">
+            {selectedAbilityFacts.map((item) => (
+              <div key={item.label}>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       ) : (
         <div className="world-stage-empty">选择一个能力后，这里会显示它的动作类型、标签、资源消耗与结算入口。</div>

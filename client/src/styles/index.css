@@ -11909,3 +11909,433 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* === AAF World Utility Overlay Pass === */
+.world-stage-shell .world-system-overlay-dialog {
+  --tool-panel-bg: #ffffff;
+  --tool-page-bg: #f5f8fc;
+  --tool-border: #d5e2f0;
+  --tool-border-strong: #a9c0dc;
+  --tool-text: #18365d;
+  --tool-muted: #627b9d;
+  --tool-accent: #1f6fba;
+  --tool-accent-soft: #eaf4ff;
+  --tool-danger: #b43b3b;
+  width: min(1120px, calc(100vw - 44px));
+  height: min(80vh, 860px);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--tool-border-strong);
+  background: var(--tool-page-bg);
+  box-shadow: 0 22px 54px rgba(22, 52, 92, 0.28);
+  backdrop-filter: none;
+}
+
+.world-stage-shell .world-system-overlay-dialog__head {
+  min-height: 56px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--tool-border);
+  background: var(--tool-panel-bg);
+}
+
+.world-stage-shell .world-system-overlay-dialog__head strong {
+  color: var(--tool-text);
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog__close {
+  min-height: 32px;
+  border-radius: 7px;
+  box-shadow: none;
+}
+
+.world-stage-shell .world-system-overlay-dialog__body {
+  min-height: 0;
+  padding: 16px;
+  overflow: hidden;
+  background: var(--tool-page-bg);
+}
+
+.world-stage-shell .world-system-overlay-dialog__body > .world-ability-exec,
+.world-stage-shell .world-system-overlay-dialog__body > .world-character-sheet-overlay,
+.world-stage-shell .world-system-overlay-dialog__body > .world-card,
+.world-stage-shell .world-system-overlay-dialog__body > .story-event-panel,
+.world-stage-shell .world-system-overlay-dialog__body > .world-player-manage-pane {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.world-stage-shell .world-system-overlay-dialog button,
+.world-stage-shell .world-stage-command-panel__actions button,
+.world-stage-shell .world-stage-command-panel > button {
+  border-radius: 8px;
+}
+
+.world-stage-shell .world-system-overlay-dialog button {
+  border-color: var(--tool-border-strong);
+  background: linear-gradient(180deg, #ffffff, #f3f8ff);
+  color: var(--tool-text);
+  box-shadow: none;
+}
+
+.world-stage-shell .world-system-overlay-dialog button:hover {
+  transform: none;
+  border-color: var(--tool-accent);
+  box-shadow: 0 0 0 3px rgba(31, 111, 186, 0.1);
+}
+
+.world-tool-panel {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  color: var(--tool-text);
+}
+
+.world-tool-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--tool-border);
+  background: #f8fafc;
+  color: var(--tool-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__head {
+  align-items: center;
+  padding: 2px 0 12px;
+  border-bottom: 1px solid var(--tool-border);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__head strong {
+  color: var(--tool-text);
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__head p {
+  color: var(--tool-muted);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__grid {
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--tool-border);
+  border-radius: 10px;
+  background: var(--tool-panel-bg);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__field span,
+.world-stage-shell .world-system-overlay-dialog .entity-form__field > span,
+.world-stage-shell .world-system-overlay-dialog .world-character-sheet-overlay__form label > span {
+  color: var(--tool-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__field select,
+.world-stage-shell .world-system-overlay-dialog .world-card input,
+.world-stage-shell .world-system-overlay-dialog .world-card select,
+.world-stage-shell .world-system-overlay-dialog .world-card textarea,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__search,
+.world-stage-shell .world-system-overlay-dialog .entity-form__input,
+.world-stage-shell .world-system-overlay-dialog .entity-form__textarea,
+.world-stage-shell .world-system-overlay-dialog .world-player-manage-input,
+.world-stage-shell .world-system-overlay-dialog .world-player-manage-select,
+.world-stage-shell .world-system-overlay-dialog .world-character-sheet-overlay__form input,
+.world-stage-shell .world-system-overlay-dialog .world-character-sheet-overlay__form select {
+  border-radius: 8px;
+  border-color: var(--tool-border);
+  background: #ffffff;
+  color: var(--tool-text);
+  box-shadow: inset 0 1px 2px rgba(19, 48, 84, 0.05);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__summary,
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result,
+.world-stage-shell .world-system-overlay-dialog .world-character-sheet-overlay__summary,
+.world-stage-shell .world-system-overlay-dialog .world-character-sheet-overlay__form,
+.world-stage-shell .world-system-overlay-dialog .world-card,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__header,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__list,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__editor,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__placeholder,
+.world-stage-shell .world-system-overlay-dialog .entity-form__section,
+.world-stage-shell .world-system-overlay-dialog .entity-builder-card,
+.world-stage-shell .world-system-overlay-dialog .entity-condition,
+.world-stage-shell .world-system-overlay-dialog .world-player-manage-table-wrap {
+  border: 1px solid var(--tool-border);
+  border-radius: 10px;
+  background: var(--tool-panel-bg);
+  box-shadow: none;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__summary {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.world-ability-exec__kv,
+.world-ability-exec__facts {
+  margin: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--tool-border);
+  background: #f8fbff;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid var(--tool-border);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv > div:last-child {
+  border-right: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv dt,
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts dt {
+  color: var(--tool-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv dd,
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts dd {
+  min-width: 0;
+  margin: 4px 0 0;
+  color: var(--tool-text);
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__description {
+  margin: 0;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tool-border);
+  color: #34597f;
+  line-height: 1.65;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__tag {
+  border-radius: 4px;
+  border: 1px solid var(--tool-border);
+  border-left: 3px solid var(--tool-accent);
+  background: #f8fbff;
+  color: var(--tool-text);
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 12px 16px 16px;
+  overflow: hidden;
+  border: 1px solid var(--tool-border);
+  border-radius: 8px;
+  background: var(--tool-panel-bg);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid var(--tool-border);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts > div:last-child {
+  border-right: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-head {
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tool-border);
+  background: #f8fbff;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-head span {
+  color: var(--tool-accent);
+  font-weight: 800;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-grid {
+  gap: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-card {
+  border: 0;
+  border-right: 1px solid var(--tool-border);
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
+  padding: 12px 14px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-card:last-child {
+  border-right: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-card span,
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-card p,
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-lines p {
+  color: var(--tool-muted);
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-lines {
+  padding: 12px 14px;
+  border-top: 1px solid var(--tool-border);
+  background: #f8fbff;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-stage-pill,
+.world-stage-shell .world-system-overlay-dialog .world-stage-pill--accent,
+.world-stage-shell .world-system-overlay-dialog .world-character-sheet-overlay__stats span {
+  border-radius: 6px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .world-character-sheet-overlay__stats span {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  border-color: var(--tool-border);
+  background: #f8fbff;
+  color: var(--tool-text);
+  font-size: 12px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr {
+  gap: 10px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__header {
+  padding: 12px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__title {
+  color: var(--tool-text);
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__summary,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__editor-header p,
+.world-stage-shell .world-system-overlay-dialog .entity-form__field small,
+.world-stage-shell .world-system-overlay-dialog .entity-form__section-head p {
+  color: var(--tool-muted);
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__body {
+  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__list {
+  padding: 8px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__item {
+  border-radius: 8px;
+  background: #ffffff;
+  transform: none;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__item:hover,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__item--active {
+  border-color: var(--tool-accent);
+  background: var(--tool-accent-soft);
+  box-shadow: none;
+  transform: none;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__item--active {
+  border-left: 3px solid var(--tool-accent);
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__item--draggable::after {
+  color: var(--tool-muted);
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-form__section,
+.world-stage-shell .world-system-overlay-dialog .entity-builder-card,
+.world-stage-shell .world-system-overlay-dialog .entity-condition {
+  padding: 12px;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-form__section-head h5,
+.world-stage-shell .world-system-overlay-dialog .entity-builder-card__head strong,
+.world-stage-shell .world-system-overlay-dialog .entity-condition__head strong,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__editor-header h4,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__placeholder strong {
+  color: var(--tool-text);
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__del-btn,
+.world-stage-shell .world-system-overlay-dialog .entity-builder-list__remove-btn {
+  border-color: rgba(180, 70, 70, 0.32);
+  background: #fff5f5;
+  color: var(--tool-danger);
+}
+
+@media (max-width: 920px) {
+  .world-stage-shell .world-system-overlay-dialog {
+    width: calc(100vw - 24px);
+    height: min(84vh, 860px);
+  }
+
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__grid,
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv,
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts,
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-grid,
+  .world-stage-shell .world-system-overlay-dialog .entity-mgr__body {
+    grid-template-columns: 1fr;
+  }
+
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv > div,
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts > div,
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-card {
+    border-right: 0;
+    border-bottom: 1px solid var(--tool-border);
+  }
+
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv > div:last-child,
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts > div:last-child,
+  .world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-card:last-child {
+    border-bottom: 0;
+  }
+}
