@@ -12563,6 +12563,8 @@ body,
 
 .world-stage-shell .world-system-overlay-dialog .entity-mgr {
   gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
 
 .world-stage-shell .world-system-overlay-dialog .entity-mgr__header {
@@ -12584,11 +12586,26 @@ body,
 }
 
 .world-stage-shell .world-system-overlay-dialog .entity-mgr__body {
-  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+  grid-template-columns: minmax(230px, 270px) minmax(420px, 1fr);
   gap: 12px;
 }
 
-.world-stage-shell .world-system-overlay-dialog .entity-mgr__list {
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__library-tree,
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__library-list {
+  min-width: 0;
+  width: 100%;
+  justify-self: stretch;
+}
+
+.world-stage-shell .world-system-overlay-dialog .entity-mgr__library-list .entity-mgr__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  align-content: start;
+  align-items: start;
+  gap: 8px;
   padding: 8px;
 }
 
