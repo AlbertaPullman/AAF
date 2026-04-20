@@ -254,6 +254,7 @@ function applyResourceCost(stats: Record<string, unknown>, cost: ResolvedAbility
 
   const field =
     cost.type === "spell-slot"
+      // 旧模板兼容：AAF 使用 MP 与法术等级，历史 spell-slot 消耗统一按 MP 结算。
       ? "mp"
       : cost.type === "item"
         ? null

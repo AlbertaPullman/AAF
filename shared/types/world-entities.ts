@@ -34,18 +34,38 @@ export const DAMAGE_TYPE_LABELS: Record<DamageType, string> = {
   force: "力场", psychic: "心灵",
 };
 
-/** 动作经济类型 */
-export type ActionEconomy = "standard" | "quick" | "move" | "free" | "reaction" | "full-round" | "special";
+/** 动作经济类型。move/full-round 只作为旧数据兼容值，不再用于新建能力。 */
+export type ActionEconomy = "standard" | "quick" | "maneuver" | "free" | "reaction" | "composite" | "special";
+export type LegacyActionEconomy = "move" | "full-round";
 
-export const ACTION_ECONOMY_LABELS: Record<ActionEconomy, string> = {
+export const ACTION_ECONOMY_LABELS: Record<ActionEconomy | LegacyActionEconomy, string> = {
   standard: "标准动作",
   quick: "快速动作",
+  maneuver: "机动动作",
   move: "机动动作",
   free: "自由动作",
   reaction: "反应动作",
+  composite: "复合动作",
   "full-round": "复合动作",
   special: "特殊",
 };
+
+export function normalizeActionEconomy(value: unknown): ActionEconomy {
+  if (value === "move") return "maneuver";
+  if (value === "full-round") return "composite";
+  if (
+    value === "standard" ||
+    value === "quick" ||
+    value === "maneuver" ||
+    value === "free" ||
+    value === "reaction" ||
+    value === "composite" ||
+    value === "special"
+  ) {
+    return value;
+  }
+  return "special";
+}
 
 /** 持续时间类型 */
 export type DurationType =
@@ -54,7 +74,7 @@ export type DurationType =
 
 /** 资源消耗定义 */
 export interface ResourceCost {
-  type: "mp" | "stamina" | "fury" | "ki" | "hp" | "item" | "spell-slot" | "custom";
+  type: "mp" | "fury" | "ki" | "hp" | "item" | "story-point" | "stamina" | "spell-slot" | "custom";
   amount: number | string; // 可以是固定数字或公式如 "level*2"
   label: string;
 }
@@ -180,15 +200,15 @@ export interface AbilityDefinition {
   effects: EffectExpression[];
   /** 反应触发策略 */
   reactionStrategy?: "always-ask" | "smart-ask" | "auto";
-  /** 法术环位(仅法术) */
+  /** 法术等级序列：0 戏法，1 初级，2 中级，3 高级，4 史诗，5 传说，6 禁咒 */
   spellLevel?: number;
   /** 法术学派(仅法术) */
   spellSchool?: string;
-  /** 法术材料(仅法术) */
+  /** 法术成分(仅法术)：V/S/M。法术类别可放入 tags，例如 原初/奥秘/神圣。 */
   spellComponents?: { verbal?: boolean; somatic?: boolean; material?: string };
-  /** 是否可升环施放 */
+  /** 旧字段兼容：AAF 使用法术等级与 MP，新能力不要使用旧式升阶字段。 */
   canUpcast?: boolean;
-  /** 升环效果描述 */
+  /** 旧字段兼容：AAF 使用法术等级与 MP，新能力不要使用旧式升阶字段。 */
   upcastEffect?: string;
   /** 排序 */
   sortOrder: number;
@@ -265,7 +285,7 @@ export interface ProfessionLevelFeature {
   furyIncrease?: number; // 战意值增长
   kiIncrease?: number; // 技力增长
   extraAttacks?: number;
-  spellSlotsGained?: Record<number, number>; // 法术位增加
+  spellSlotsGained?: Record<number, number>; // 旧字段兼容：现在用于临时记录法术等级/学习数量，不表示旧式法术槽。
   customNotes?: string;
 }
 
@@ -658,9 +678,13 @@ export interface CollectionPackManifest {
 export interface KeyBinding {
   action: string;
   key: string;
+  device?: "keyboard" | "mouse";
+  button?: number;
+  disabled?: boolean;
   ctrl?: boolean;
   shift?: boolean;
   alt?: boolean;
+  meta?: boolean;
   label: string;
   category: string;
 }
@@ -670,6 +694,7 @@ export const DEFAULT_KEYBINDINGS: KeyBinding[] = [
   { action: "toggleSystemPanel", key: "Tab", label: "开关系统面板", category: "通用" },
   { action: "toggleHUD", key: "h", label: "开关HUD面板", category: "通用" },
   { action: "toggleChat", key: "Enter", label: "打开聊天", category: "通用" },
+  { action: "openHotkeys", key: ",", ctrl: true, label: "打开快捷键设置", category: "通用" },
   { action: "escape", key: "Escape", label: "关闭当前窗口/取消", category: "通用" },
   { action: "toggleFullscreen", key: "F11", label: "全屏切换", category: "通用" },
   { action: "quickSave", key: "s", ctrl: true, label: "快速保存", category: "通用" },
@@ -683,11 +708,19 @@ export const DEFAULT_KEYBINDINGS: KeyBinding[] = [
   { action: "panLeft", key: "a", label: "向左平移", category: "场景" },
   { action: "panRight", key: "d", label: "向右平移", category: "场景" },
   { action: "centerOnToken", key: "c", label: "定位到我的棋子", category: "场景" },
+  { action: "openSceneTab", key: "F3", label: "打开场景页", category: "场景" },
 
   // 战斗
   { action: "endTurn", key: "e", label: "结束回合", category: "战斗" },
   { action: "rollInitiative", key: "i", label: "投掷先攻", category: "战斗" },
   { action: "toggleBattleBar", key: "b", label: "开关战斗序列栏", category: "战斗" },
+  { action: "openBattleTab", key: "F2", label: "打开战斗页", category: "战斗" },
+  { action: "openAbilityOverlay", key: "q", label: "打开能力结算台", category: "战斗" },
+
+  // 系统板
+  { action: "openCharacterTab", key: "F4", label: "打开角色页", category: "系统板" },
+  { action: "openSystemTab", key: "F6", label: "打开系统页", category: "系统板" },
+  { action: "openStoryOverlay", key: "j", label: "打开剧情事件板", category: "系统板" },
 
   // 快捷栏
   { action: "slot1", key: "1", label: "快捷栏位1", category: "快捷栏" },

@@ -7626,6 +7626,7 @@ body,
 .world-system-overlay-dialog__body > .world-character-sheet-overlay,
 .world-system-overlay-dialog__body > .world-card,
 .world-system-overlay-dialog__body > .story-event-panel,
+.world-system-overlay-dialog__body > .world-hotkey-panel,
 .world-system-overlay-dialog__body > .world-player-manage-pane {
   min-height: 0;
   overflow: auto;
@@ -12312,6 +12313,153 @@ body,
   color: var(--tool-danger);
 }
 
+.world-hotkey-panel {
+  display: grid;
+  gap: 12px;
+  color: var(--tool-text, #173f69);
+}
+
+.world-hotkey-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.world-hotkey-panel__head strong {
+  color: var(--tool-text, #173f69);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.world-hotkey-panel__head p,
+.world-hotkey-panel__hint,
+.world-hotkey-row__main span {
+  margin: 4px 0 0;
+  color: var(--tool-muted, #5f7896);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.world-hotkey-panel__reset,
+.world-hotkey-row__record,
+.world-hotkey-row__clear {
+  min-height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--tool-border, rgba(103, 142, 194, 0.28));
+  background: #ffffff;
+  color: var(--tool-accent, #1f67b5);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.world-hotkey-panel__reset:hover,
+.world-hotkey-row__record:hover,
+.world-hotkey-row__clear:hover {
+  border-color: var(--tool-accent, #1f67b5);
+  background: var(--tool-accent-soft, #edf6ff);
+}
+
+.world-hotkey-panel__hint {
+  padding: 10px 12px;
+  border: 1px solid var(--tool-border, rgba(103, 142, 194, 0.28));
+  border-left: 4px solid var(--tool-accent, #1f67b5);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.world-hotkey-panel__hint.is-recording {
+  border-left-color: #e5a33c;
+  background: #fff8ec;
+  color: #7a5417;
+}
+
+.world-hotkey-panel__groups {
+  display: grid;
+  gap: 12px;
+}
+
+.world-hotkey-panel__group {
+  overflow: hidden;
+  border: 1px solid var(--tool-border, rgba(103, 142, 194, 0.28));
+  border-radius: 10px;
+  background: var(--tool-panel-bg, #ffffff);
+}
+
+.world-hotkey-panel__group h3 {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--tool-border, rgba(103, 142, 194, 0.28));
+  background: #f8fbff;
+  color: var(--tool-text, #173f69);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.world-hotkey-panel__rows {
+  display: grid;
+}
+
+.world-hotkey-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--tool-border, rgba(103, 142, 194, 0.2));
+  background: #ffffff;
+}
+
+.world-hotkey-row:last-child {
+  border-bottom: 0;
+}
+
+.world-hotkey-row.is-recording {
+  background: #fffaf1;
+}
+
+.world-hotkey-row__main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.world-hotkey-row__main strong {
+  color: var(--tool-text, #173f69);
+  font-size: 13px;
+}
+
+.world-hotkey-row kbd {
+  min-height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--tool-border, rgba(103, 142, 194, 0.28));
+  border-radius: 7px;
+  background: #f8fbff;
+  color: var(--tool-text, #173f69);
+  font-family: "JetBrains Mono", "Microsoft YaHei", monospace;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.world-hotkey-row kbd.is-empty {
+  color: var(--tool-muted, #5f7896);
+  font-weight: 700;
+}
+
+.world-hotkey-row__actions {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(58px, auto));
+  gap: 6px;
+}
+
+.world-hotkey-row__clear {
+  color: var(--tool-danger, #b44646);
+}
+
 @media (max-width: 920px) {
   .world-stage-shell .world-system-overlay-dialog {
     width: calc(100vw - 24px);
@@ -12322,6 +12470,7 @@ body,
   .world-stage-shell .world-system-overlay-dialog .world-ability-exec__kv,
   .world-stage-shell .world-system-overlay-dialog .world-ability-exec__facts,
   .world-stage-shell .world-system-overlay-dialog .world-ability-exec__result-grid,
+  .world-hotkey-row,
   .world-stage-shell .world-system-overlay-dialog .entity-mgr__body {
     grid-template-columns: 1fr;
   }

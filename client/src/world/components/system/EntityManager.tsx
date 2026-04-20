@@ -124,10 +124,10 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
         options: [
           { label: "标准动作", value: "standard" },
           { label: "快速动作", value: "quick" },
-          { label: "移动动作", value: "move" },
+          { label: "机动动作", value: "maneuver" },
           { label: "自由动作", value: "free" },
           { label: "反应动作", value: "reaction" },
-          { label: "整轮动作", value: "full-round" },
+          { label: "复合动作", value: "composite" },
           { label: "特殊", value: "special" },
         ],
       },
@@ -164,10 +164,15 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
       { key: "durationValue", label: "持续值", type: "number", defaultValue: 0 },
       { key: "range", label: "距离", type: "text", placeholder: "例如：30 / self / touch / special" },
       { key: "levelReq", label: "等级要求", type: "number", defaultValue: 1 },
-      { key: "spellLevel", label: "法术环位", type: "number", defaultValue: 0 },
-      { key: "spellSchool", label: "法术学派", type: "text", placeholder: "例如：奥术 / 神圣 / 元素" },
+      {
+        key: "spellLevel",
+        label: "法术等级序列",
+        type: "number",
+        defaultValue: 0,
+        helperText: "AAF 使用法术等级与 MP。0=戏法，1=初级，2=中级，3=高级，4=史诗，5=传说，6=禁咒。",
+      },
+      { key: "spellSchool", label: "法术学派", type: "text", placeholder: "例如：塑能 / 防护 / 咒法 / 变化" },
       { key: "concentration", label: "需要专注", type: "boolean", defaultValue: false },
-      { key: "canUpcast", label: "允许升环", type: "boolean", defaultValue: false },
       { key: "sortOrder", label: "排序值", type: "number", defaultValue: 0 },
       { key: "description", label: "描述", type: "textarea", rows: 3, span: 2 },
       { key: "rulesText", label: "规则文本", type: "textarea", rows: 3, span: 2 },
@@ -242,7 +247,7 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   professions: {
-    description: "配置职业成长、熟练项和 1-20 级特性表；天赋树、法术位与复杂成长都能放进 JSON。",
+    description: "配置职业成长、熟练项和 1-20 级特性表；天赋树、施法成长与复杂成长都能放进 JSON。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2 },
       {
@@ -370,10 +375,33 @@ function stringifyJson(value: unknown, fallback: unknown) {
   return JSON.stringify(typeof value === "undefined" ? fallback : value, null, 2);
 }
 
+function normalizeActionTypeValue(value: unknown) {
+  if (value === "move") return "maneuver";
+  if (value === "full-round") return "composite";
+  return typeof value === "string" ? value : "";
+}
+
+function getActionTypeLabel(value: unknown) {
+  const normalized = normalizeActionTypeValue(value);
+  const labels: Record<string, string> = {
+    standard: "标准动作",
+    quick: "快速动作",
+    maneuver: "机动动作",
+    free: "自由动作",
+    reaction: "反应动作",
+    composite: "复合动作",
+    special: "特殊",
+  };
+  return labels[normalized] ?? normalized;
+}
+
 function buildInitialFormState(schema: EntitySchema, source?: EntityRecord | null): FormState {
   return Object.fromEntries(
     schema.fields.map((field) => {
       const rawValue = source?.[field.key];
+      if (field.key === "actionType") {
+        return [field.key, normalizeActionTypeValue(rawValue ?? field.defaultValue ?? "")];
+      }
       if (field.type === "boolean") {
         return [field.key, Boolean(rawValue ?? field.defaultValue ?? false)];
       }
@@ -408,7 +436,7 @@ function buildExtraJsonDraft(schema: EntitySchema, source?: EntityRecord | null)
 function getEntityMeta(item: EntityRecord) {
   const candidateKeys = ["category", "type", "rarity", "status", "actionType"];
   const values = candidateKeys
-    .map((key) => item[key])
+    .map((key) => (key === "actionType" ? getActionTypeLabel(item[key]) : item[key]))
     .filter((value): value is string => typeof value === "string" && Boolean(value.trim()));
 
   return values.slice(0, 2).join(" · ");
@@ -427,6 +455,10 @@ function normalizeFieldValue(field: EntityFieldSchema, rawValue: string | boolea
   if (field.type === "json") {
     const parsed = parseJsonInput(String(rawValue));
     return typeof parsed === "undefined" ? field.jsonDefault ?? {} : parsed;
+  }
+
+  if (field.key === "actionType") {
+    return normalizeActionTypeValue(rawValue);
   }
 
   return String(rawValue ?? "");
@@ -747,6 +779,7 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
                             setFormState((prev) => ({ ...prev, [field.key]: checked }));
                           }}
                         />
+                        {field.helperText ? <small>{field.helperText}</small> : null}
                       </label>
                     );
                   }
@@ -790,6 +823,7 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
                             </option>
                           ))}
                         </select>
+                        {field.helperText ? <small>{field.helperText}</small> : null}
                       </label>
                     );
                   }
@@ -808,6 +842,7 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
                           setFormState((prev) => ({ ...prev, [field.key]: nextValue }));
                         }}
                       />
+                      {field.helperText ? <small>{field.helperText}</small> : null}
                     </label>
                   );
                 })}

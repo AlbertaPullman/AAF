@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ACTION_ECONOMY_LABELS, normalizeActionEconomy } from "../../../../shared/types/world-entities";
 
 /**
  * AAF-WORLD-COMPONENT active:overlay-tool
@@ -131,6 +132,11 @@ function describeExecutionResult(result: AbilityExecutionResult | null) {
   return "已完成结算";
 }
 
+function formatActionType(value: unknown) {
+  const normalized = normalizeActionEconomy(value);
+  return ACTION_ECONOMY_LABELS[normalized] ?? String(value ?? "特殊");
+}
+
 export function AbilityExecutionPanel({
   abilities,
   actorCharacters,
@@ -168,7 +174,7 @@ export function AbilityExecutionPanel({
   const selectedAbilityMeta = selectedAbility
     ? [
         { label: "分类", value: String(selectedAbility.category ?? "custom") },
-        { label: "动作", value: String(selectedAbility.actionType ?? "standard") },
+        { label: "动作", value: formatActionType(selectedAbility.actionType ?? "standard") },
         { label: "激活", value: String(selectedAbility.activation ?? "active") },
         { label: "来源", value: selectedAbility.sourceName ? String(selectedAbility.sourceName) : "未指定" },
       ]

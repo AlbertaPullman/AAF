@@ -129,7 +129,7 @@ async function ensureBackendTemplateWorldStarterResources(worldId: string, db: W
         rulesText: "受到攻击时触发，直到本次攻击结算结束前获得 AC +10。",
         tags: ["防御", "反应", "姿态"],
         levelReq: 1,
-        resourceCosts: [{ type: "stamina", amount: 1, label: "技力" }],
+        resourceCosts: [{ type: "ki", amount: 1, label: "技力" }],
         duration: "special",
         checkType: "none",
         trigger: {
@@ -174,7 +174,7 @@ async function ensureBackendTemplateWorldStarterResources(worldId: string, db: W
         damageRolls: [{ dice: "1d8", damageType: "force" }],
         effects: [],
         spellLevel: 0,
-        spellSchool: "奥术",
+        spellSchool: "塑能",
         spellComps: { verbal: true, somatic: true },
         sortOrder: 20
       },
@@ -204,7 +204,7 @@ async function ensureBackendTemplateWorldStarterResources(worldId: string, db: W
           }
         ],
         spellLevel: 1,
-        spellSchool: "神圣",
+        spellSchool: "防护",
         spellComps: { verbal: true, somatic: true },
         sortOrder: 30
       },

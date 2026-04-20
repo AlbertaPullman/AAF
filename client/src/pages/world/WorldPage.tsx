@@ -8,6 +8,12 @@ import { CharacterPanel } from "../../world/components/CharacterPanel";
 import { ContextMenu, useContextMenu } from "../../world/components/ContextMenu";
 import { DrawPanel } from "../../world/components/DrawPanel";
 import { FateClockWidget } from "../../world/components/FateClockWidget";
+import {
+  HotkeySettingsPanel,
+  formatKeyBinding,
+  loadWorldHotkeyBindings,
+  saveWorldHotkeyBindings,
+} from "../../world/components/HotkeySettingsPanel";
 import { HUDPanel } from "../../world/components/HUDPanel";
 import { MeasurePanel } from "../../world/components/MeasurePanel";
 import { SceneCombatPanel } from "../../world/components/SceneCombatPanel";
@@ -22,7 +28,6 @@ import { mapWorldRuntimeErrorMessage } from "../../world/i18n/messages";
 import { useKeyboardShortcuts } from "../../world/hooks/useKeyboardShortcuts";
 import { useWorldEntityStore, type EntityType } from "../../world/stores/worldEntityStore";
 import {
-  DEFAULT_KEYBINDINGS,
   type ContextMenuArea,
   type ContextMenuItem,
   type FateClockDefinition,
@@ -307,6 +312,7 @@ type OverlayState =
   | { kind: "players"; title: string }
   | { kind: "ability"; title: string }
   | { kind: "story"; title: string }
+  | { kind: "hotkeys"; title: string }
   | { kind: "character"; title: string; characterId?: string; mode: "view" | "create" }
   | null;
 
@@ -661,6 +667,7 @@ export default function WorldPage() {
   const [assistantGenerating, setAssistantGenerating] = useState(false);
 
   const [activeSystemTab, setActiveSystemTab] = useState<SystemTabKey>("scene");
+  const [customKeyBindings, setCustomKeyBindings] = useState(() => loadWorldHotkeyBindings(worldId || "pending", user?.id));
   const [systemPanelCollapsed, setSystemPanelCollapsed] = useState(false);
   const [showHUD, setShowHUD] = useState(true);
   const [showBattleBar, setShowBattleBar] = useState(true);
@@ -731,6 +738,15 @@ export default function WorldPage() {
   const activeTabMeta = useMemo(
     () => visibleTabs.find((tab) => tab.key === activeSystemTab) ?? visibleTabs[0] ?? SYSTEM_TABS[0],
     [activeSystemTab, visibleTabs]
+  );
+  const shortcutPreview = useMemo(
+    () =>
+      customKeyBindings
+        .filter((item) => ["toggleSystemPanel", "toggleChat", "openHotkeys", "endTurn", "advanceFateClock", "toggleHUD"].includes(item.action))
+        .filter((item) => !item.disabled && item.key)
+        .map((item) => `${formatKeyBinding(item)} ${item.label}`)
+        .join(" · "),
+    [customKeyBindings]
   );
 
   const currentSceneIdRef = useRef(selectedSceneId);
@@ -1432,6 +1448,11 @@ export default function WorldPage() {
     setSystemPanelCollapsed(false);
   };
 
+  const openHotkeyOverlay = () => {
+    setOverlay({ kind: "hotkeys", title: "快捷键设置" });
+    setSystemPanelCollapsed(false);
+  };
+
   const openCharacterOverlay = (characterId?: string, mode: "view" | "create" = "view") => {
     const character = characterId ? characters.find((item) => item.id === characterId) : null;
     if (characterId) {
@@ -2084,6 +2105,30 @@ export default function WorldPage() {
       case "toggleChat":
         openTab("chat");
         break;
+      case "openBattleTab":
+        openTab("battle");
+        break;
+      case "openSceneTab":
+        openTab("scene");
+        break;
+      case "openCharacterTab":
+        openTab("character");
+        break;
+      case "openPackTab":
+        openTab("pack");
+        break;
+      case "openSystemTab":
+        openTab("system");
+        break;
+      case "openAbilityOverlay":
+        openAbilityOverlay();
+        break;
+      case "openStoryOverlay":
+        openStoryOverlay();
+        break;
+      case "openHotkeys":
+        openHotkeyOverlay();
+        break;
       case "centerOnToken":
         onCenterToken();
         break;
@@ -2141,10 +2186,18 @@ export default function WorldPage() {
 
   useKeyboardShortcuts({
     enabled: Boolean(worldId),
+    customBindings: customKeyBindings,
     onAction: (action) => {
       void onShortcutAction(action);
     },
   });
+
+  useEffect(() => {
+    if (!worldId) {
+      return;
+    }
+    setCustomKeyBindings(loadWorldHotkeyBindings(worldId, user?.id));
+  }, [user?.id, worldId]);
 
   useEffect(() => {
     currentSceneIdRef.current = selectedSceneId;
@@ -3037,8 +3090,16 @@ export default function WorldPage() {
               <span className="world-system-action-btn__arrow">›</span>
             </button>
           ) : null}
+          <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={openHotkeyOverlay}>
+            <span className="world-system-action-btn__title">快捷键设置</span>
+            <span className="world-system-action-btn__arrow">›</span>
+          </button>
         </div>
       </section>
+
+      <p className="world-system-visibility-note">
+        常用快捷键：{shortcutPreview || "尚未设置。你可以打开快捷键设置录制键盘、鼠标或组合键。"}
+      </p>
 
       {isGm ? (
         <>
@@ -3093,12 +3154,6 @@ export default function WorldPage() {
               <span className="world-system-action-btn__arrow">›</span>
             </button>
           ) : null}
-
-          <p className="world-system-visibility-note">
-            快捷键：{DEFAULT_KEYBINDINGS.filter((item) => ["toggleSystemPanel", "toggleChat", "centerOnToken", "endTurn", "advanceFateClock", "toggleHUD"].includes(item.action))
-              .map((item) => `${item.key.toUpperCase()} ${item.label}`)
-              .join(" · ")}
-          </p>
 
           <div className="world-system-section-title world-system-section-title--help">
             <strong>运行状态</strong>
@@ -3485,6 +3540,16 @@ export default function WorldPage() {
                 renderAbilityExecutionPanel()
               ) : overlay.kind === "story" ? (
                 renderStoryEventPanel()
+              ) : overlay.kind === "hotkeys" ? (
+                <HotkeySettingsPanel
+                  worldId={worldId}
+                  userId={user?.id}
+                  bindings={customKeyBindings}
+                  onChange={(nextBindings) => {
+                    setCustomKeyBindings(nextBindings);
+                    saveWorldHotkeyBindings(worldId, user?.id, nextBindings);
+                  }}
+                />
               ) : overlay.kind === "character" ? (
                 renderCharacterSheetOverlay()
               ) : null}

@@ -17,6 +17,12 @@ function asNullableJsonValue(value: unknown): Prisma.InputJsonValue | Prisma.Nul
   return value as Prisma.InputJsonValue;
 }
 
+function normalizeActionType(value: unknown) {
+  if (value === "move") return "maneuver";
+  if (value === "full-round") return "composite";
+  return String(value ?? "standard");
+}
+
 async function ensureWorldGM(worldId: string, userId: string) {
   const member = await prisma.worldMember.findUnique({
     where: { worldId_userId: { worldId, userId } },
@@ -60,7 +66,7 @@ export async function createAbility(worldId: string, userId: string, data: Recor
       source: String(data.source ?? "custom"),
       sourceName: String(data.sourceName ?? ""),
       activation: String(data.activation ?? "active"),
-      actionType: String(data.actionType ?? "standard"),
+      actionType: normalizeActionType(data.actionType),
       description: String(data.description ?? ""),
       rulesText: String(data.rulesText ?? ""),
       iconUrl: data.iconUrl ? String(data.iconUrl) : null,
@@ -103,7 +109,7 @@ export async function updateAbility(worldId: string, id: string, userId: string,
       ...(data.source != null && { source: String(data.source) }),
       ...(data.sourceName != null && { sourceName: String(data.sourceName) }),
       ...(data.activation != null && { activation: String(data.activation) }),
-      ...(data.actionType != null && { actionType: String(data.actionType) }),
+      ...(data.actionType != null && { actionType: normalizeActionType(data.actionType) }),
       ...(data.description != null && { description: String(data.description) }),
       ...(data.rulesText != null && { rulesText: String(data.rulesText) }),
       ...(data.iconUrl !== undefined && { iconUrl: data.iconUrl ? String(data.iconUrl) : null }),

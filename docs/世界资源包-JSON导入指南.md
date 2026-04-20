@@ -69,7 +69,7 @@
 ```json
 {
   "name": "魔法师",
-  "description": "以法术位施法的奥术职业。",
+  "description": "以 MP、准备法术和法术强度 AP 施法的奥秘职业。",
   "loreText": "学院派施法者。",
   "iconUrl": "",
   "type": "combat",
@@ -131,7 +131,7 @@
   "range": "150",
   "aoeShape": "sphere",
   "aoeSize": 20,
-  "resourceCosts": [{ "type": "spell-slot", "amount": 3, "label": "3环位" }],
+  "resourceCosts": [{ "type": "mp", "amount": 8, "label": "魔力值" }],
   "cooldown": null,
   "duration": "instantaneous",
   "durationValue": null,
@@ -144,10 +144,10 @@
   "effects": [],
   "reactionStrat": null,
   "spellLevel": 3,
-  "spellSchool": "evocation",
+  "spellSchool": "塑能",
   "spellComps": { "verbal": true, "somatic": true },
-  "canUpcast": true,
-  "upcastEffect": "每高一环 +1d6",
+  "canUpcast": false,
+  "upcastEffect": "",
   "sortOrder": 0
 }
 ```

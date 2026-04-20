@@ -40,7 +40,7 @@ const CHARACTER_SHEET_TABS: CharacterSheetTabItem[] = [
   { key: "EQUIPMENT", label: "装备", iconText: "EQ", placeholder: "装备页骨架（武器、防具、道具栏、负重统计）。" },
   { key: "ITEMS", label: "物品", iconText: "IT", placeholder: "物品页骨架（背包/仓库存放、整理与检索）。" },
   { key: "TRAITS", label: "特性", iconText: "TR", placeholder: "特性页骨架（种族特性、被动、触发式能力）。" },
-  { key: "SPELLS", label: "法术", iconText: "SP", placeholder: "法术页骨架（法术位、已知法术、施法检定）。" },
+  { key: "SPELLS", label: "法术", iconText: "SP", placeholder: "法术页骨架（MP 费用、已知/准备法术、法术强度 AP、施法检定）。" },
   { key: "TECHNIQUES", label: "战技", iconText: "TK", placeholder: "战技页骨架（近战/远程动作、消耗、命中流程）。" },
   { key: "STATUS", label: "状态", iconText: "ST", placeholder: "状态页骨架（增益/减益、持续回合、来源）。" },
   { key: "TALENTS", label: "天赋", iconText: "TL", placeholder: "天赋页骨架（复用天赋树分配规则和状态映射）。" },

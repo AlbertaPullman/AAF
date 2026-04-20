@@ -237,12 +237,12 @@ export type FateClockEditorState = {
 
 const RESOURCE_TYPE_OPTIONS: SelectOption[] = [
   { label: "魔力值 MP", value: "mp" },
-  { label: "体力 Stamina", value: "stamina" },
-  { label: "战意 Fury", value: "fury" },
-  { label: "技力 Ki", value: "ki" },
+  { label: "战意值", value: "fury" },
+  { label: "技力", value: "ki" },
   { label: "生命值 HP", value: "hp" },
+  { label: "物语点", value: "story-point" },
+  { label: "体力（旧字段）", value: "stamina" },
   { label: "物品消耗", value: "item" },
-  { label: "法术位", value: "spell-slot" },
   { label: "自定义", value: "custom" },
 ];
 
@@ -540,7 +540,7 @@ function toRecordNumberMap(entries: ProfessionSpellSlotForm[]) {
   for (const entry of entries) {
     const slotLevel = Number(entry.slotLevel);
     const amount = Number(entry.amount);
-    if (!Number.isFinite(slotLevel) || slotLevel <= 0 || !Number.isFinite(amount)) {
+    if (!Number.isFinite(slotLevel) || slotLevel < 0 || !Number.isFinite(amount)) {
       continue;
     }
     result[Math.floor(slotLevel)] = Math.floor(amount);
@@ -1907,7 +1907,7 @@ type AbilityVisualEditorProps = {
 export function AbilityVisualEditor({ value, disabled, onChange }: AbilityVisualEditorProps) {
   return (
     <div className="entity-form__special-layout">
-      <SectionCard title="释放代价" description="把消耗和伤害段拆成多条记录，便于复合技能、升环和多段打击编排。">
+      <SectionCard title="释放代价" description="把消耗和伤害段拆成多条记录，便于复合动作、咏唱法术和多段打击编排。">
         <div className="entity-form__section-grid">
           <FieldShell
             label="资源消耗"
@@ -1991,7 +1991,7 @@ export function AbilityVisualEditor({ value, disabled, onChange }: AbilityVisual
           <FieldShell
             label="伤害段"
             span={2}
-            helperText="多段攻击、多属性伤害都可以在这里追加。scaling 可填升环/等级增长公式。"
+            helperText="多段攻击、多属性伤害都可以在这里追加。scaling 可填职业等级、法术强度 AP 或自定义成长公式。"
             action={
               <button
                 type="button"
@@ -2396,7 +2396,7 @@ export function ProfessionVisualEditor({
         <FieldShell
           label="等级成长列表"
           span={2}
-          helperText="每一级可以同时定义规则特性文本、关联能力、资源增长和法术位增长。"
+          helperText="每一级可以同时定义规则特性文本、关联能力、资源增长和施法学习增长。"
           action={
             <button
               type="button"
@@ -2579,7 +2579,7 @@ export function ProfessionVisualEditor({
                 />
 
                 <FieldShell
-                  label="法术位增长"
+                  label="法术学习增长"
                   span={2}
                   action={
                     <button
@@ -2595,12 +2595,12 @@ export function ProfessionVisualEditor({
                         onChange({ ...value, levelFeatures: nextRows });
                       }}
                     >
-                      新增环位
+                      新增学习项
                     </button>
                   }
                 >
                   <div className="entity-builder-list">
-                    {row.spellSlots.length === 0 ? <div className="entity-builder-list__empty">暂无法术位增长</div> : null}
+                    {row.spellSlots.length === 0 ? <div className="entity-builder-list__empty">暂无法术学习增长</div> : null}
                     {row.spellSlots.map((slot, slotIndex) => (
                       <div className="entity-builder-list__row" key={slot.id}>
                         <input
@@ -2608,7 +2608,7 @@ export function ProfessionVisualEditor({
                           type="number"
                           value={slot.slotLevel}
                           disabled={disabled}
-                          placeholder="环位"
+                          placeholder="法术等级 0-6"
                           onChange={(event) => {
                             const nextRows = [...value.levelFeatures];
                             const nextSpellSlots = [...row.spellSlots];
@@ -2622,7 +2622,7 @@ export function ProfessionVisualEditor({
                           type="number"
                           value={slot.amount}
                           disabled={disabled}
-                          placeholder="获得数量"
+                          placeholder="学习/准备数量"
                           onChange={(event) => {
                             const nextRows = [...value.levelFeatures];
                             const nextSpellSlots = [...row.spellSlots];
