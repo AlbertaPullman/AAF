@@ -137,6 +137,8 @@ export interface AbilityDefinition {
   worldId: string;
   /** 能力名称 */
   name: string;
+  /** 模板库多级分类路径，如 "法术/塑能/冰" */
+  folderPath?: string;
   /** 能力分类: spell(法术) / combatTechnique(战技) / feature(特性) / racial(种族能力) / custom(自定义) */
   category: "spell" | "combatTechnique" | "feature" | "racial" | "item" | "custom";
   /** 能力来源 */
@@ -243,6 +245,7 @@ export interface RaceDefinition {
   id: string;
   worldId: string;
   name: string;
+  folderPath?: string;
   description: string;
   loreText: string; // 背景故事
   iconUrl?: string;
@@ -294,6 +297,7 @@ export interface ProfessionDefinition {
   id: string;
   worldId: string;
   name: string;
+  folderPath?: string;
   description: string;
   loreText: string;
   iconUrl?: string;
@@ -335,6 +339,7 @@ export interface BackgroundDefinition {
   id: string;
   worldId: string;
   name: string;
+  folderPath?: string;
   description: string;
   loreText: string;
   iconUrl?: string;
@@ -410,6 +415,7 @@ export interface ItemDefinition {
   id: string;
   worldId: string;
   name: string;
+  folderPath?: string;
   description: string;
   category: ItemCategory;
   subcategory?: string; // 二级分类
@@ -456,6 +462,7 @@ export interface FateClockDefinition {
   id: string;
   worldId: string;
   name: string;
+  folderPath?: string;
   description: string;
   /** 刻度总数(4-12) */
   segments: number;
@@ -582,6 +589,7 @@ export interface DeckDefinition {
   id: string;
   worldId: string;
   name: string;
+  folderPath?: string;
   description: string;
   cards: {
     id: string;
@@ -605,6 +613,7 @@ export interface RandomTableDefinition {
   id: string;
   worldId: string;
   name: string;
+  folderPath?: string;
   description: string;
   diceFormula: DiceExpression; // 如 "1d100"
   entries: {

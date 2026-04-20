@@ -23,6 +23,14 @@ function normalizeActionType(value: unknown) {
   return String(value ?? "standard");
 }
 
+function normalizeFolderPath(value: unknown) {
+  return String(value ?? "")
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .join("/");
+}
+
 async function ensureWorldGM(worldId: string, userId: string) {
   const member = await prisma.worldMember.findUnique({
     where: { worldId_userId: { worldId, userId } },
@@ -47,7 +55,7 @@ export async function listAbilities(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
   return prisma.abilityDefinition.findMany({
     where: { worldId },
-    orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+    orderBy: [{ folderPath: "asc" }, { category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
   });
 }
 
@@ -62,6 +70,7 @@ export async function createAbility(worldId: string, userId: string, data: Recor
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       category: String(data.category ?? "custom"),
       source: String(data.source ?? "custom"),
       sourceName: String(data.sourceName ?? ""),
@@ -105,6 +114,7 @@ export async function updateAbility(worldId: string, id: string, userId: string,
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.category != null && { category: String(data.category) }),
       ...(data.source != null && { source: String(data.source) }),
       ...(data.sourceName != null && { sourceName: String(data.sourceName) }),
@@ -151,7 +161,7 @@ export async function deleteAbility(worldId: string, id: string, userId: string)
 
 export async function listRaces(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.raceDefinition.findMany({ where: { worldId }, orderBy: { name: "asc" } });
+  return prisma.raceDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
 }
 
 export async function createRace(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -160,6 +170,7 @@ export async function createRace(worldId: string, userId: string, data: Record<s
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       description: String(data.description ?? ""),
       loreText: String(data.loreText ?? ""),
       iconUrl: data.iconUrl ? String(data.iconUrl) : null,
@@ -184,6 +195,7 @@ export async function updateRace(worldId: string, id: string, userId: string, da
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.description != null && { description: String(data.description) }),
       ...(data.loreText != null && { loreText: String(data.loreText) }),
       ...(data.iconUrl !== undefined && { iconUrl: data.iconUrl ? String(data.iconUrl) : null }),
@@ -211,7 +223,7 @@ export async function deleteRace(worldId: string, id: string, userId: string) {
 
 export async function listProfessions(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.professionDefinition.findMany({ where: { worldId }, orderBy: { name: "asc" } });
+  return prisma.professionDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
 }
 
 export async function createProfession(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -220,6 +232,7 @@ export async function createProfession(worldId: string, userId: string, data: Re
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       description: String(data.description ?? ""),
       loreText: String(data.loreText ?? ""),
       iconUrl: data.iconUrl ? String(data.iconUrl) : null,
@@ -249,6 +262,7 @@ export async function updateProfession(worldId: string, id: string, userId: stri
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.description != null && { description: String(data.description) }),
       ...(data.loreText != null && { loreText: String(data.loreText) }),
       ...(data.iconUrl !== undefined && { iconUrl: data.iconUrl ? String(data.iconUrl) : null }),
@@ -281,7 +295,7 @@ export async function deleteProfession(worldId: string, id: string, userId: stri
 
 export async function listBackgrounds(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.backgroundDefinition.findMany({ where: { worldId }, orderBy: { name: "asc" } });
+  return prisma.backgroundDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
 }
 
 export async function createBackground(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -290,6 +304,7 @@ export async function createBackground(worldId: string, userId: string, data: Re
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       description: String(data.description ?? ""),
       loreText: String(data.loreText ?? ""),
       iconUrl: data.iconUrl ? String(data.iconUrl) : null,
@@ -310,6 +325,7 @@ export async function updateBackground(worldId: string, id: string, userId: stri
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.description != null && { description: String(data.description) }),
       ...(data.loreText != null && { loreText: String(data.loreText) }),
       ...(data.iconUrl !== undefined && { iconUrl: data.iconUrl ? String(data.iconUrl) : null }),
@@ -335,7 +351,7 @@ export async function listItems(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
   return prisma.itemDefinition.findMany({
     where: { worldId },
-    orderBy: [{ category: "asc" }, { name: "asc" }],
+    orderBy: [{ folderPath: "asc" }, { category: "asc" }, { name: "asc" }],
   });
 }
 
@@ -345,6 +361,7 @@ export async function createItem(worldId: string, userId: string, data: Record<s
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       description: String(data.description ?? ""),
       category: String(data.category ?? "gear"),
       subcategory: data.subcategory ? String(data.subcategory) : null,
@@ -375,6 +392,7 @@ export async function updateItem(worldId: string, id: string, userId: string, da
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.description != null && { description: String(data.description) }),
       ...(data.category != null && { category: String(data.category) }),
       ...(data.subcategory !== undefined && { subcategory: data.subcategory ? String(data.subcategory) : null }),
@@ -414,7 +432,7 @@ export async function listFateClocks(worldId: string, userId: string) {
   const isGM = member?.role === "GM";
   const clocks = await prisma.fateClock.findMany({
     where: { worldId },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ folderPath: "asc" }, { createdAt: "desc" }],
   });
   if (isGM) return clocks;
   return clocks.filter((c) => c.visibleToPlayers);
@@ -427,6 +445,7 @@ export async function createFateClock(worldId: string, userId: string, data: Rec
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       description: String(data.description ?? ""),
       segments,
       filledSegments: 0,
@@ -454,6 +473,7 @@ export async function updateFateClock(worldId: string, id: string, userId: strin
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.description != null && { description: String(data.description) }),
       segments: nextSegments,
       filledSegments: nextFilledSegments,
@@ -512,7 +532,7 @@ export async function deleteFateClock(worldId: string, id: string, userId: strin
 
 export async function listDecks(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.deckDefinition.findMany({ where: { worldId }, orderBy: { name: "asc" } });
+  return prisma.deckDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
 }
 
 export async function createDeck(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -521,6 +541,7 @@ export async function createDeck(worldId: string, userId: string, data: Record<s
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       description: String(data.description ?? ""),
       cards: asJsonValue(data.cards),
       replacement: data.replacement !== false,
@@ -537,6 +558,7 @@ export async function updateDeck(worldId: string, id: string, userId: string, da
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.description != null && { description: String(data.description) }),
       ...(data.cards != null && { cards: asJsonValue(data.cards) }),
       ...(data.replacement != null && { replacement: Boolean(data.replacement) }),
@@ -556,7 +578,7 @@ export async function deleteDeck(worldId: string, id: string, userId: string) {
 
 export async function listRandomTables(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.randomTable.findMany({ where: { worldId }, orderBy: { name: "asc" } });
+  return prisma.randomTable.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
 }
 
 export async function createRandomTable(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -565,6 +587,7 @@ export async function createRandomTable(worldId: string, userId: string, data: R
     data: {
       worldId,
       name: String(data.name ?? ""),
+      folderPath: normalizeFolderPath(data.folderPath),
       description: String(data.description ?? ""),
       diceFormula: String(data.diceFormula ?? "1d100"),
       entries: asJsonValue(data.entries),
@@ -580,6 +603,7 @@ export async function updateRandomTable(worldId: string, id: string, userId: str
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
+      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
       ...(data.description != null && { description: String(data.description) }),
       ...(data.diceFormula != null && { diceFormula: String(data.diceFormula) }),
       ...(data.entries != null && { entries: asJsonValue(data.entries) }),
@@ -654,6 +678,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
         data: {
           worldId,
           name: String(d.name ?? ""),
+          folderPath: normalizeFolderPath(d.folderPath),
           description: String(d.description ?? ""),
           loreText: String(d.loreText ?? ""),
           iconUrl: d.iconUrl ? String(d.iconUrl) : null,
@@ -723,6 +748,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
         data: {
           worldId,
           name: String(d.name ?? ""),
+          folderPath: normalizeFolderPath(d.folderPath),
           description: String(d.description ?? ""),
           segments,
           filledSegments,
@@ -748,6 +774,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
         data: {
           worldId,
           name: String(d.name ?? ""),
+          folderPath: normalizeFolderPath(d.folderPath),
           description: String(d.description ?? ""),
           cards: asJsonValue(d.cards),
           replacement: d.replacement !== false,
@@ -767,6 +794,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
         data: {
           worldId,
           name: String(d.name ?? ""),
+          folderPath: normalizeFolderPath(d.folderPath),
           description: String(d.description ?? ""),
           diceFormula: String(d.diceFormula ?? "1d100"),
           entries: asJsonValue(d.entries),

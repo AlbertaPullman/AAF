@@ -249,6 +249,7 @@ model AbilityDefinition {
   id            String   @id @default(cuid())
   worldId       String
   name          String
+  folderPath    String   @default("")
   category      String   // spell | combatTechnique | feature | racial | item | custom
   source        String   // race | profession | talent | equipment | item | background | feat | custom
   sourceName    String   @default("")
@@ -285,6 +286,7 @@ model AbilityDefinition {
   world         World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId, category])
+  @@index([worldId, folderPath])
   @@index([worldId, source])
 }
 
@@ -294,6 +296,7 @@ model RaceDefinition {
   id            String   @id @default(cuid())
   worldId       String
   name          String
+  folderPath    String   @default("")
   description   String   @default("")
   loreText      String   @default("")
   iconUrl       String?
@@ -311,6 +314,7 @@ model RaceDefinition {
   world         World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId])
+  @@index([worldId, folderPath])
 }
 
 // ──────────── 职业定义 ──────────────────────
@@ -319,6 +323,7 @@ model ProfessionDefinition {
   id                  String   @id @default(cuid())
   worldId             String
   name                String
+  folderPath          String   @default("")
   description         String   @default("")
   loreText            String   @default("")
   iconUrl             String?
@@ -341,6 +346,7 @@ model ProfessionDefinition {
   world               World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId])
+  @@index([worldId, folderPath])
 }
 
 // ──────────── 背景定义 ──────────────────────
@@ -349,6 +355,7 @@ model BackgroundDefinition {
   id               String   @id @default(cuid())
   worldId          String
   name             String
+  folderPath       String   @default("")
   description      String   @default("")
   loreText         String   @default("")
   iconUrl          String?
@@ -362,6 +369,7 @@ model BackgroundDefinition {
   world            World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId])
+  @@index([worldId, folderPath])
 }
 
 // ──────────── 物品定义 ──────────────────────
@@ -370,6 +378,7 @@ model ItemDefinition {
   id            String   @id @default(cuid())
   worldId       String
   name          String
+  folderPath    String   @default("")
   description   String   @default("")
   category      String   @default("gear")
   subcategory   String?
@@ -393,6 +402,7 @@ model ItemDefinition {
   world         World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId, category])
+  @@index([worldId, folderPath])
 }
 
 // ──────────── 命刻 ──────────────────────
@@ -401,6 +411,7 @@ model FateClock {
   id              String   @id @default(cuid())
   worldId         String
   name            String
+  folderPath      String   @default("")
   description     String   @default("")
   segments        Int      @default(6)
   filledSegments  Int      @default(0)
@@ -416,6 +427,7 @@ model FateClock {
   world           World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId])
+  @@index([worldId, folderPath])
 }
 
 // ──────────── 牌堆 ──────────────────────
@@ -424,6 +436,7 @@ model DeckDefinition {
   id            String   @id @default(cuid())
   worldId       String
   name          String
+  folderPath    String   @default("")
   description   String   @default("")
   cards         Json     @default("[]")
   replacement   Boolean  @default(true)
@@ -433,6 +446,7 @@ model DeckDefinition {
   world         World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId])
+  @@index([worldId, folderPath])
 }
 
 // ──────────── 随机表 ──────────────────────
@@ -441,6 +455,7 @@ model RandomTable {
   id           String   @id @default(cuid())
   worldId      String
   name         String
+  folderPath   String   @default("")
   description  String   @default("")
   diceFormula  String   @default("1d100")
   entries      Json     @default("[]")
@@ -449,6 +464,7 @@ model RandomTable {
   world        World    @relation(fields: [worldId], references: [id])
 
   @@index([worldId])
+  @@index([worldId, folderPath])
 }
 
 // ──────────── 世界天赋树实例 ──────────────────────
