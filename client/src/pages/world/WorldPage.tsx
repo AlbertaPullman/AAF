@@ -4,10 +4,13 @@ import { http } from "../../lib/http";
 import { connectSocket, disconnectSocket, socket, SOCKET_EVENTS } from "../../lib/socket";
 import { useAuthStore } from "../../store/authStore";
 import { AbilityExecutionPanel } from "../../world/components/AbilityExecutionPanel";
+import { BattleSequenceBar, type InitiativeEntry } from "../../world/components/BattleSequenceBar";
 import { CharacterPanel } from "../../world/components/CharacterPanel";
 import { ContextMenu, useContextMenu } from "../../world/components/ContextMenu";
 import { DrawPanel } from "../../world/components/DrawPanel";
 import { FateClockWidget } from "../../world/components/FateClockWidget";
+import { FloatingToolWindow, type FloatingToolWindowPlacement } from "../../world/components/FloatingToolWindow";
+import { HoverInsightProvider, type HoverInsightEntry } from "../../world/components/HoverInsightCards";
 import {
   HotkeySettingsPanel,
   formatKeyBinding,
@@ -26,7 +29,7 @@ import { CollectionPackPanel } from "../../world/components/system/CollectionPac
 import { EntityManager } from "../../world/components/system/EntityManager";
 import { mapWorldRuntimeErrorMessage } from "../../world/i18n/messages";
 import { useKeyboardShortcuts } from "../../world/hooks/useKeyboardShortcuts";
-import { useWorldEntityStore, type EntityType } from "../../world/stores/worldEntityStore";
+import { useWorldEntityStore, type EntityRecord, type EntityType } from "../../world/stores/worldEntityStore";
 import {
   type ContextMenuArea,
   type ContextMenuItem,
@@ -308,13 +311,20 @@ type ChannelUnreadMap = Record<WorldChatChannel, number>;
 type SystemTabKey = "chat" | "battle" | "scene" | "character" | "pack" | "system";
 
 type OverlayState =
-  | { kind: "entity"; entityType: EntityType; title: string }
-  | { kind: "players"; title: string }
-  | { kind: "ability"; title: string }
-  | { kind: "story"; title: string }
-  | { kind: "hotkeys"; title: string }
-  | { kind: "character"; title: string; characterId?: string; mode: "view" | "create" }
-  | null;
+  | { id: string; kind: "entity"; entityType: EntityType; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
+  | { id: string; kind: "players"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
+  | { id: string; kind: "ability"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
+  | { id: string; kind: "story"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
+  | { id: string; kind: "hotkeys"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
+  | { id: string; kind: "character"; title: string; characterId?: string; mode: "view" | "create"; placement: FloatingToolWindowPlacement; compact?: boolean };
+
+type OverlayDraft =
+  | { kind: "entity"; entityType: EntityType; title: string; compact?: boolean }
+  | { kind: "players"; title: string; compact?: boolean }
+  | { kind: "ability"; title: string; compact?: boolean }
+  | { kind: "story"; title: string; compact?: boolean }
+  | { kind: "hotkeys"; title: string; compact?: boolean }
+  | { kind: "character"; title: string; characterId?: string; mode: "view" | "create"; compact?: boolean };
 
 type WorldMemberManageRole = "PLAYER" | "ASSISTANT" | "OBSERVER" | "GM";
 
@@ -417,6 +427,68 @@ const SYSTEM_TABS: Array<{
   { key: "pack", label: "包", title: "资源包", description: "导入导出世界模板", view: "system" },
   { key: "system", label: "系", title: "系统中枢", description: "模块、权限与资源库", view: "system" },
 ];
+
+const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  abilities: "能力",
+  races: "种族",
+  professions: "职业",
+  backgrounds: "背景",
+  items: "物品",
+  fateClocks: "命刻",
+  decks: "牌组",
+  randomTables: "随机表",
+};
+
+const COMMON_RULE_INSIGHT_ENTRIES: HoverInsightEntry[] = [
+  {
+    id: "status:dazed",
+    title: "晕眩",
+    kind: "状态",
+    summary: "无法稳定行动的控制状态。",
+    description: "晕眩代表角色短时间失去完整反应与行动节奏。后续规则落库后，这里会显示具体的动作限制、豁免与持续时间。",
+    aliases: ["眩晕", "Dazed"],
+    meta: ["控制", "状态"],
+  },
+  {
+    id: "term:battle-spirit",
+    title: "战意",
+    kind: "资源",
+    summary: "战斗职业常用的现场资源。",
+    description: "战意通常由攻击、受击或职业特性获得，用于发动战技、爆发或防御反应。",
+    aliases: ["战意值"],
+    meta: ["资源", "职业"],
+  },
+];
+
+function getRecordText(record: EntityRecord, keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function getRecordMeta(record: EntityRecord): string[] {
+  return ["folderPath", "category", "source", "rarity", "type"]
+    .map((key) => record[key])
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .slice(0, 4);
+}
+
+function buildEntityInsightEntry(entityType: EntityType, record: EntityRecord): HoverInsightEntry {
+  const description = getRecordText(record, ["description", "rulesText", "loreText"]);
+  return {
+    id: `${entityType}:${record.id}`,
+    title: record.name || "未命名",
+    kind: ENTITY_TYPE_LABELS[entityType],
+    summary: getRecordText(record, ["folderPath", "sourceName"]),
+    description: description || "这个条目还没有填写简介。后续补完展示文本后，这里会作为快捷说明卡展示。",
+    meta: getRecordMeta(record),
+    aliases: typeof record.name === "string" ? [record.name] : [],
+  };
+}
 
 function createDefaultHudConfig(): HUDConfig {
   return {
@@ -608,6 +680,11 @@ export default function WorldPage() {
   const resetWorldEntities = useWorldEntityStore((state) => state.resetAll);
   const abilityRecords = useWorldEntityStore((state) => state.abilities.items);
   const itemRecords = useWorldEntityStore((state) => state.items.items);
+  const raceRecords = useWorldEntityStore((state) => state.races.items);
+  const professionRecords = useWorldEntityStore((state) => state.professions.items);
+  const backgroundRecords = useWorldEntityStore((state) => state.backgrounds.items);
+  const deckRecords = useWorldEntityStore((state) => state.decks.items);
+  const randomTableRecords = useWorldEntityStore((state) => state.randomTables.items);
   const fateClockRecords = useWorldEntityStore((state) => state.fateClocks.items);
 
   const [worldName, setWorldName] = useState("世界");
@@ -670,7 +747,8 @@ export default function WorldPage() {
   const [customKeyBindings, setCustomKeyBindings] = useState(() => loadWorldHotkeyBindings(worldId || "pending", user?.id));
   const [systemPanelCollapsed, setSystemPanelCollapsed] = useState(false);
   const [showHUD, setShowHUD] = useState(true);
-  const [showBattleBar, setShowBattleBar] = useState(true);
+  const [showBattleBar, setShowBattleBar] = useState(false);
+  const [gmPlayerView, setGmPlayerView] = useState(false);
   const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
   const [selectedFateClockId, setSelectedFateClockId] = useState<string | null>(null);
   const [showFateCreateForm, setShowFateCreateForm] = useState(false);
@@ -678,7 +756,8 @@ export default function WorldPage() {
   const [fateClockSegments, setFateClockSegments] = useState("6");
   const [fateClockDirection, setFateClockDirection] = useState<"advance" | "countdown">("advance");
   const [fateClockVisible, setFateClockVisible] = useState(true);
-  const [overlay, setOverlay] = useState<OverlayState>(null);
+  const [overlays, setOverlays] = useState<OverlayState[]>([]);
+  const overlayCounterRef = useRef(0);
   const [stageNotice, setStageNotice] = useState("正在连接世界舞台...");
   const [hudConfig, setHudConfig] = useState<HUDConfig>(() => createDefaultHudConfig());
   const [memberManageData, setMemberManageData] = useState<WorldMemberManageData | null>(null);
@@ -694,7 +773,10 @@ export default function WorldPage() {
   const [abilityExecuting, setAbilityExecuting] = useState(false);
   const [abilityExecutionResult, setAbilityExecutionResult] = useState<AbilityExecutionResult | null>(null);
 
-  const role = myRole as WorldRoleType | null;
+  const actualRole = myRole as WorldRoleType | null;
+  const isActualGm = actualRole === "GM";
+  const isGmPlayerView = isActualGm && gmPlayerView;
+  const role = isGmPlayerView ? "PLAYER" : actualRole;
   const isGm = role === "GM";
   const tokenList = useMemo(() => Object.values(tokens), [tokens]);
   const selectedCharacter = useMemo(
@@ -706,10 +788,10 @@ export default function WorldPage() {
     [scenes, selectedSceneId]
   );
   const canSendCurrentChannel = useMemo(
-    () => canCurrentRoleSendChannel(myRole, worldChatChannel),
-    [myRole, worldChatChannel]
+    () => canCurrentRoleSendChannel(role, worldChatChannel),
+    [role, worldChatChannel]
   );
-  const canUseAssistant = myRole === "GM" || myRole === "ASSISTANT";
+  const canUseAssistant = role === "GM" || role === "ASSISTANT";
   const canManageSceneVisual = hasPermission(role, PERMISSIONS.SCENE_EDIT_VISUAL);
   const canManageCombat = hasPermission(role, PERMISSIONS.COMBAT_MANAGE);
   const canAdvanceTurn = hasPermission(role, PERMISSIONS.COMBAT_ADVANCE_TURN) || canManageCombat;
@@ -783,19 +865,54 @@ export default function WorldPage() {
     return getMyTokenId(user.id);
   }, [selectedCharacter, user?.id]);
 
-  const battleEntries = useMemo(() => {
+  const battleEntries = useMemo<InitiativeEntry[]>(() => {
     if (!sceneCombatState) {
-      return [] as Array<CombatParticipantState & { isCurrentTurn: boolean; isMine: boolean }>;
+      return [];
     }
 
-    return sceneCombatState.participants.map((participant, index) => ({
-      ...participant,
-      isCurrentTurn: index === sceneCombatState.turnIndex,
-      isMine: participant.tokenId === myBoundTokenId,
-    }));
-  }, [myBoundTokenId, sceneCombatState]);
+    return sceneCombatState.participants.map((participant, index) => {
+      const tokenItem = tokens[participant.tokenId];
+      const characterId = tokenItem?.characterId ?? null;
+      const character = characterId
+        ? characters.find((item) => item.id === characterId) ?? null
+        : null;
+      const hp = character ? getRecordNumber(character.stats, "hp", 0) : undefined;
+      const maxHp = character && hp !== undefined
+        ? Math.max(hp, getRecordNumber(character.snapshot, "maxHp", hp))
+        : undefined;
+
+      return {
+        id: participant.tokenId,
+        name: participant.name || tokenItem?.characterName || "未命名单位",
+        initiative: participant.initiative,
+        isCurrentTurn: index === sceneCombatState.turnIndex,
+        isMine: participant.tokenId === myBoundTokenId,
+        type: character?.type ?? "NPC",
+        hp,
+        maxHp: maxHp && maxHp > 0 ? maxHp : undefined,
+      };
+    });
+  }, [characters, myBoundTokenId, sceneCombatState, tokens]);
+
+  const isBattleSequenceVisible =
+    sceneCombatState?.status === "active" && showBattleBar && battleEntries.length > 0;
 
   const unreadTotal = worldChatUnread.OOC + worldChatUnread.IC + worldChatUnread.SYSTEM;
+
+  const hoverInsightEntries = useMemo(
+    () => [
+      ...COMMON_RULE_INSIGHT_ENTRIES,
+      ...abilityRecords.map((record) => buildEntityInsightEntry("abilities", record)),
+      ...itemRecords.map((record) => buildEntityInsightEntry("items", record)),
+      ...raceRecords.map((record) => buildEntityInsightEntry("races", record)),
+      ...professionRecords.map((record) => buildEntityInsightEntry("professions", record)),
+      ...backgroundRecords.map((record) => buildEntityInsightEntry("backgrounds", record)),
+      ...fateClockRecords.map((record) => buildEntityInsightEntry("fateClocks", record)),
+      ...deckRecords.map((record) => buildEntityInsightEntry("decks", record)),
+      ...randomTableRecords.map((record) => buildEntityInsightEntry("randomTables", record)),
+    ],
+    [abilityRecords, backgroundRecords, deckRecords, fateClockRecords, itemRecords, professionRecords, raceRecords, randomTableRecords]
+  );
 
   const hudResources = useMemo(() => {
     const hp = getRecordNumber(selectedCharacter?.stats, "hp", 0);
@@ -1425,13 +1542,70 @@ export default function WorldPage() {
     setSystemPanelCollapsed(false);
   };
 
+  const getOverlayKey = (overlay: OverlayDraft | OverlayState) => {
+    if (overlay.kind === "entity") return `entity:${overlay.entityType}`;
+    if (overlay.kind === "character") return `character:${overlay.mode}:${overlay.characterId ?? "new"}`;
+    return overlay.kind;
+  };
+
+  const createOverlayPlacement = (kind: OverlayDraft["kind"], index: number): FloatingToolWindowPlacement => {
+    const viewportWidth = typeof window === "undefined" ? 1440 : window.innerWidth;
+    const baseWidth = kind === "entity" ? 760 : kind === "character" ? 600 : kind === "hotkeys" ? 640 : 700;
+    const width = Math.min(baseWidth, Math.max(420, viewportWidth - 44));
+    const offset = index % 7;
+    return {
+      left: Math.max(16, Math.min(96 + offset * 34, viewportWidth - width - 16)),
+      top: 54 + offset * 28,
+      width,
+      zIndex: 292 + index,
+    };
+  };
+
+  const focusOverlay = (overlayId: string) => {
+    setOverlays((prev) => {
+      const target = prev.find((item) => item.id === overlayId);
+      if (!target) return prev;
+      const ordered = [...prev.filter((item) => item.id !== overlayId), target];
+      return ordered.map((item, index) => ({ ...item, placement: { ...item.placement, zIndex: 292 + index } }));
+    });
+  };
+
+  const closeOverlay = (overlayId: string) => {
+    setOverlays((prev) => prev.filter((item) => item.id !== overlayId));
+  };
+
+  const moveOverlay = (overlayId: string, next: { left: number; top: number }) => {
+    setOverlays((prev) =>
+      prev.map((item) => (item.id === overlayId ? { ...item, placement: { ...item.placement, ...next } } : item))
+    );
+  };
+
+  const openOverlay = (draft: OverlayDraft) => {
+    const key = getOverlayKey(draft);
+    setOverlays((prev) => {
+      const existing = prev.find((item) => getOverlayKey(item) === key);
+      if (existing) {
+        const ordered = [...prev.filter((item) => item.id !== existing.id), existing];
+        return ordered.map((item, index) => ({ ...item, placement: { ...item.placement, zIndex: 292 + index } }));
+      }
+
+      const id = `overlay-${Date.now()}-${overlayCounterRef.current++}`;
+      const next = {
+        ...draft,
+        id,
+        placement: createOverlayPlacement(draft.kind, prev.length),
+      } as OverlayState;
+      return [...prev, next].map((item, index) => ({ ...item, placement: { ...item.placement, zIndex: 292 + index } }));
+    });
+  };
+
   const openEntityOverlay = (entityType: EntityType, title: string) => {
-    setOverlay({ kind: "entity", entityType, title });
+    openOverlay({ kind: "entity", entityType, title });
     setSystemPanelCollapsed(false);
   };
 
   const openPlayerOverlay = async () => {
-    setOverlay({ kind: "players", title: "世界成员与权限管理" });
+    openOverlay({ kind: "players", title: "世界成员与权限管理" });
     setSystemPanelCollapsed(false);
     if (!memberManageData && !memberManageLoading) {
       await loadWorldMemberManage();
@@ -1439,17 +1613,17 @@ export default function WorldPage() {
   };
 
   const openAbilityOverlay = () => {
-    setOverlay({ kind: "ability", title: "能力结算台" });
+    openOverlay({ kind: "ability", title: "能力结算台" });
     setSystemPanelCollapsed(false);
   };
 
   const openStoryOverlay = () => {
-    setOverlay({ kind: "story", title: "剧情事件板" });
+    openOverlay({ kind: "story", title: "剧情事件板" });
     setSystemPanelCollapsed(false);
   };
 
   const openHotkeyOverlay = () => {
-    setOverlay({ kind: "hotkeys", title: "快捷键设置" });
+    openOverlay({ kind: "hotkeys", title: "快捷键设置" });
     setSystemPanelCollapsed(false);
   };
 
@@ -1458,7 +1632,7 @@ export default function WorldPage() {
     if (characterId) {
       setSelectedCharacterId(characterId);
     }
-    setOverlay({
+    openOverlay({
       kind: "character",
       characterId,
       mode,
@@ -1591,7 +1765,7 @@ export default function WorldPage() {
     setStageNotice("已向当前舞台投放你的主棋子。");
   };
 
-  const onCreateCharacter = async (event: FormEvent) => {
+  const onCreateCharacter = async (event: FormEvent, overlayId?: string) => {
     event.preventDefault();
     if (!worldId || !newCharacterName.trim()) {
       return;
@@ -1607,7 +1781,17 @@ export default function WorldPage() {
       const created = resp.data?.data as CharacterItem;
       setCharacters((prev) => [...prev, created]);
       setSelectedCharacterId(created.id);
-      setOverlay({ kind: "character", characterId: created.id, mode: "view", title: `角色卡 · ${created.name}` });
+      if (overlayId) {
+        setOverlays((prev) =>
+          prev.map((item) =>
+            item.id === overlayId && item.kind === "character"
+              ? { ...item, characterId: created.id, mode: "view", title: `角色卡 · ${created.name}` }
+              : item
+          )
+        );
+      } else {
+        openOverlay({ kind: "character", characterId: created.id, mode: "view", title: `角色卡 · ${created.name}` });
+      }
       setNewCharacterName("");
       setNewCharacterType("PC");
       setStageNotice(`角色“${created.name}”已创建。`);
@@ -1618,9 +1802,9 @@ export default function WorldPage() {
     }
   };
 
-  const onSaveCharacter = async (event: FormEvent) => {
+  const onSaveCharacter = async (event: FormEvent, characterId = selectedCharacterId) => {
     event.preventDefault();
-    if (!worldId || !selectedCharacterId) {
+    if (!worldId || !characterId) {
       return;
     }
 
@@ -1631,7 +1815,7 @@ export default function WorldPage() {
 
     setSavingCharacter(true);
     try {
-      const resp = await http.put(`/worlds/${worldId}/characters/${selectedCharacterId}`, {
+      const resp = await http.put(`/worlds/${worldId}/characters/${characterId}`, {
         name: editCharacterName,
         stats: { hp, mp },
         snapshot: { level, class: className },
@@ -1639,10 +1823,12 @@ export default function WorldPage() {
 
       const updated = resp.data?.data as CharacterItem;
       setCharacters((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-      setOverlay((prev) =>
-        prev?.kind === "character" && prev.characterId === updated.id
-          ? { ...prev, title: `角色卡 · ${updated.name}` }
-          : prev
+      setOverlays((prev) =>
+        prev.map((item) =>
+          item.kind === "character" && item.characterId === updated.id
+            ? { ...item, title: `角色卡 · ${updated.name}` }
+            : item
+        )
       );
       setStageNotice(`角色“${updated.name}”已更新。`);
     } catch (err) {
@@ -2162,7 +2348,7 @@ export default function WorldPage() {
         break;
       case "escape":
         contextMenu.close();
-        setOverlay(null);
+        setOverlays((prev) => prev.slice(0, -1));
         setShowFateCreateForm(false);
         break;
       case "slot1":
@@ -2522,8 +2708,17 @@ export default function WorldPage() {
   useEffect(() => {
     if (sceneCombatState?.status === "active" && sceneCombatState.participants.length > 0) {
       setShowBattleBar(true);
+      return;
     }
+
+    setShowBattleBar(false);
   }, [sceneCombatState?.participants.length, sceneCombatState?.status]);
+
+  useEffect(() => {
+    if (myRole !== "GM" && gmPlayerView) {
+      setGmPlayerView(false);
+    }
+  }, [gmPlayerView, myRole]);
 
   useEffect(() => {
     if (!focusedWorldMessageId) {
@@ -2740,7 +2935,7 @@ export default function WorldPage() {
 
   const renderStoryEventPanel = () => (
       <StoryEventPanel
-        myRole={myRole}
+        myRole={role}
         loading={storyEventLoading}
         events={storyEvents}
         cards={storyEventCards}
@@ -2787,10 +2982,10 @@ export default function WorldPage() {
       />
   );
 
-  const renderCharacterSheetOverlay = () => {
+  const renderCharacterSheetOverlay = (activeOverlay: Extract<OverlayState, { kind: "character" }>) => {
     const overlayCharacter =
-      overlay?.kind === "character" && overlay.characterId
-        ? characters.find((item) => item.id === overlay.characterId) ?? selectedCharacter
+      activeOverlay.characterId
+        ? characters.find((item) => item.id === activeOverlay.characterId) ?? selectedCharacter
         : selectedCharacter;
     const canEditOverlayCharacter = Boolean(
       overlayCharacter &&
@@ -2800,8 +2995,8 @@ export default function WorldPage() {
 
     return (
       <div className="world-character-sheet-overlay" data-world-component="character-sheet-overlay" data-world-layer="overlay">
-        {overlay?.kind === "character" && overlay.mode === "create" ? (
-          <form className="world-character-sheet-overlay__form" onSubmit={onCreateCharacter}>
+        {activeOverlay.mode === "create" ? (
+          <form className="world-character-sheet-overlay__form" onSubmit={(event) => void onCreateCharacter(event, activeOverlay.id)}>
             <div className="world-stage-overlay-toolbar">
               <p className="world-system-window__summary">创建一个新的 PC 或 NPC。详情字段创建后可继续在角色卡中编辑。</p>
             </div>
@@ -2856,7 +3051,13 @@ export default function WorldPage() {
             </div>
 
             {canEditOverlayCharacter ? (
-              <form className="world-character-sheet-overlay__form" onSubmit={onSaveCharacter}>
+              <form
+                className="world-character-sheet-overlay__form"
+                onSubmit={(event) => {
+                  setSelectedCharacterId(overlayCharacter.id);
+                  void onSaveCharacter(event, overlayCharacter.id);
+                }}
+              >
                 <label>
                   <span>角色名称</span>
                   <input value={editCharacterName} onChange={(event) => setEditCharacterName(event.target.value)} placeholder="角色名称" required />
@@ -2908,8 +3109,12 @@ export default function WorldPage() {
         <div className="world-stage-command-panel__actions">
           <button type="button" onClick={openAbilityOverlay}>能力结算</button>
           <button type="button" onClick={openStoryOverlay}>剧情事件</button>
-          <button type="button" onClick={() => setShowBattleBar((prev) => !prev)}>
-            {showBattleBar ? "隐藏先攻条" : "显示先攻条"}
+          <button
+            type="button"
+            onClick={() => setShowBattleBar((prev) => !prev)}
+            disabled={sceneCombatState?.status !== "active" || battleEntries.length === 0}
+          >
+            {isBattleSequenceVisible ? "隐藏先攻条" : "显示先攻条"}
           </button>
         </div>
       </section>
@@ -3108,6 +3313,11 @@ export default function WorldPage() {
             <span>权限、模板、命刻、资源包与世界模块</span>
           </div>
 
+          <button type="button" className="world-system-action-btn world-system-action-btn--debug" onClick={() => setGmPlayerView(true)}>
+            <span className="world-system-action-btn__title">进入玩家视角</span>
+            <span className="world-system-action-btn__arrow">›</span>
+          </button>
+
           {canManagePlayers ? (
             <button type="button" className="world-system-action-btn world-system-action-btn--setting" onClick={() => void openPlayerOverlay()}>
               <span className="world-system-action-btn__title">玩家权限管理</span>
@@ -3204,7 +3414,15 @@ export default function WorldPage() {
           </div>
         </>
       ) : (
-        <p className="world-system-visibility-note">当前身份只开放公开规则查询。需要修改世界模板、资源包或玩家权限时，请交给 GM 操作。</p>
+        <>
+          {isGmPlayerView ? (
+            <button type="button" className="world-system-action-btn world-system-action-btn--debug" onClick={() => setGmPlayerView(false)}>
+              <span className="world-system-action-btn__title">退出玩家视角</span>
+              <span className="world-system-action-btn__arrow">›</span>
+            </button>
+          ) : null}
+          <p className="world-system-visibility-note">当前身份只开放公开规则查询。需要修改世界模板、资源包或玩家权限时，请交给 GM 操作。</p>
+        </>
       )}
 
       <button type="button" className="world-system-lobby-btn" onClick={() => navigate("/lobby")}>
@@ -3232,34 +3450,28 @@ export default function WorldPage() {
   };
 
   return (
-    <section className={`world-stage-shell ${showBattleBar && battleEntries.length > 0 ? "is-combat-active" : ""}`.trim()}>
+    <HoverInsightProvider entries={hoverInsightEntries}>
+    <section className={`world-stage-shell ${isBattleSequenceVisible ? "is-combat-active" : ""}`.trim()}>
       {error ? <div className="world-stage-alert">{error}</div> : null}
-
-      <div className={`world-fixed-battle-bar ${showBattleBar && battleEntries.length > 0 ? "is-open" : ""}`.trim()}>
-        <button type="button" className="world-fixed-battle-bar__toggle" onClick={() => setShowBattleBar((prev) => !prev)}>
-          <span>
-            {sceneCombatState?.status === "active"
-              ? `第 ${sceneCombatState.round} 轮 · 当前 ${battleEntries.find((entry) => entry.isCurrentTurn)?.name || "未指定"}`
-              : "战斗序列栏"}
-          </span>
-          <span>{showBattleBar ? "收起" : "展开"}</span>
-        </button>
-        <div className="world-fixed-battle-bar__drawer">
-          {battleEntries.length === 0 ? <div className="world-fixed-battle-slot">当前场景暂无先攻序列。</div> : null}
-          {battleEntries.map((entry, index) => (
-            <button
-              key={entry.tokenId}
-              type="button"
-              className={`world-fixed-battle-slot world-stage-battle-slot ${entry.isCurrentTurn ? "is-current" : ""}`.trim()}
-              onClick={() => onSelectTokenFromBattle(entry.tokenId)}
-              onContextMenu={(event) => contextMenu.open(event, "initiative-entry", entry.tokenId)}
-            >
-              <strong className="world-stage-battle-slot__name">#{index + 1} {entry.name}</strong>
-              <span className="world-stage-battle-slot__meta">先攻 {entry.initiative}{entry.isMine ? " · 你" : ""}</span>
-            </button>
-          ))}
+      {isGmPlayerView ? (
+        <div className="world-gm-view-banner" role="status">
+          <span>GM 正在以玩家视角调试</span>
+          <button type="button" onClick={() => setGmPlayerView(false)}>退出玩家视角</button>
         </div>
-      </div>
+      ) : null}
+
+      <BattleSequenceBar
+        visible={isBattleSequenceVisible}
+        entries={battleEntries}
+        roundNumber={sceneCombatState?.round ?? 1}
+        canAdvanceTurn={canManageCombat}
+        advancing={sceneCombatAdvancing}
+        onEndTurn={() => {
+          void onAdvanceSceneCombatTurn();
+        }}
+        onSelectEntry={onSelectTokenFromBattle}
+        onEntryContextMenu={(event, id) => contextMenu.open(event, "initiative-entry", id)}
+      />
 
       <aside className="world-fixed-gauge">
         <div className="world-fixed-gauge__ring" />
@@ -3498,66 +3710,59 @@ export default function WorldPage() {
         onClose={contextMenu.close}
       />
 
-      {overlay ? (
-        <>
-          <button type="button" className="world-system-overlay-mask" onClick={() => setOverlay(null)} aria-label="关闭弹层" />
-          <section
-            className="world-system-overlay-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={overlay.title}
-            data-world-layer="overlay"
-            data-world-component={`overlay-${overlay.kind}`}
-          >
-            <div className="world-system-overlay-dialog__head">
-              <strong>{overlay.title}</strong>
-              <button type="button" className="world-system-overlay-dialog__close" onClick={() => setOverlay(null)}>
-                关闭
-              </button>
-            </div>
-            <div className="world-system-overlay-dialog__body">
-              {overlay.kind === "entity" ? (
-                <EntityManager
-                  worldId={worldId}
-                  entityType={overlay.entityType}
-                  label={overlay.title}
-                  canEdit={canEditEntityType(role, overlay.entityType)}
-                />
-              ) : overlay.kind === "players" ? (
-                <PlayerManagePane
-                  members={memberManageData?.members ?? []}
-                  characters={memberManageData?.characters ?? []}
-                  loading={memberManageLoading}
-                  error={memberManageError}
-                  savingUserId={savingMemberUserId}
-                  currentUserId={user?.id}
-                  onRefresh={() => {
-                    void loadWorldMemberManage();
-                  }}
-                  onSave={onSaveWorldMemberManage}
-                />
-              ) : overlay.kind === "ability" ? (
-                renderAbilityExecutionPanel()
-              ) : overlay.kind === "story" ? (
-                renderStoryEventPanel()
-              ) : overlay.kind === "hotkeys" ? (
-                <HotkeySettingsPanel
-                  worldId={worldId}
-                  userId={user?.id}
-                  bindings={customKeyBindings}
-                  onChange={(nextBindings) => {
-                    setCustomKeyBindings(nextBindings);
-                    saveWorldHotkeyBindings(worldId, user?.id, nextBindings);
-                  }}
-                />
-              ) : overlay.kind === "character" ? (
-                renderCharacterSheetOverlay()
-              ) : null}
-            </div>
-          </section>
-        </>
-      ) : null}
+      {overlays.map((activeOverlay) => (
+        <FloatingToolWindow
+          key={activeOverlay.id}
+          id={activeOverlay.id}
+          title={activeOverlay.title}
+          placement={activeOverlay.placement}
+          componentName={`overlay-${activeOverlay.kind}`}
+          compact={activeOverlay.compact}
+          onMove={moveOverlay}
+          onFocus={focusOverlay}
+          onClose={closeOverlay}
+        >
+          {activeOverlay.kind === "entity" ? (
+            <EntityManager
+              worldId={worldId}
+              entityType={activeOverlay.entityType}
+              label={activeOverlay.title}
+              canEdit={canEditEntityType(role, activeOverlay.entityType)}
+            />
+          ) : activeOverlay.kind === "players" ? (
+            <PlayerManagePane
+              members={memberManageData?.members ?? []}
+              characters={memberManageData?.characters ?? []}
+              loading={memberManageLoading}
+              error={memberManageError}
+              savingUserId={savingMemberUserId}
+              currentUserId={user?.id}
+              onRefresh={() => {
+                void loadWorldMemberManage();
+              }}
+              onSave={onSaveWorldMemberManage}
+            />
+          ) : activeOverlay.kind === "ability" ? (
+            renderAbilityExecutionPanel()
+          ) : activeOverlay.kind === "story" ? (
+            renderStoryEventPanel()
+          ) : activeOverlay.kind === "hotkeys" ? (
+            <HotkeySettingsPanel
+              worldId={worldId}
+              userId={user?.id}
+              bindings={customKeyBindings}
+              onChange={(nextBindings) => {
+                setCustomKeyBindings(nextBindings);
+                saveWorldHotkeyBindings(worldId, user?.id, nextBindings);
+              }}
+            />
+          ) : activeOverlay.kind === "character" ? (
+            renderCharacterSheetOverlay(activeOverlay)
+          ) : null}
+        </FloatingToolWindow>
+      ))}
     </section>
+    </HoverInsightProvider>
   );
 }
 
@@ -6331,7 +6536,7 @@ export default function WorldPage() {
         <div className="world-stage-quick-panel">
           <strong>{worldName}</strong>
           <span>{selectedScene ? `当前舞台：${selectedScene.name}` : "尚未选择舞台"}</span>
-          <span>{myRole || "未设定身份"} · 在线 {onlineCount} · 未读 {unreadTotal}</span>
+          <span>{isGmPlayerView ? "GM 调试玩家视角" : myRole || "未设定身份"} · 在线 {onlineCount} · 未读 {unreadTotal}</span>
           <div className="world-stage-quick-panel__grid">
             <button type="button" className="world-stage-mini-btn" onClick={() => openTab("chat")}>频道</button>
             <button type="button" className="world-stage-mini-btn" onClick={() => openTab("scene")}>场景</button>
@@ -6349,6 +6554,11 @@ export default function WorldPage() {
             <button type="button" className="world-stage-mini-btn" onClick={() => setShowHUD((prev) => !prev)}>
               {showHUD ? "HUD" : "显示"}
             </button>
+            {isActualGm ? (
+              <button type="button" className="world-stage-mini-btn" onClick={() => setGmPlayerView((prev) => !prev)}>
+                {isGmPlayerView ? "退出" : "玩家"}
+              </button>
+            ) : null}
           </div>
           <p className="world-stage-notice">{stageNotice}</p>
         </div>

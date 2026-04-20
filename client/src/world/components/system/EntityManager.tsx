@@ -1,4 +1,5 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { HoverInsightTrigger, type HoverInsightEntry } from "../HoverInsightCards";
 import { useWorldEntityStore, type EntityRecord, type EntityType } from "../../stores/worldEntityStore";
 import {
   AbilityVisualEditor,
@@ -71,6 +72,16 @@ type FormState = Record<string, string | boolean>;
 
 const SYSTEM_KEYS = new Set(["id", "worldId", "createdAt", "updatedAt"]);
 const PLAYER_TEXT_KEYS = new Set(["name", "folderPath", "iconUrl", "description", "loreText", "rulesText", "ageDesc"]);
+const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  abilities: "能力",
+  races: "种族",
+  professions: "职业",
+  backgrounds: "背景",
+  items: "物品",
+  fateClocks: "命刻",
+  decks: "牌组",
+  randomTables: "随机表",
+};
 const CHECK_TYPE_ATTACK = "attack";
 const CHECK_TYPE_SAVE = "savingThrow";
 const CHECK_TYPE_CONTEST = "contest";
@@ -555,6 +566,30 @@ function getEntityMeta(item: EntityRecord) {
     .filter((value): value is string => typeof value === "string" && Boolean(value.trim()));
 
   return values.slice(0, 2).join(" · ");
+}
+
+function getEntityInsightText(item: EntityRecord) {
+  for (const key of ["description", "rulesText", "loreText", "ageDesc"]) {
+    const value = item[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "这个条目还没有填写简介。双击条目后可以在展示文本页补全玩家可读说明。";
+}
+
+function getEntityInsightEntry(entityType: EntityType, item: EntityRecord): HoverInsightEntry {
+  const folderPath = normalizeFolderPath(item.folderPath);
+  const meta = [folderPath, getEntityMeta(item)].filter(Boolean);
+  return {
+    id: `${entityType}:${item.id}`,
+    title: item.name || "未命名",
+    kind: ENTITY_TYPE_LABELS[entityType],
+    summary: folderPath || getEntityMeta(item),
+    description: getEntityInsightText(item),
+    meta,
+    aliases: [item.name].filter((value): value is string => typeof value === "string" && value.trim().length > 0),
+  };
 }
 
 function getInitialFieldValue(field: EntityFieldSchema, source?: EntityRecord | null) {
@@ -1245,27 +1280,29 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
               const dragType = entityType === "abilities" ? "ability" : entityType === "items" ? "item" : null;
               const meta = getEntityMeta(item);
               const folderPath = normalizeFolderPath(item.folderPath);
+              const insightEntry = getEntityInsightEntry(entityType, item);
 
               return (
-                <button
-                  type="button"
-                  key={item.id}
-                  className={`entity-mgr__item ${selectedItemId === item.id ? "entity-mgr__item--active" : ""} ${dragType ? "entity-mgr__item--draggable" : ""}`.trim()}
-                  draggable={Boolean(dragType)}
-                  onClick={() => setSelectedItemId(item.id)}
-                  onDoubleClick={() => beginEdit(item)}
-                  onDragStart={(event) => {
-                    if (!dragType) return;
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("application/json", JSON.stringify({ type: dragType, id: item.id }));
-                  }}
-                >
-                  <span className="entity-mgr__item-main">
-                    <strong className="entity-mgr__item-name">{item.name}</strong>
-                    <span className="entity-mgr__item-cat">{[folderPath || "未分类", meta].filter(Boolean).join(" · ")}</span>
-                  </span>
-                  <span className="entity-mgr__item-open">双击编辑</span>
-                </button>
+                <HoverInsightTrigger entry={insightEntry} key={item.id}>
+                  <button
+                    type="button"
+                    className={`entity-mgr__item ${selectedItemId === item.id ? "entity-mgr__item--active" : ""} ${dragType ? "entity-mgr__item--draggable" : ""}`.trim()}
+                    draggable={Boolean(dragType)}
+                    onClick={() => setSelectedItemId(item.id)}
+                    onDoubleClick={() => beginEdit(item)}
+                    onDragStart={(event) => {
+                      if (!dragType) return;
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("application/json", JSON.stringify({ type: dragType, id: item.id }));
+                    }}
+                  >
+                    <span className="entity-mgr__item-main">
+                      <strong className="entity-mgr__item-name">{item.name}</strong>
+                      <span className="entity-mgr__item-cat">{[folderPath || "未分类", meta].filter(Boolean).join(" · ")}</span>
+                    </span>
+                    <span className="entity-mgr__item-open">双击编辑</span>
+                  </button>
+                </HoverInsightTrigger>
               );
             })}
           </div>
@@ -1273,8 +1310,8 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
       </div>
 
       {editing ? (
-        <div className="entity-mgr__editor-backdrop" role="presentation">
-          <div className="entity-mgr__editor entity-mgr__editor--modal" role="dialog" aria-modal="true" aria-label={isCreating ? `新建${label}` : `编辑${editing.name}`}>
+        <div className="entity-mgr__editor-dock" role="presentation">
+          <div className="entity-mgr__editor entity-mgr__editor--modal entity-mgr__editor--floating-detail" role="dialog" aria-modal="false" aria-label={isCreating ? `新建${label}` : `编辑${editing.name}`}>
             <div className="entity-mgr__editor-header">
               <div className="entity-mgr__editor-identity">
                 <div className="entity-mgr__editor-icon">
