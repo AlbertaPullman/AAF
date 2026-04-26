@@ -14,3 +14,15 @@ data/uploads/*
 !data/uploads/maps/.gitkeep
 !data/uploads/audio/.gitkeep
 OLD AAF/
+
+# ── temp / scratch ──
+tmp/
+*.tsbuildinfo
+
+# ── sensitive design source (keep local only) ──
+规则书.txt
+规则书.docx
+
+# ── Claude Code local state (worktree refs and per-machine settings) ──
+.claude/settings.local.json
+.claude/worktrees/
