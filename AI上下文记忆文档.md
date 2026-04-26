@@ -104,3 +104,26 @@
 - 右上角已改为“设置”入口，编辑模式是第一优先开关；字段改动操作默认仅编辑模式可执行。
 - 技能栏进入可配置阶段：支持关联属性、熟练/专精、常驻与临时调整值，且悬停可查看来源说明。
 - 前瞻记录：后续会做 Ability System 的“公式索引插件”（可选公式下拉 + 中文说明），本阶段仅记录，不实现。
+
+## 8. 主题系统与分支整合（2026-04-26）
+
+**当前主线变化**：
+
+- 把 `codex/world-template-ux-docs`（12 commits, +36k lines, 含世界 UI 组件）和 `claude/reverent-germain-b299cb`（Phase 0 主题系统 + 登录框美化）合并入 main，并清理了误入仓库的 `tmp/`、`规则书.txt/docx`、`*.tsbuildinfo`，扩展 `.gitignore` 防止再次入库。
+- 引入语义 token 系统：所有视觉相关 CSS 变量改走 `--surface-*` / `--text-*` / `--accent-*` / `--mod-<module>-*` 三层语义层，旧的 `--jrpg-*` / `--auth-*` 通过别名保持向后兼容（位于 `client/src/styles/themes/_contract.css`）。
+- 主题包加载机制：`client/src/lib/theme.ts` + `client/src/store/themeStore.ts`，优先级 GM 强制 > 世界默认 > 玩家偏好 > 系统默认。`bootstrapTheme()` 在 React 渲染前注入 `<html data-theme>`，避免闪烁。
+- 登录页（`AuthCinematicPage.tsx`）的 cinematic 动画完整保留；只重塑了 `.auth-panel` 内部样式：金边外框 + 深夜底盘 + 四角金饰 + 卷轴风 tabs + 羊皮纸输入框 + 凸雕金质提交按钮。markup/类名/事件全部不动。
+
+**影响规则 / 接口**：
+
+- 所有新增视觉组件 CSS 必须使用语义 token（`var(--surface-card)`、`var(--accent-action)` 等），禁止再写裸 hex 或直接 `var(--jrpg-*)`。
+- 新增世界级主题包：在 `client/src/styles/themes/<id>.css` 写 `[data-theme="<id>"] { ... }`，在 `client/src/lib/theme.ts` 的 `THEME_PACKS` 注册即可。
+- 角色卡、能力等任何新建 UI 应区分**舞台**（FateClock/HUD/WorldCanvas chrome）和**工具面板**（SystemPanel/EntityManager/Sheet）两类美学——可读 `.claude/skills/aaf-jrpg-ui/SKILL.md`。
+- `.claude/skills/` 下新增 10 个项目本地 skill；`.claude/launch.json` 提供 Claude Preview 启动配置（port 5174）。
+
+**下一步**：
+
+1. Phase 1：舞台组件美化——FateClockWidget / HUDPanel / BattleSequenceBar / HoverInsightCards / ContextMenu，去除胶囊形状（共 29 处 `border-radius: 9999px`），改成 JRPG 菜单按钮形态。
+2. Phase 2：工具面板美化——SystemPanel / EntityManager / AbilityExecutionPanel / CharacterSheetWorkbench，走"实用密度高"路线。
+3. Phase 3：逐组件 polish pass（用 `aaf-component-polish` skill）。
+4. Phase 4：用替代主题包（如黑暗）验证 token 覆盖完整性。
