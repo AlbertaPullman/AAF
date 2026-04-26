@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { ACTION_ECONOMY_LABELS, normalizeActionEconomy } from "../../../../shared/types/world-entities";
+import type { CharacterItem } from "../../pages/world/types";
 
 /**
  * AAF-WORLD-COMPONENT active:overlay-tool
@@ -18,14 +19,6 @@ type AbilityItem = {
   tags?: unknown;
   resourceCosts?: unknown;
   effects?: unknown;
-};
-
-type CharacterItem = {
-  id: string;
-  name: string;
-  type: "PC" | "NPC";
-  stats?: unknown;
-  snapshot?: unknown;
 };
 
 type AbilityExecutionResult = {

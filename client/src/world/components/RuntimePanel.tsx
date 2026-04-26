@@ -1,11 +1,5 @@
 import { worldRuntimeMessagesZh } from "../i18n/messages";
-
-type WorldRuntimeState = {
-  worldId: string;
-  status: "loading" | "active" | "sleeping" | "error";
-  message: string | null;
-  updatedAt: string;
-};
+import type { WorldRuntimeState } from "../../pages/world/types";
 
 type RuntimePanelProps = {
   runtimeState: WorldRuntimeState | null;

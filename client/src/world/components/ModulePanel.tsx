@@ -1,13 +1,5 @@
 import { worldRuntimeMessagesZh } from "../i18n/messages";
-
-type RuntimeModuleState = {
-  worldId: string;
-  key: string;
-  displayName: string;
-  dependencies: string[];
-  status: "enabled" | "disabled";
-  updatedAt: string;
-};
+import type { RuntimeModuleState } from "../../pages/world/types";
 
 type ModulePanelProps = {
   modules: RuntimeModuleState[];

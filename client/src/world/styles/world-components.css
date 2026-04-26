@@ -1172,3 +1172,219 @@
   overflow-y: auto;
   height: 100%;
 }
+
+/* ──── 频道编辑面板 ──── */
+
+.world-channel-edit-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px;
+}
+
+.world-channel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.world-channel-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a3a52;
+  margin: 0;
+}
+
+.world-channel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.world-channel-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.world-channel-scene-list {
+  padding: 12px;
+  background: rgba(224, 238, 255, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(42, 94, 170, 0.2);
+}
+
+.world-channel-scene-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.world-channel-scene-list li {
+  padding: 6px 0;
+  color: #2a5eaa;
+}
+
+.world-channel-hint {
+  font-size: 13px;
+  color: #5a7a9a;
+  margin: 8px 0 0 0;
+}
+
+.world-channel-custom-list {
+  min-height: 60px;
+}
+
+.world-channel-custom-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.world-channel-custom-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(42, 94, 170, 0.2);
+  border-radius: 6px;
+}
+
+.world-channel-custom-item span {
+  font-weight: 500;
+  color: #1a3a52;
+}
+
+.world-channel-remove-btn {
+  padding: 4px 12px;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
+  border-radius: 4px;
+  color: #dc3545;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.world-channel-remove-btn:hover {
+  background: rgba(220, 53, 69, 0.2);
+  border-color: rgba(220, 53, 69, 0.5);
+}
+
+.world-channel-empty {
+  color: #7a9ab8;
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+.world-channel-add-form {
+  display: flex;
+  gap: 8px;
+}
+
+.world-channel-add-form input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid rgba(42, 94, 170, 0.3);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.world-channel-add-form button {
+  padding: 8px 16px;
+  background: linear-gradient(145deg, rgba(42, 94, 170, 0.9), rgba(28, 70, 130, 0.95));
+  border: 1px solid rgba(42, 94, 170, 0.4);
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.world-channel-add-form button:hover {
+  background: linear-gradient(145deg, rgba(42, 94, 170, 1), rgba(28, 70, 130, 1));
+}
+
+.world-channel-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid rgba(42, 94, 170, 0.2);
+}
+
+.world-channel-save-btn {
+  padding: 10px 24px;
+  background: linear-gradient(145deg, rgba(40, 167, 69, 0.9), rgba(30, 130, 50, 0.95));
+  border: 1px solid rgba(40, 167, 69, 0.4);
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.world-channel-save-btn:hover {
+  background: linear-gradient(145deg, rgba(40, 167, 69, 1), rgba(30, 130, 50, 1));
+}
+
+/* ──── 主要频道栏 ──── */
+
+.world-stage-primary-channels {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(224, 238, 255, 0.4);
+  border-bottom: 1px solid rgba(42, 94, 170, 0.2);
+}
+
+.world-stage-primary-channel-btn {
+  flex: 1;
+  padding: 12px 20px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(240, 248, 255, 0.9));
+  border: 2px solid rgba(42, 94, 170, 0.3);
+  border-radius: 8px;
+  color: #2a5eaa;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.world-stage-primary-channel-btn:hover {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(240, 248, 255, 1));
+  border-color: rgba(42, 94, 170, 0.5);
+}
+
+.world-stage-primary-channel-btn.is-active {
+  background: linear-gradient(145deg, rgba(42, 94, 170, 0.9), rgba(28, 70, 130, 0.95));
+  border-color: rgba(42, 94, 170, 0.8);
+  color: white;
+}
+
+/* ──── 次要频道栏 ──── */
+
+.world-stage-secondary-channels {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(240, 248, 255, 0.5);
+  border-bottom: 1px solid rgba(42, 94, 170, 0.15);
+  flex-wrap: wrap;
+  min-height: 48px;
+  align-items: center;
+}
+
+.world-stage-empty-hint {
+  color: #7a9ab8;
+  font-size: 13px;
+  font-style: italic;
+}
+

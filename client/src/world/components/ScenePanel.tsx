@@ -1,10 +1,5 @@
 import type { FormEvent } from "react";
-
-type SceneItem = {
-  id: string;
-  name: string;
-  sortOrder: number;
-};
+import type { SceneItem } from "../../pages/world/types";
 
 type ScenePanelProps = {
   scenes: SceneItem[];

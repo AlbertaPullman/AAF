@@ -1,19 +1,11 @@
 import type { MouseEvent } from "react";
+import type { CharacterItem } from "../../pages/world/types";
 
 /**
  * AAF-WORLD-COMPONENT active:list-surface
  * Mount policy: right-side character tab only. Detailed sheets and edit forms
  * live in overlays so the system panel stays short and scan-friendly.
  */
-
-type CharacterItem = {
-  id: string;
-  name: string;
-  type: "PC" | "NPC";
-  userId: string | null;
-  stats?: unknown;
-  snapshot?: unknown;
-};
 
 type CharacterPanelProps = {
   characters: CharacterItem[];
