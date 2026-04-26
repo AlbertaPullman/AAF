@@ -1,0 +1,145 @@
+/*
+ * AAF Theme Token Contract
+ * ========================
+ * The semantic token vocabulary that ALL components must use.
+ * Components NEVER hardcode hex colors / shadows / radii — they reference these tokens.
+ *
+ * Layering:
+ *   1. This file (_contract.css) sets DEFAULT values (matching current jrpg-bright look).
+ *   2. Theme packs in this folder define [data-theme="<name>"] blocks that override.
+ *   3. Per-module tokens fall back to globals via var(--global, fallback) chains —
+ *      a pack can override either the global OR a specific module token.
+ *
+ * Granularity = medium: ~45 tokens.
+ *   - Globals: font / radius / shadow / motion / surface / text / accent
+ *   - Per-module: only color + font (per spec). Geometry stays global.
+ */
+
+:root {
+  /* ============================================================
+   * GLOBAL — Foundation
+   * ============================================================ */
+
+  /* Fonts */
+  --font-base: "Microsoft YaHei", "Segoe UI", "Noto Sans SC", sans-serif;
+  --font-display: "STKaiti", "KaiTi", "Microsoft YaHei", sans-serif;
+  --font-serif: "FangSong", "Noto Serif SC", "STSong", serif;
+  --font-mono: "Consolas", "Courier New", monospace;
+
+  /* Radii (geometry is global, not per-module) */
+  --radius-xs: 4px;        /* tags, status markers */
+  --radius-sm: 8px;        /* inputs, small buttons */
+  --radius-md: 12px;       /* default cards (.rounded) */
+  --radius-lg: 16px;       /* panels, large surfaces */
+  --radius-pill: 9999px;   /* RESTRICTED: numeric-only short status; never on long-text controls */
+
+  /* Shadows */
+  --shadow-soft: 0 4px 12px rgba(12, 30, 68, 0.08);
+  --shadow-elevated: 0 18px 40px rgba(12, 30, 68, 0.15);
+  --shadow-glow: 0 0 0 3px rgba(18, 116, 255, 0.25);
+  --shadow-inset: inset 0 1px 2px rgba(12, 30, 68, 0.06);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 220ms;
+
+  /* ============================================================
+   * GLOBAL — Color
+   * ============================================================ */
+
+  /* Surfaces */
+  --surface-stage-bg: radial-gradient(circle at 15% 12%, rgba(56, 189, 248, 0.26), transparent 30%),
+    radial-gradient(circle at 83% 14%, rgba(251, 191, 36, 0.26), transparent 34%),
+    radial-gradient(circle at 50% 90%, rgba(244, 114, 182, 0.18), transparent 42%),
+    linear-gradient(140deg, #f6fbff 0%, #eefbff 32%, #fff7ec 70%, #fff2ff 100%);
+  --surface-tool-bg: #f7fbff;
+  --surface-card: rgba(255, 255, 255, 0.88);
+  --surface-card-border: rgba(93, 130, 206, 0.32);
+  --surface-overlay: rgba(8, 16, 34, 0.45);
+  --surface-scroll-thumb: rgba(93, 130, 206, 0.4);
+
+  /* Text */
+  --text-primary: #10264d;
+  --text-secondary: #3f5f8d;
+  --text-muted: #5f80a8;
+  --text-on-accent: #ffffff;
+
+  /* Accent */
+  --accent-action: #1274ff;        /* primary blue: links, default action */
+  --accent-action-soft: #2fc6ff;   /* hover/highlight light blue */
+  --accent-emphasis: #f59e0b;      /* orange: selected/critical/warning emphasis */
+  --accent-success: #08a37b;
+  --accent-warn: #f59e0b;
+  --accent-danger: #dc2626;
+
+  /* ============================================================
+   * PER-MODULE — Color + Font (geometry inherits globals)
+   * Each falls back to a global by default.
+   * Theme packs can override either side.
+   * ============================================================ */
+
+  /* 命运刻度盘 (FateClockWidget) — 舞台 left-top */
+  --mod-fate-bg: var(--surface-card);
+  --mod-fate-accent: var(--accent-emphasis);
+  --mod-fate-font: var(--font-display);
+
+  /* HUD 面板 (HUDPanel + 队伍简卡) — 舞台 bottom */
+  --mod-hud-bg: var(--surface-card);
+  --mod-hud-accent: var(--accent-action);
+  --mod-hud-font: var(--font-base);
+
+  /* 系统板 / 浮窗 (SystemPanel, FloatingToolWindow) — GM tools */
+  --mod-panel-bg: var(--surface-tool-bg);
+  --mod-panel-accent: var(--accent-action);
+
+  /* 角色卡 (CharacterSheetWorkbench) */
+  --mod-sheet-bg: var(--surface-tool-bg);
+  --mod-sheet-accent: var(--accent-action);
+  --mod-sheet-font: var(--font-base);
+
+  /* 鉴权页 (login / register) — 现存 --auth-* 系列 */
+  --mod-auth-bg: rgba(8, 16, 34, 0.82);
+  --mod-auth-accent: #e4c07d;
+  --mod-auth-font: var(--font-display);
+
+  /* 规则书 (rulebook reader) — 纸质风 */
+  --mod-rulebook-bg: #f6edd9;
+  --mod-rulebook-accent: #b28747;
+  --mod-rulebook-font: var(--font-serif);
+
+  /* ============================================================
+   * LEGACY ALIASES — DO NOT USE IN NEW CODE
+   * Existing rules in index.css still reference these. As phases progress,
+   * we migrate selectors to use the semantic tokens above directly,
+   * then delete this block.
+   * ============================================================ */
+
+  --jrpg-bg: var(--surface-stage-bg);
+  --jrpg-text-main: var(--text-primary);
+  --jrpg-text-sub: var(--text-secondary);
+  --jrpg-card: var(--surface-card);
+  --jrpg-card-border: var(--surface-card-border);
+  --jrpg-shadow: var(--shadow-elevated);
+  --jrpg-accent: var(--accent-action);
+  --jrpg-accent-soft: var(--accent-action-soft);
+  --jrpg-success: var(--accent-success);
+  --jrpg-warn: var(--accent-warn);
+  --jrpg-danger: var(--accent-danger);
+  --jrpg-heading-font: var(--font-display);
+
+  --auth-gold: var(--mod-auth-accent);
+  --auth-gold-deep: #b2863a;
+  --auth-panel-bg: var(--mod-auth-bg);
+  --auth-panel-border: rgba(255, 230, 179, 0.38);
+  --auth-input-bg: rgba(255, 255, 255, 0.9);
+  --auth-input-border: rgba(137, 112, 65, 0.7);
+}
+
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+  }
+}
