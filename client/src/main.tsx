@@ -4,6 +4,10 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./router";
 import "./styles/index.css";
 import "./world/styles/world-components.css";
+import { bootstrapTheme } from "./store/themeStore";
+
+// Apply persisted theme before React renders to avoid a flash of the wrong palette.
+bootstrapTheme();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

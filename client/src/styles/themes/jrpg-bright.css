@@ -1,0 +1,43 @@
+/*
+ * Theme Pack: JRPG Bright (default)
+ * =================================
+ * The reference pack — bright blue/white/orange.
+ * This file deliberately re-states defaults under [data-theme="jrpg-bright"]
+ * so the pack is interchangeable with future alt packs (dark, steampunk, etc).
+ *
+ * To author a new pack:
+ *   1. Copy this file to themes/<name>.css
+ *   2. Replace the selector to [data-theme="<name>"]
+ *   3. Override only the tokens you want different
+ *      (per-module tokens fall back to globals if omitted)
+ *   4. Register the pack in lib/theme.ts
+ */
+
+[data-theme="jrpg-bright"] {
+  /* Globals — color */
+  --surface-stage-bg: radial-gradient(circle at 15% 12%, rgba(56, 189, 248, 0.26), transparent 30%),
+    radial-gradient(circle at 83% 14%, rgba(251, 191, 36, 0.26), transparent 34%),
+    radial-gradient(circle at 50% 90%, rgba(244, 114, 182, 0.18), transparent 42%),
+    linear-gradient(140deg, #f6fbff 0%, #eefbff 32%, #fff7ec 70%, #fff2ff 100%);
+  --surface-tool-bg: #f7fbff;
+  --surface-card: rgba(255, 255, 255, 0.88);
+  --surface-card-border: rgba(93, 130, 206, 0.32);
+
+  --text-primary: #10264d;
+  --text-secondary: #3f5f8d;
+  --text-muted: #5f80a8;
+
+  --accent-action: #1274ff;
+  --accent-action-soft: #2fc6ff;
+  --accent-emphasis: #f59e0b;
+
+  /* Globals — fonts */
+  --font-display: "STKaiti", "KaiTi", "Microsoft YaHei", sans-serif;
+  --font-base: "Microsoft YaHei", "Segoe UI", "Noto Sans SC", sans-serif;
+
+  /* Per-module — JRPG bright leaves them at global fallbacks */
+  --mod-fate-accent: var(--accent-emphasis);
+  --mod-hud-accent: var(--accent-action);
+  --mod-panel-accent: var(--accent-action);
+  --mod-sheet-accent: var(--accent-action);
+}
