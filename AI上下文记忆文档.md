@@ -123,7 +123,59 @@
 
 **下一步**：
 
-1. Phase 1：舞台组件美化——FateClockWidget / HUDPanel / BattleSequenceBar / HoverInsightCards / ContextMenu，去除胶囊形状（共 29 处 `border-radius: 9999px`），改成 JRPG 菜单按钮形态。
+1. ~~Phase 1：舞台组件美化~~ ✅（见下方 9. 段）
 2. Phase 2：工具面板美化——SystemPanel / EntityManager / AbilityExecutionPanel / CharacterSheetWorkbench，走"实用密度高"路线。
 3. Phase 3：逐组件 polish pass（用 `aaf-component-polish` skill）。
 4. Phase 4：用替代主题包（如黑暗）验证 token 覆盖完整性。
+
+## 9. 舞台 Phase 1 完成（2026-04-26）
+
+**当前主线变化**：
+
+- 5 个舞台组件 CSS 全部翻成 JRPG 浅色玻璃 + 金边美学，全部使用 `_contract.css` 语义 token，不再有裸 hex / `var(--jrpg-*)` legacy 引用：
+  - **FateClockWidget**（`client/src/world/styles/world-components.css` 段 200–360）：玻璃卡 + 顶部金线 + 橙色 filled 命刻段 + 蓝色 threshold 标尺 + 5 态按钮。
+  - **HUDPanel + 队伍简卡**（同文件段 ~715–920）：从浅色直接升级为带蓝→橙顶部光带的玻璃 HUD，resource bar 用 `--accent-danger / --accent-action / --accent-warn / --accent-emphasis` 渐变；hotbar slot 凸雕渐变 + 5 态。
+  - **BattleSequenceBar**（同文件段 1–295）：从深色赛博色系完全翻成浅色 frame；当前回合用 `--accent-emphasis` 橙脉冲 ring；补齐 `__frame / __round-hint / __empty / __sequence-cell / __round-divider / __entry--loop-preview` 6 个之前缺失的类；scrollbar 浅蓝化。
+  - **HoverInsightCards**（`client/src/styles/index.css` 段 ~8154–8290）：原本浅色但裸 hex；全部上 token；kind 标签做成蓝色短矩形；pinned 用橙色边框；术语 hover 由橙→红强调。
+  - **ContextMenu**（`world-components.css` 段 636–790）：从黑色暗弹层完全翻成浅色玻璃；item 加左侧蓝条 + padding 滑动 + 5 态；danger 单独 hover 色；shortcut 做成 keycap。
+
+- 全局 chrome 收口：
+  - `border-radius: 999px`（55 处含 2 个 `!important`）→ `var(--radius-pill)` token 化。值仍为 9999px，**视觉去胶囊化**待后续 per-selector 审视。
+  - `_contract.css` 加全局 scrollbar 浅蓝默认（Firefox `:root` + Chromium 通配 `::-webkit-scrollbar`），低特异性，不覆盖 43 处已有局部规则。
+
+**影响规则 / 接口**：
+
+- 任何新增舞台组件（含浮窗、HUD、序列条、悬浮卡）必须遵循已落地的玻璃面板 + token + 5 态 + `prefers-reduced-motion` 降级模板，参照上述 5 个组件中的任一个。
+- 舞台用 `--mod-fate-* / --mod-hud-*` per-module token；工具面板用 `--mod-panel-* / --mod-sheet-*`；不得交叉混用。
+- `--radius-pill` 当前仍 = 9999px，是"胶囊语义"的中转令牌；将来若决定全面改短矩形，只需改契约值或 per-selector 改用 `--radius-sm`。
+- 全局 scrollbar 已浅蓝化，新组件不需要再写 scrollbar CSS，除非要颜色变体。
+
+**下一步**：
+
+→ Phase 2：工具面板美化。第一批候选：`SystemPanel`、`EntityManager`、`AbilityExecutionPanel`、`CharacterSheetWorkbench`。规则不同——"实用密度高"，浅色矩形、低装饰、强对齐，玻璃+光晕只属舞台。
+
+## 10. 前端美化 Phase 1–4 收尾（2026-04-27）
+
+**当前主线变化**：
+
+- **Phase 2（工具面板）4/4 完成**：SystemPanel base CSS token 化 + tab 5 态；EntityManager 全段 token 化 + shimmer loading + active 蓝条；AbilityExecutionPanel 全段 token 化 + select 5 态 + 短矩形 tag；CharacterSheetWorkbench action-btn / settings-item 补 5 态 + focus ring（卷轴主题色保留待用户决策）
+- **Phase 3（二级组件）4/5 完成 + 1 跳过**：WorldCanvas board/hud/glow/token 全部 token 化 + selected 橙色脉冲；HotkeySettingsPanel 从 legacy `--tool-*` 迁契约 token + recording 脉冲 + kbd 键帽；FloatingToolWindow chrome token 化 + close 5 态；Dialog overlays mask/dialog/close token 化 + scale-in 入场。StoryEventPanel 跳过（Tailwind utility-only，无独立 CSS）
+- **Phase 4（dark theme 验证）5/5 完成**：建 `dark-arcane.css` 暗影秘典主题包（深紫深蓝 + 紫色 emphasis 替换 JRPG 橙）；切换并审视：2303 条规则 0 critical leak，4 处渐变端点 hex 是 artistic saturation 不动，12 处 `var(--jrpg-*)` legacy 调用通过别名链正常跟主题；切回亮主题验证 dark pack 未漏入
+
+**影响规则 / 接口**：
+
+- 主题包扩展规范已落 `docs/世界模板实现蓝图.md` §5.1：新增 pack 步骤 + Vite 缓存陷阱 + 切换路径 + 优先级
+- 全前端美化遵循统一契约：所有视觉规则用 `_contract.css` 语义 token；舞台用 `--mod-fate-* / --mod-hud-*`，工具面板用 `--mod-panel-* / --mod-sheet-*`；橙色（`--accent-emphasis`）专留强调/选中/危险/关键反馈
+- 全局 scrollbar 浅蓝化在 `_contract.css` 末尾（低特异性默认）
+- 5 态契约固化：所有交互元素必备 hover / active / focus-visible / disabled，按需 loading。`prefers-reduced-motion` 由 `_contract.css` 全局降级动画 duration
+
+**待办（不阻塞**）：
+
+- 12 处 `var(--jrpg-*)` legacy 调用迁直接 token（body / .app-header / .world-card / .lobby-page 等）
+- 54+处 `var(--radius-pill)` 视觉去胶囊化（per-selector 区分长文 chrome vs 数字短 status marker）
+- `.world-stage-shell` 11074-11200 暗色 legacy 块清理（已被 11881+ 亮色覆写，是死代码）
+- CharacterSheetWorkbench 卷轴主题色调风格冲突（保留 vs 改标准白色工具面板，待用户决策）
+
+**下一步**：
+
+→ 前端美化主线完成，可回到能力深化与 AI 辅助链路（阶段 8 主线）。前端 chrome 已稳定为 token 驱动，新增组件参照 Phase 1–3 任一组件为模板。
