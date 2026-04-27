@@ -1,0 +1,89 @@
+/*
+ * Theme Pack: Dark Arcane (暗影秘典)
+ * ==================================
+ * Phase 4 verification pack — deep navy + violet, used to flush out
+ * any hardcoded colors / `var(--jrpg-*)` legacy refs that would survive
+ * a theme switch. If something stays bright when this pack is active,
+ * that selector still has a hardcoded color and needs token-ization.
+ *
+ * Aesthetic notes:
+ *   - Background: deep navy (#0a1226) + violet undertones
+ *   - Text: cool off-white
+ *   - Action accent: brighter cyan-blue (works on dark bg)
+ *   - Emphasis accent: violet (replaces JRPG orange — a TRPG arcana mood)
+ *   - Card surfaces: translucent dark navy with violet edge glow
+ */
+
+[data-theme="dark-arcane"] {
+  /* ============================================================
+   * GLOBAL — Color
+   * ============================================================ */
+
+  /* Surfaces */
+  --surface-stage-bg: radial-gradient(circle at 12% 14%, rgba(108, 185, 255, 0.18), transparent 32%),
+    radial-gradient(circle at 84% 16%, rgba(192, 132, 252, 0.22), transparent 36%),
+    radial-gradient(circle at 50% 92%, rgba(86, 60, 180, 0.25), transparent 45%),
+    linear-gradient(140deg, #060a1c 0%, #0a1226 32%, #160b2c 68%, #0d0820 100%);
+  --surface-tool-bg: #0e1530;
+  --surface-card: rgba(20, 28, 56, 0.82);
+  --surface-card-border: rgba(140, 110, 220, 0.32);
+  --surface-overlay: rgba(0, 0, 0, 0.7);
+  --surface-scroll-thumb: rgba(140, 110, 220, 0.55);
+
+  /* Text */
+  --text-primary: #e6e8f5;
+  --text-secondary: #aab1d4;
+  --text-muted: #7c84ad;
+  --text-on-accent: #ffffff;
+
+  /* Accent */
+  --accent-action: #6cb9ff;
+  --accent-action-soft: #94d4ff;
+  --accent-emphasis: #c084fc;       /* violet replaces JRPG orange */
+  --accent-success: #34d399;
+  --accent-warn: #fbbf24;
+  --accent-danger: #f87171;
+
+  /* Shadows — deeper for dark bg */
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-elevated: 0 18px 40px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 0 3px rgba(108, 185, 255, 0.42);
+  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+
+  /* Fonts — same family, dark mood doesn't change typography */
+  --font-display: "STKaiti", "KaiTi", "Microsoft YaHei", sans-serif;
+  --font-base: "Microsoft YaHei", "Segoe UI", "Noto Sans SC", sans-serif;
+
+  /* ============================================================
+   * PER-MODULE — Color overrides
+   * ============================================================ */
+
+  /* 命运刻度盘 — 紫色命运感更强 */
+  --mod-fate-bg: rgba(28, 18, 50, 0.86);
+  --mod-fate-accent: var(--accent-emphasis);
+  --mod-fate-font: var(--font-display);
+
+  /* HUD — 深蓝玻璃 */
+  --mod-hud-bg: rgba(20, 28, 56, 0.82);
+  --mod-hud-accent: var(--accent-action);
+  --mod-hud-font: var(--font-base);
+
+  /* 系统板 / 工具面板 — 实色深蓝 */
+  --mod-panel-bg: #0e1530;
+  --mod-panel-accent: var(--accent-action);
+
+  /* 角色卡 — 暗色仍走 panel-bg，羊皮纸主题在 dark 下视觉冲突暂搁置 */
+  --mod-sheet-bg: rgba(20, 28, 56, 0.85);
+  --mod-sheet-accent: var(--accent-action);
+  --mod-sheet-font: var(--font-base);
+
+  /* 鉴权页 — 保留金色高光，深紫底 */
+  --mod-auth-bg: rgba(8, 4, 26, 0.92);
+  --mod-auth-accent: #f0c87d;
+  --mod-auth-font: var(--font-display);
+
+  /* 规则书 — 暗色不模拟纸张，改深紫卷轴 */
+  --mod-rulebook-bg: #1a1230;
+  --mod-rulebook-accent: #c084fc;
+  --mod-rulebook-font: var(--font-serif);
+}

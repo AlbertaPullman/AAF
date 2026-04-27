@@ -13,7 +13,7 @@
  *   3. Add an entry to THEME_PACKS below
  */
 
-export type ThemePackId = "jrpg-bright" | (string & {});
+export type ThemePackId = "jrpg-bright" | "dark-arcane" | (string & {});
 
 export type ThemePack = {
   id: ThemePackId;
@@ -30,6 +30,12 @@ export const THEME_PACKS: ThemePack[] = [
     id: "jrpg-bright",
     label: "JRPG 明亮",
     description: "蓝白橙基调的明亮幻想冒险风格（系统默认）",
+    userSelectable: true,
+  },
+  {
+    id: "dark-arcane",
+    label: "暗影秘典",
+    description: "深紫深蓝基调的暗黑奥术风格（验证 token 覆盖完整性）",
     userSelectable: true,
   },
 ];

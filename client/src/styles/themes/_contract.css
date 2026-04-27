@@ -143,3 +143,41 @@
     --duration-normal: 0ms;
   }
 }
+
+/* ============================================================
+ * GLOBAL SCROLLBAR — bright JRPG palette default
+ * Low specificity so any scoped override still wins.
+ * Firefox: scrollbar-color on :root cascades everywhere.
+ * Chromium: ::-webkit-scrollbar on universal selector applies
+ *   wherever no scoped rule exists.
+ * ============================================================ */
+
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-scroll-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-scroll-thumb);
+  border-radius: var(--radius-xs);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-action);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
