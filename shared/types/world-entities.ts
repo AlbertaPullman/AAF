@@ -5,6 +5,55 @@
  * 遵循规则书定义的数据结构
  */
 
+/* ──────────── 文件夹 (CP-01) ──────────── */
+
+/** 文件夹支持的资源类型。
+ *  与 Prisma `FolderType` 枚举保持一致；新增类型必须同步 schema + migration。 */
+export type FolderType =
+  | "SCENE"
+  | "CHARACTER"
+  | "ABILITY"
+  | "ITEM"
+  | "PROFESSION"
+  | "RACE"
+  | "BACKGROUND"
+  | "FATE_CLOCK"
+  | "DECK"
+  | "RANDOM_TABLE";
+
+export const FOLDER_TYPE_LABELS: Record<FolderType, string> = {
+  SCENE: "场景",
+  CHARACTER: "角色",
+  ABILITY: "能力",
+  ITEM: "物品",
+  PROFESSION: "职业",
+  RACE: "种族",
+  BACKGROUND: "背景",
+  FATE_CLOCK: "命刻",
+  DECK: "牌组",
+  RANDOM_TABLE: "随机表",
+};
+
+/** 文件夹记录（Prisma Folder 模型的运行时投影）。 */
+export interface FolderRecord {
+  id: string;
+  worldId: string;
+  parentId: string | null;
+  type: FolderType;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  sortOrder: number;
+  collapsed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 文件夹树节点：FolderRecord + children。 */
+export interface FolderTreeNode extends FolderRecord {
+  children: FolderTreeNode[];
+}
+
 /* ──────────── 基础通用 ──────────── */
 
 /** 属性类型 */
@@ -137,8 +186,10 @@ export interface AbilityDefinition {
   worldId: string;
   /** 能力名称 */
   name: string;
-  /** 模板库多级分类路径，如 "法术/塑能/冰" */
+  /** 模板库多级分类路径，如 "法术/塑能/冰"（兼容字段，3 个版本后由 folderId 取代） */
   folderPath?: string;
+  /** 文件夹引用（CP-01 起新增；当 folderPath 为空且 folderId 为空表示顶层） */
+  folderId?: string | null;
   /** 能力分类: spell(法术) / combatTechnique(战技) / feature(特性) / racial(种族能力) / custom(自定义) */
   category: "spell" | "combatTechnique" | "feature" | "racial" | "item" | "custom";
   /** 能力来源 */
@@ -246,6 +297,7 @@ export interface RaceDefinition {
   worldId: string;
   name: string;
   folderPath?: string;
+  folderId?: string | null;
   description: string;
   loreText: string; // 背景故事
   iconUrl?: string;
@@ -298,6 +350,7 @@ export interface ProfessionDefinition {
   worldId: string;
   name: string;
   folderPath?: string;
+  folderId?: string | null;
   description: string;
   loreText: string;
   iconUrl?: string;
@@ -340,6 +393,7 @@ export interface BackgroundDefinition {
   worldId: string;
   name: string;
   folderPath?: string;
+  folderId?: string | null;
   description: string;
   loreText: string;
   iconUrl?: string;
@@ -416,6 +470,7 @@ export interface ItemDefinition {
   worldId: string;
   name: string;
   folderPath?: string;
+  folderId?: string | null;
   description: string;
   category: ItemCategory;
   subcategory?: string; // 二级分类
@@ -463,6 +518,7 @@ export interface FateClockDefinition {
   worldId: string;
   name: string;
   folderPath?: string;
+  folderId?: string | null;
   description: string;
   /** 刻度总数(4-12) */
   segments: number;
@@ -590,6 +646,7 @@ export interface DeckDefinition {
   worldId: string;
   name: string;
   folderPath?: string;
+  folderId?: string | null;
   description: string;
   cards: {
     id: string;
@@ -614,6 +671,7 @@ export interface RandomTableDefinition {
   worldId: string;
   name: string;
   folderPath?: string;
+  folderId?: string | null;
   description: string;
   diceFormula: DiceExpression; // 如 "1d100"
   entries: {

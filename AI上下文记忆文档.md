@@ -105,6 +105,74 @@
 - 技能栏进入可配置阶段：支持关联属性、熟练/专精、常驻与临时调整值，且悬停可查看来源说明。
 - 前瞻记录：后续会做 Ability System 的“公式索引插件”（可选公式下拉 + 中文说明），本阶段仅记录，不实现。
 
+## 12. CP-01 ✅ 解锁 + 用户切到 Copilot 接管（2026-04-28 18:18）
+
+- 用户执行路径 A：建 `.env` + `prisma db push`（migrate deploy 因历史 migration 不完整而 fail，db push 强同步 OK）。DB 重建在 `worktree-root/data/sqlite/aaf.db`（417KB）。
+- 重测 72 项 → 71/1。剩余 1 失败是 `scene.ability.routes.test.ts`，git stash 后仍 fail，确认是 pre-existing 与 CP-01 无关。
+- CP-01 ✅，cursor → `CP-02`。
+- **用户切到 Copilot 接手后续 CP**。我把完整 loop 接管 prompt 发给用户用于上下文转移。本会话不再排 loop。
+
+## 11. CP-01 Folder 表完成 + Loop 阻塞于 DB infra（2026-04-28 18:10，已解锁见 §12）
+
+**Loop iteration 1 结果**：
+
+- **CP-01 代码完成**：schema 加 `Folder` 模型 + `FolderType` 枚举 + 10 个资源表 `folderId`；migration SQL 落盘；`folder.service.ts` 提供纯函数（parseFolderPath / buildFolderTree / wouldCreateFolderCycle / validateFolderName）+ Prisma CRUD + lazy 数据迁移；`folder.service.test.ts` 19 项纯单测全过；shared/types 新增 `FolderType` / `FolderRecord` / `FolderTreeNode` 等。
+- **prisma:generate ✅ build -w server ✅ folder 单测 19/19 ✅**。
+- **整体 npm test fail 7 项**：全部在 `scene-isolation.test.ts`，错误为"main.World does not exist"。`git stash` 后仍 fail，证明是 **pre-existing DB infra 问题**（worktree 没应用过 migration）。
+- **按 spec BLOCK**：cursor → `BLOCKED_AT_CP-01`，loop 不再续约。详细诊断 + 三条用户解锁路径（A 应用迁移 / B 跳过到 CP-02 / C 修 spec）见 `docs/世界重制实施进度.md` 异常记录。
+
+**对后续 CP 的影响**：
+
+- CP-01 实质代码完成，DB 一旦就位即可解锁。
+- CP-02 起需要先解决这个 DB 缺失问题，否则后续 CP 的集成测试也会全部 fail。
+
+## 10. 世界蓝图重制 v2 + Loop 启动（2026-04-28）
+
+**当前主线变化**：
+
+- 用户填完 `Claude建议.md` 17 节决策。已据此把 `docs/世界模板实现蓝图.md` 全部"待答疑"标记替换为具体方案，新增 §0 命名对齐表 + §22 实施路线（loop 用 CP-01~CP-12）。
+- 新增 `docs/世界重制实施进度.md`（loop cursor 文件，初值 `CP-01`）+ `docs/插件与后置功能.md`（HoverInsight bug + Create Transition + 多页快捷栏 + 苦难结算 + 后台世界完整四态）。
+- `角色卡设计文档.md` 追加 §20 schema v3（一次性升级，含战意值/技力/AP/物语点/多职业/施法者等级缓存/抗性免疫苦难矩阵/特殊感官/体型/16 类生物类型/部署字段/HUD 模板共享/反应预设/情报记忆/角色塑造占位/folderId）。
+- 用户决策核心要点：①文件夹用独立 Folder 表（B 方案），范围 = 场景+角色+资源+牌组+命刻+随机表，可见性跟条目；②场景管理一刀切重写为 FVTT 化（前端生成缩略图，算力优化用 OffscreenCanvas）；③工具栏放在 HUD 上方滑出抽屉，1 级图标 → 2 级展开，icon-only + hover tooltip；④HUD 配置走怪物模板共享 + 单实例可拆，按"攻击/法术/反应/特殊"分类落位；⑤部署单位 = 玩家拥有的非玩家角色（召唤物/魔宠/伙伴/坐骑），长期+临时各 1 个新顶旧，没独立先攻；⑥情报系统双层（战斗实例 + 玩家长期记忆），按字段揭示，同种族共享，怪物死亡瞬间销毁实例层，GM 可手动赐予/剥夺；⑦反应预设默认智能询问，阈值系统默认 + 玩家覆盖；⑧多职业字段 A 方案 + 施法者等级缓存到角色卡 + casterType/casterCategory 加在 ProfessionDefinition；⑨苦难免疫按 `{disease:N, curse:N, poison:N}` 至 N 级模型；⑩物语点无上限初始 3，4 条获得规则 + GM 手动；⑪后台世界本期只做草稿+冻结两态；⑫资源包字段级 merge + 弹 review 弹窗确认重命名。
+- **autonomous loop 已安排：3 小时后首次启动，之后每小时一次**。loop 工作清单见蓝图 §22 共 12 个 CP。loop 行为契约见 `docs/世界重制实施进度.md`：每轮读 cursor → 完成对应 CP → 跑验证 → 推进 cursor → 不 commit。遇到非平凡决策标 BLOCKED 停下等用户。
+
+**影响规则 / 接口**：
+
+- v3 schema 三处一致硬规则保持有效（`CharacterSheetExportPayload` + `isCharacterSheetExportPayload` + 导入映射 + 文档 schemaVersion 表格）。
+- Folder 表迁移期保留 `folderPath` 字段（3 个版本后删）。
+- `Character` 表新增 `controllerId / deployType` 字段服务部署单位机制。
+- HoverInsight 12px 间距 bug 已记录到 `docs/插件与后置功能.md` §A，P2 修。
+
+**下一步**：
+
+1. **当前会话不再动手**——loop 接管，按 §22 CP-01 → CP-12 顺序推进。
+2. 用户可随时 `/cron list` 查看 loop 状态，或开新会话查看 `docs/世界重制实施进度.md` 的完成清单。
+3. loop 完成所有 P0 后会停下并向用户简报；遇到阻塞会标 BLOCKED 停下。
+
+## 9. 世界蓝图重制（2026-04-27）
+
+**当前主线变化**：
+
+- 用户上传了 5 张 FVTT 场景管理截图（场景列表 + 文件夹 + 右键菜单 + 4 页签场景配置弹窗），口述要求把 AAF 场景管理重制成 FVTT 风格，并把"文件夹层级 + 拖拽组织"推广到角色栏等其他面板。
+- 用户口述新约束：①GM 选 token → HUD 跟随切换；②怪物 HUD 与角色卡定义绑定（保证同种怪物 HUD 一致）；③玩家可点击左侧队伍栏"部署卡片"切换到部署单位操作，但部署只能在玩家自己的回合，除非有回合外行动能力；④GM/玩家工具栏分层（玩家仅测距，GM 含绘墙/光源/迷雾等）；⑤角色卡字段需对照规则书补全（提示：字段名文件不一定全）。
+- 已重写 `docs/世界模板实现蓝图.md`，新增 §9–§18 共 10 节：FVTT 化场景管理、通用文件夹机制、HUD↔角色卡绑定、GM/玩家工具栏分层、角色卡 v3 字段（含战意/技力/AP/物语点/多职业/施法者等级缓存/苦难免疫矩阵/特殊感官/抗性等）、情报系统、反应预设、多职业、苦难等级矩阵、物语点。
+- 已生成根目录 `Claude建议.md`，汇集 17 类共 50+ 条 Claude 无法独自决定的设计问题（文件夹数据模型、缩略图生成方式、激活语义、HUD 切换细节、部署单位语义、字段补全清单、情报系统存储、反应预设默认值、多职业字段结构、苦难层数语义、物语点上限/审批、命名对齐等）。**等用户填完再动代码**。
+
+**影响规则 / 接口**：
+
+- 场景管理重写涉及 `Scene` Prisma 模型扩展（folderId/thumbnailUrl/foregroundImageUrl/backgroundColor/config/initialViewport/isActive/navigationName/showInNavigation 等字段，详见蓝图 §9.5），届时需写迁移。
+- 通用文件夹机制提供两套方案：A=继续 `folderPath` 字符串；B=独立 `Folder` 表。具体走法待用户填 Q1-1。
+- 角色卡 schema 拟升 v3，按现有"三处一致 + bump schemaVersion"硬规则同步 `CharacterSheetExportPayload` + `isCharacterSheetExportPayload` + 导入映射 + 文档记录。一次性 v3 还是分两次（v3 核心数值 + v4 配置/情报）待 Q13-3 答疑。
+- HUD 配置存储位置（角色卡级 vs 角色模板级）待 Q4-1 答疑。
+- 工具栏入口位置（左侧浮条 / 系统板新标签 / 顶部图标条）待 Q3-1 答疑。
+
+**下一步**：
+
+1. **等待用户填写 `Claude建议.md`**。不动代码。
+2. 用户回填后，按答案细化蓝图 §9–§18 的待定项。
+3. 同步 `角色卡设计文档.md` 字段表 v3。
+4. 按 §21 的 P0 顺序开干（建议从 ScenePanel 重写起步，最直观可验证）。
+
 ## 8. 主题系统与分支整合（2026-04-26）
 
 **当前主线变化**：

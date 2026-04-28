@@ -64,6 +64,19 @@ enum StoryEventStatus {
   CLOSED
 }
 
+enum FolderType {
+  SCENE
+  CHARACTER
+  ABILITY
+  ITEM
+  PROFESSION
+  RACE
+  BACKGROUND
+  FATE_CLOCK
+  DECK
+  RANDOM_TABLE
+}
+
 model User {
   id                String        @id @default(cuid())
   username          String        @unique
@@ -110,9 +123,48 @@ model World {
   fateClocks      FateClock[]
   decks           DeckDefinition[]
   randomTables    RandomTable[]
+  folders         Folder[]
 
   @@index([ownerId])
   @@index([visibility])
+}
+
+// ──────────── 文件夹 (CP-01) ──────────────────────
+// 跨资源类型的多级分类容器。资源 (Scene / Character / Ability / Item /
+// Profession / Race / Background / FateClock / Deck / RandomTable) 通过
+// `folderId` 引用本表。每个 (worldId, type) 子树独立。`folderPath` 字段在
+// 兼容期保留，后续 3 个版本删除。
+
+model Folder {
+  id          String      @id @default(cuid())
+  worldId     String
+  parentId    String?
+  type        FolderType
+  name        String
+  color       String?
+  icon        String?
+  sortOrder   Int         @default(0)
+  collapsed   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  world       World       @relation(fields: [worldId], references: [id])
+  parent      Folder?     @relation("FolderTree", fields: [parentId], references: [id])
+  children    Folder[]    @relation("FolderTree")
+
+  scenes              Scene[]
+  characters          Character[]
+  abilities           AbilityDefinition[]
+  items               ItemDefinition[]
+  professions         ProfessionDefinition[]
+  races               RaceDefinition[]
+  backgrounds         BackgroundDefinition[]
+  fateClocks          FateClock[]
+  decks               DeckDefinition[]
+  randomTables        RandomTable[]
+
+  @@index([worldId, type])
+  @@index([parentId])
 }
 
 model WorldMember {
@@ -134,6 +186,7 @@ model WorldMember {
 model Scene {
   id                 String   @id @default(cuid())
   worldId            String
+  folderId           String?
   name               String
   backgroundImageUrl String?
   gridSize           Int?
@@ -142,13 +195,16 @@ model Scene {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   world              World    @relation(fields: [worldId], references: [id])
+  folder             Folder?  @relation(fields: [folderId], references: [id])
 
   @@unique([worldId, sortOrder])
+  @@index([worldId, folderId])
 }
 
 model Character {
   id          String        @id @default(cuid())
   worldId     String
+  folderId    String?
   userId      String?
   name        String
   avatarUrl   String?
@@ -159,11 +215,13 @@ model Character {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   world       World         @relation(fields: [worldId], references: [id])
+  folder      Folder?       @relation(fields: [folderId], references: [id])
   user        User?         @relation(fields: [userId], references: [id])
   aiSessions  AiSession[]
 
   @@index([worldId])
   @@index([userId])
+  @@index([worldId, folderId])
 }
 
 model Message {
@@ -281,12 +339,15 @@ model AbilityDefinition {
   canUpcast     Boolean  @default(false)
   upcastEffect  String?
   sortOrder     Int      @default(0)
+  folderId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   world         World    @relation(fields: [worldId], references: [id])
+  folder        Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId, category])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
   @@index([worldId, source])
 }
 
@@ -309,12 +370,15 @@ model RaceDefinition {
   ageDesc       String   @default("")
   traits        Json     @default("[]")
   subtypes      Json     @default("[]")
+  folderId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   world         World    @relation(fields: [worldId], references: [id])
+  folder        Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
 }
 
 // ──────────── 职业定义 ──────────────────────
@@ -341,12 +405,15 @@ model ProfessionDefinition {
   furyPerLevel        Float    @default(0)
   levelFeatures       Json     @default("[]")
   talentTreeIds       Json     @default("[]")
+  folderId            String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   world               World    @relation(fields: [worldId], references: [id])
+  folder              Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
 }
 
 // ──────────── 背景定义 ──────────────────────
@@ -364,12 +431,15 @@ model BackgroundDefinition {
   toolProficiencies Json    @default("[]")
   startingEquipment Json    @default("[]")
   features         Json     @default("[]")
+  folderId         String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   world            World    @relation(fields: [worldId], references: [id])
+  folder           Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
 }
 
 // ──────────── 物品定义 ──────────────────────
@@ -397,12 +467,15 @@ model ItemDefinition {
   enhanceSlots  Int      @default(0)
   gemSlots      Int      @default(0)
   tags          Json     @default("[]")
+  folderId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   world         World    @relation(fields: [worldId], references: [id])
+  folder        Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId, category])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
 }
 
 // ──────────── 命刻 ──────────────────────
@@ -422,12 +495,15 @@ model FateClock {
   status          String   @default("active")
   sceneId         String?
   history         Json     @default("[]")
+  folderId        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   world           World    @relation(fields: [worldId], references: [id])
+  folder          Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
 }
 
 // ──────────── 牌堆 ──────────────────────
@@ -441,12 +517,15 @@ model DeckDefinition {
   cards         Json     @default("[]")
   replacement   Boolean  @default(true)
   drawnHistory  Json     @default("[]")
+  folderId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   world         World    @relation(fields: [worldId], references: [id])
+  folder        Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
 }
 
 // ──────────── 随机表 ──────────────────────
@@ -459,12 +538,15 @@ model RandomTable {
   description  String   @default("")
   diceFormula  String   @default("1d100")
   entries      Json     @default("[]")
+  folderId     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   world        World    @relation(fields: [worldId], references: [id])
+  folder       Folder?  @relation(fields: [folderId], references: [id])
 
   @@index([worldId])
   @@index([worldId, folderPath])
+  @@index([worldId, folderId])
 }
 
 // ──────────── 世界天赋树实例 ──────────────────────
