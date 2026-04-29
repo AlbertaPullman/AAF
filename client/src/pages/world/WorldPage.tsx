@@ -3482,7 +3482,7 @@ export default function WorldPage() {
                     direction="advance"
                     status="active"
                     visibleToPlayers
-                    canEdit={false}
+                    canEdit={true}
                   />
                 </div>
               ) : (
