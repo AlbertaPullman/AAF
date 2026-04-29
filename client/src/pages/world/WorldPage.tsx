@@ -3560,24 +3560,32 @@ export default function WorldPage() {
                 const level = getRecordNumber(character.snapshot, "level", 1);
                 const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100))) : 0;
                 const mpPct = maxMp > 0 ? Math.max(0, Math.min(100, Math.round((mp / maxMp) * 100))) : 0;
+                const isSelf = character.id === selectedCharacterId;
+                const hpClass = hpPct > 60 ? "high" : hpPct > 30 ? "mid" : "low";
                 return (
                   <button
                     type="button"
                     key={character.id}
-                    className={`pc-card ${character.id === selectedCharacterId ? "is-active" : ""}`.trim()}
+                    className={`pc-card ${isSelf ? "self" : ""}`.trim()}
                     onClick={() => setSelectedCharacterId(character.id)}
                   >
                     <div className="pc-row">
                       <div className="pc-avatar" aria-hidden="true">
                         {(character.name?.trim()?.[0] ?? "?").toUpperCase()}
                       </div>
-                      <div className="pc-meta">
-                        <div className="pc-name">{character.name}</div>
-                        <div className="pc-lv">Lv.{level}{className ? ` · ${className}` : ""}</div>
-                      </div>
+                      <div className="pc-name">{character.name}{className ? ` · ${className}` : ""}</div>
+                      <div className="pc-lv">{level}</div>
                     </div>
-                    <div className="bar hp"><i style={{ width: `${hpPct}%` }} /></div>
-                    <div className="bar mp"><i style={{ width: `${mpPct}%` }} /></div>
+                    <div className={`bar hp ${hpClass}`.trim()}>
+                      <i style={{ width: `${hpPct}%` }} />
+                      <span className="lbl">HP</span>
+                      <span className="val">{hp} / {maxHp}</span>
+                    </div>
+                    <div className="bar mp">
+                      <i style={{ width: `${mpPct}%` }} />
+                      <span className="lbl">MP</span>
+                      <span className="val">{mp} / {maxMp}</span>
+                    </div>
                   </button>
                 );
               })}
