@@ -82,8 +82,28 @@ export const useThemeStore = create<ThemeState>()(
   ),
 );
 
+/**
+ * One-shot bootstrap version flag. Bumping this resets stale user theme
+ * preferences after a major UI revamp. Users can still re-pick any pack.
+ *
+ *   v2 (2026-04): mockup alignment — JRPG bright is the new visual baseline.
+ */
+const THEME_BOOTSTRAP_VERSION = "2";
+const THEME_BOOTSTRAP_FLAG = "aaf-theme-bootstrap-version";
+
 /** Apply once on app boot, before React renders, to avoid a flash. */
 export function bootstrapTheme(): void {
+  // Major UI revamp: clear stale user preference once so everyone sees the
+  // mockup-aligned JRPG bright pack first. After this, the picker is honored.
+  try {
+    if (localStorage.getItem(THEME_BOOTSTRAP_FLAG) !== THEME_BOOTSTRAP_VERSION) {
+      localStorage.removeItem("theme-storage");
+      localStorage.setItem(THEME_BOOTSTRAP_FLAG, THEME_BOOTSTRAP_VERSION);
+    }
+  } catch {
+    // ignore storage failures (private mode, quota, etc.)
+  }
+
   const stored = (() => {
     try {
       const raw = localStorage.getItem("theme-storage");

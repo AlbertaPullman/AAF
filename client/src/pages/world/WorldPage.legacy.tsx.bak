@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { MessageSquare, Swords, Map as MapIcon, User, Package, Settings } from "lucide-react";
-import "../../world/styles/world-shell.css";
 import { http } from "../../lib/http";
 import { connectSocket, disconnectSocket, socket, SOCKET_EVENTS } from "../../lib/socket";
 import { useAuthStore } from "../../store/authStore";
@@ -330,14 +328,13 @@ const SYSTEM_TABS: Array<{
   title: string;
   description: string;
   view: "chat" | "battle" | "scene" | "system";
-  icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { key: "chat", label: "聊", title: "世界频道", description: "OOC / IC / SYSTEM 实时同步", view: "chat", icon: MessageSquare },
-  { key: "battle", label: "战", title: "战斗与剧情", description: "先攻序列、回合推进、剧情事件", view: "battle", icon: Swords },
-  { key: "scene", label: "景", title: "场景控制", description: "舞台、视觉、棋子与测量", view: "scene", icon: MapIcon },
-  { key: "character", label: "角", title: "角色谱系", description: "角色卡绑定、编辑与摘要", view: "scene", icon: User },
-  { key: "pack", label: "包", title: "资源包", description: "导入导出世界模板", view: "system", icon: Package },
-  { key: "system", label: "系", title: "系统中枢", description: "模块、权限与资源库", view: "system", icon: Settings },
+  { key: "chat", label: "聊", title: "世界频道", description: "OOC / IC / SYSTEM 实时同步", view: "chat" },
+  { key: "battle", label: "战", title: "战斗与剧情", description: "先攻序列、回合推进、剧情事件", view: "battle" },
+  { key: "scene", label: "景", title: "场景控制", description: "舞台、视觉、棋子与测量", view: "scene" },
+  { key: "character", label: "角", title: "角色谱系", description: "角色卡绑定、编辑与摘要", view: "scene" },
+  { key: "pack", label: "包", title: "资源包", description: "导入导出世界模板", view: "system" },
+  { key: "system", label: "系", title: "系统中枢", description: "模块、权限与资源库", view: "system" },
 ];
 
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
@@ -3419,308 +3416,292 @@ export default function WorldPage() {
 
   return (
     <HoverInsightProvider entries={hoverInsightEntries}>
-    <div className={`world-shell ${isBattleSequenceVisible ? "is-combat-active" : ""}`.trim()}>
-      {/* ===== 顶部标题栏 ===== */}
-      <div className="area-title">
-        <div className="titlebar">
-          <span className="title-left">
-            <strong>{worldName || "碧空圣典"}</strong>
-            {selectedScene?.name ? <span className="title-chapter">· {selectedScene.name}</span> : null}
-          </span>
-          <span className="title-right">
-            <span className="sc-chip">● 在线 {onlineCount}</span>
-            {isGmPlayerView ? (
-              <button type="button" className="sc-btn sc-btn--ghost" onClick={() => setGmPlayerView(false)}>
-                退出玩家视角
+    <section className={`world-stage-shell ${isBattleSequenceVisible ? "is-combat-active" : ""}`.trim()}>
+      {error ? <div className="world-stage-alert">{error}</div> : null}
+      {isGmPlayerView ? (
+        <div className="world-gm-view-banner" role="status">
+          <span>GM 正在以玩家视角调试</span>
+          <button type="button" onClick={() => setGmPlayerView(false)}>退出玩家视角</button>
+        </div>
+      ) : null}
+
+      <BattleSequenceBar
+        visible={isBattleSequenceVisible}
+        entries={battleEntries}
+        roundNumber={sceneCombatState?.round ?? 1}
+        canAdvanceTurn={canManageCombat}
+        advancing={sceneCombatAdvancing}
+        onEndTurn={() => {
+          void onAdvanceSceneCombatTurn();
+        }}
+        onSelectEntry={onSelectTokenFromBattle}
+        onEntryContextMenu={(event, id) => contextMenu.open(event, "initiative-entry", id)}
+      />
+
+      <aside
+        className={`world-fixed-gauge ${currentFateClock || visibleFateClocks.length === 0 ? "world-fixed-gauge--inline-clock" : ""}`.trim()}
+      >
+        <div className="world-fixed-gauge__ring" />
+        {currentFateClock ? (
+          <div
+            className="world-fixed-gauge__inline"
+            onClick={() => setSelectedFateClockId(currentFateClock.id)}
+            onContextMenu={(event) => {
+              setSelectedFateClockId(currentFateClock.id);
+              contextMenu.open(event, "fate-clock", currentFateClock.id);
+            }}
+          >
+            <FateClockWidget
+              id={currentFateClock.id}
+              name={currentFateClock.name}
+              description={currentFateClock.description}
+              segments={currentFateClock.segments}
+              filledSegments={currentFateClock.filledSegments}
+              direction={currentFateClock.direction}
+              status={currentFateClock.status}
+              successThreshold={currentFateClock.successThreshold}
+              failureThreshold={currentFateClock.failureThreshold}
+              visibleToPlayers={currentFateClock.visibleToPlayers}
+              canEdit={canAdvanceClock}
+              onAdvance={(id, amount, reason) => {
+                void onAdvanceClock(id, amount, reason);
+              }}
+              onDelete={canDeleteClock ? (id) => {
+                void onDeleteClock(id);
+              } : undefined}
+            />
+          </div>
+        ) : visibleFateClocks.length === 0 ? (
+          <div className="world-fixed-gauge__inline world-fixed-gauge__inline--demo" aria-hidden="true">
+            <FateClockWidget
+              id="__demo__"
+              name="王都沦陷"
+              description="演示命刻 · 创建第一个命刻后将自动替换"
+              segments={8}
+              filledSegments={5}
+              direction="advance"
+              status="active"
+              visibleToPlayers
+              canEdit={false}
+            />
+          </div>
+        ) : (
+          <div className="world-fixed-gauge__center">
+            <strong>{unreadTotal}</strong>
+            <span>命刻枢纽</span>
+          </div>
+        )}
+
+        {showFateCreateForm && canCreateClock ? (
+          <form className="world-fixed-gauge__create-form" onSubmit={onCreateFateClock}>
+            <input value={fateClockName} onChange={(event) => setFateClockName(event.target.value)} placeholder="命刻名称" />
+            <div className="world-fixed-gauge__create-row">
+              <label>
+                <span>刻度</span>
+                <select value={fateClockSegments} onChange={(event) => setFateClockSegments(event.target.value)}>
+                  {[4, 6, 8, 10, 12].map((value) => (
+                    <option value={value} key={value}>{value}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>方向</span>
+                <select value={fateClockDirection} onChange={(event) => setFateClockDirection(event.target.value as "advance" | "countdown") }>
+                  <option value="advance">推进</option>
+                  <option value="countdown">倒计时</option>
+                </select>
+              </label>
+            </div>
+            <label className="world-fixed-gauge__create-check">
+              <input type="checkbox" checked={fateClockVisible} onChange={(event) => setFateClockVisible(event.target.checked)} />
+              <span>对玩家可见</span>
+            </label>
+            <button type="submit" className="world-fixed-gauge__create-btn">创建命刻</button>
+          </form>
+        ) : null}
+
+        {visibleFateClocks.length > 1 ? (
+          <div className="world-fixed-gauge__clock-switcher" role="tablist" aria-label="命刻切换">
+            {visibleFateClocks.map((clock) => (
+              <button
+                key={clock.id}
+                type="button"
+                role="tab"
+                aria-selected={clock.id === currentFateClock?.id}
+                className={`world-fixed-gauge__clock-dot ${clock.id === currentFateClock?.id ? "is-active" : ""}`.trim()}
+                onClick={() => setSelectedFateClockId(clock.id)}
+                onContextMenu={(event) => {
+                  setSelectedFateClockId(clock.id);
+                  contextMenu.open(event, "fate-clock", clock.id);
+                }}
+                title={`${clock.name} · ${clock.filledSegments}/${clock.segments}`}
+              >
+                <span aria-hidden="true">{clock.filledSegments}/{clock.segments}</span>
               </button>
-            ) : null}
-          </span>
+            ))}
+          </div>
+        ) : null}
+      </aside>
+
+      <aside className="world-fixed-left-middle-rect world-fixed-party-rail" aria-label="队伍角色状态">
+        <div className="world-stage-party-stack">
+          <div className="world-stage-party-title">
+            <strong>队伍状态</strong>
+            <span>{partySummaryCards.length} 张角色卡</span>
+          </div>
+          {partySummaryCards.length === 0 ? <div className="world-stage-empty">还没有已绑定的主要角色。</div> : null}
+          {partySummaryCards.map(({ member, character }) => {
+            const hp = getRecordNumber(character.stats, "hp", 0);
+            const maxHp = Math.max(hp, getRecordNumber(character.snapshot, "maxHp", hp));
+            const mp = getRecordNumber(character.stats, "mp", 0);
+            const maxMp = Math.max(mp, getRecordNumber(character.snapshot, "maxMp", mp));
+            const ac = getRecordNumber(character.stats, "ac", getRecordNumber(character.snapshot, "ac", 0));
+            const stamina = getRecordNumber(character.stats, "stamina", 0);
+            const ownerMember = member ?? (character.userId ? worldRoster.find((item) => item.userId === character.userId) ?? null : null);
+            const className = getRecordString(character.snapshot, "class", ownerMember?.boundCharacterName ?? "");
+            const level = getRecordNumber(character.snapshot, "level", 1);
+            const ownerName = ownerMember ? getRosterDisplayName(ownerMember) : character.type === "NPC" ? "NPC" : "未绑定玩家";
+
+            return (
+              <button
+                type="button"
+                key={character.id}
+                className={`world-stage-party-card ${character.id === selectedCharacterId ? "is-active" : ""}`.trim()}
+                onClick={() => setSelectedCharacterId(character.id)}
+              >
+                <div className="world-stage-party-card__avatar" aria-hidden="true">
+                  {(character.name?.trim()?.[0] ?? "?").toUpperCase()}
+                </div>
+                <div className="world-stage-party-card__body">
+                  <div className="world-stage-party-card__head">
+                    <strong>{character.name}</strong>
+                    <span>{ownerName}</span>
+                  </div>
+                  <p>Lv.{level}{className ? ` · ${className}` : ""} · {character.type}</p>
+                  <div className="world-stage-party-card__bars">
+                    <span>HP {hp}/{maxHp}</span>
+                    <span>MP {mp}/{maxMp}</span>
+                    <span>AC {ac || "-"}</span>
+                    <span>体力 {stamina || "-"}</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </aside>
 
-      {/* ===== 左侧三段：命刻 / 队伍 / 在线 ===== */}
-      <div className="area-left">
-        <div className="left-col">
-          {/* --- 命刻盘 --- */}
-          <section className="fate-dial">
-            <div className="fate-dial__inner">
-              {currentFateClock ? (
-                <div
-                  className="world-fate-inline"
-                  onClick={() => setSelectedFateClockId(currentFateClock.id)}
-                  onContextMenu={(event) => {
-                    setSelectedFateClockId(currentFateClock.id);
-                    contextMenu.open(event, "fate-clock", currentFateClock.id);
-                  }}
-                >
-                  <FateClockWidget
-                    id={currentFateClock.id}
-                    name={currentFateClock.name}
-                    description={currentFateClock.description}
-                    segments={currentFateClock.segments}
-                    filledSegments={currentFateClock.filledSegments}
-                    direction={currentFateClock.direction}
-                    status={currentFateClock.status}
-                    successThreshold={currentFateClock.successThreshold}
-                    failureThreshold={currentFateClock.failureThreshold}
-                    visibleToPlayers={currentFateClock.visibleToPlayers}
-                    canEdit={canAdvanceClock}
-                    onAdvance={(id, amount, reason) => {
-                      void onAdvanceClock(id, amount, reason);
-                    }}
-                    onDelete={canDeleteClock ? (id) => { void onDeleteClock(id); } : undefined}
-                  />
-                </div>
-              ) : visibleFateClocks.length === 0 ? (
-                <div className="world-fate-inline world-fate-inline--demo" aria-hidden="true">
-                  <FateClockWidget
-                    id="__demo__"
-                    name="王都沦陷"
-                    description="演示命刻 · 创建第一个命刻后将自动替换"
-                    segments={8}
-                    filledSegments={5}
-                    direction="advance"
-                    status="active"
-                    visibleToPlayers
-                    canEdit={false}
-                  />
-                </div>
-              ) : (
-                <div className="world-fate-empty">
-                  <strong>{unreadTotal}</strong>
-                  <span>命刻枢纽</span>
-                </div>
-              )}
-            </div>
-            {visibleFateClocks.length > 1 ? (
-              <div className="fate-dial__switcher" role="tablist" aria-label="命刻切换">
-                {visibleFateClocks.map((clock) => (
-                  <button
-                    key={clock.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={clock.id === currentFateClock?.id}
-                    className={`fate-dial__dot ${clock.id === currentFateClock?.id ? "is-active" : ""}`.trim()}
-                    onClick={() => setSelectedFateClockId(clock.id)}
-                    onContextMenu={(event) => {
-                      setSelectedFateClockId(clock.id);
-                      contextMenu.open(event, "fate-clock", clock.id);
-                    }}
-                    title={`${clock.name} · ${clock.filledSegments}/${clock.segments}`}
-                  >
-                    <span aria-hidden="true">{clock.filledSegments}/{clock.segments}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            {showFateCreateForm && canCreateClock ? (
-              <form className="fate-dial__create-form" onSubmit={onCreateFateClock}>
-                <input value={fateClockName} onChange={(e) => setFateClockName(e.target.value)} placeholder="命刻名称" />
-                <div className="fate-dial__create-row">
-                  <label>
-                    <span>刻度</span>
-                    <select value={fateClockSegments} onChange={(e) => setFateClockSegments(e.target.value)}>
-                      {[4, 6, 8, 10, 12].map((v) => (<option value={v} key={v}>{v}</option>))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>方向</span>
-                    <select value={fateClockDirection} onChange={(e) => setFateClockDirection(e.target.value as "advance" | "countdown")}>
-                      <option value="advance">推进</option>
-                      <option value="countdown">倒计时</option>
-                    </select>
-                  </label>
-                </div>
-                <label className="fate-dial__create-check">
-                  <input type="checkbox" checked={fateClockVisible} onChange={(e) => setFateClockVisible(e.target.checked)} />
-                  <span>对玩家可见</span>
-                </label>
-                <button type="submit" className="sc-btn sc-btn--primary">创建命刻</button>
-              </form>
-            ) : null}
-          </section>
-
-          {/* --- 队伍卡 --- */}
-          <section className="party-panel">
-            <div className="panel-head">
-              <strong>队伍状态</strong>
-              <span>{partySummaryCards.length} 人</span>
-            </div>
-            <div className="panel-body">
-              {partySummaryCards.length === 0 ? (
-                <div className="panel-empty">还没有已绑定的主要角色。</div>
-              ) : null}
-              {partySummaryCards.map(({ member, character }) => {
-                const hp = getRecordNumber(character.stats, "hp", 0);
-                const maxHp = Math.max(hp, getRecordNumber(character.snapshot, "maxHp", hp));
-                const mp = getRecordNumber(character.stats, "mp", 0);
-                const maxMp = Math.max(mp, getRecordNumber(character.snapshot, "maxMp", mp));
-                const ownerMember = member ?? (character.userId ? worldRoster.find((item) => item.userId === character.userId) ?? null : null);
-                const className = getRecordString(character.snapshot, "class", ownerMember?.boundCharacterName ?? "");
-                const level = getRecordNumber(character.snapshot, "level", 1);
-                const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, Math.round((hp / maxHp) * 100))) : 0;
-                const mpPct = maxMp > 0 ? Math.max(0, Math.min(100, Math.round((mp / maxMp) * 100))) : 0;
-                return (
-                  <button
-                    type="button"
-                    key={character.id}
-                    className={`pc-card ${character.id === selectedCharacterId ? "is-active" : ""}`.trim()}
-                    onClick={() => setSelectedCharacterId(character.id)}
-                  >
-                    <div className="pc-row">
-                      <div className="pc-avatar" aria-hidden="true">
-                        {(character.name?.trim()?.[0] ?? "?").toUpperCase()}
-                      </div>
-                      <div className="pc-meta">
-                        <div className="pc-name">{character.name}</div>
-                        <div className="pc-lv">Lv.{level}{className ? ` · ${className}` : ""}</div>
-                      </div>
-                    </div>
-                    <div className="bar hp"><i style={{ width: `${hpPct}%` }} /></div>
-                    <div className="bar mp"><i style={{ width: `${mpPct}%` }} /></div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* --- 在线玩家 --- */}
-          <section className="online-panel">
-            <div className="panel-head">
-              <strong>在线</strong>
-              <span>{onlineMemberUserIds.length}/{onlineRosterMembers.length || worldRoster.length}</span>
-            </div>
-            <div className="panel-body online-list">
-              {onlineRosterMembers.length === 0 ? (
-                <div className="panel-empty">当前还没有成员加入这个世界。</div>
-              ) : null}
-              {onlineRosterMembers.map((member) => {
-                const online = onlineMemberUserIds.includes(member.userId);
-                const boundCharacter = member.boundCharacterId
-                  ? characters.find((item) => item.id === member.boundCharacterId)
-                  : null;
-                const latency = worldLatencyByUserId[member.userId]?.latencyMs ?? null;
-                return (
-                  <button
-                    type="button"
-                    key={member.userId}
-                    className={`online-item ${member.boundCharacterId === selectedCharacterId ? "is-active" : ""}`.trim()}
-                    onClick={() => { if (boundCharacter) setSelectedCharacterId(boundCharacter.id); }}
-                  >
-                    <span className="online-name">{getRosterDisplayName(member)}</span>
-                    <span className={`ping ${getLatencyClass(latency, online)}`.trim()} aria-hidden="true">
-                      <i /><i /><i /><i />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+      <aside className="world-fixed-bottom-left-rect">
+        <div className="world-online-list">
+          <div className="world-stage-party-title">在线玩家</div>
+          {onlineRosterMembers.length === 0 ? <div className="world-stage-empty">当前还没有成员加入这个世界。</div> : null}
+          {onlineRosterMembers.map((member) => {
+            const online = onlineMemberUserIds.includes(member.userId);
+            const boundCharacter = member.boundCharacterId
+              ? characters.find((item) => item.id === member.boundCharacterId)
+              : null;
+            const latency = worldLatencyByUserId[member.userId]?.latencyMs ?? null;
+            return (
+              <button
+                type="button"
+                key={member.userId}
+                className={`world-online-list__row world-stage-party-row ${member.boundCharacterId === selectedCharacterId ? "is-active" : ""}`.trim()}
+                onClick={() => {
+                  if (boundCharacter) {
+                    setSelectedCharacterId(boundCharacter.id);
+                  }
+                }}
+              >
+                <span className="world-online-list__name">{getRosterDisplayName(member)}</span>
+                <span className={`world-online-list__ping ${getLatencyClass(latency, online)}`.trim()} aria-hidden="true">
+                  <i /><i /><i /><i />
+                </span>
+                <span className={`world-online-list__ping-text ${getLatencyClass(latency, online)}`.trim()}>
+                  {getLatencyLabel(latency, online)}
+                </span>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      </aside>
 
-      {/* ===== 中央舞台 ===== */}
-      <div className="area-stage">
-        <div className="stage">
-          {error ? <div className="world-stage-alert">{error}</div> : null}
-          {isGmPlayerView ? (
-            <div className="world-gm-view-banner" role="status">
-              <span>GM 正在以玩家视角调试</span>
-              <button type="button" onClick={() => setGmPlayerView(false)}>退出玩家视角</button>
-            </div>
-          ) : null}
-
-          <BattleSequenceBar
-            visible={isBattleSequenceVisible}
-            entries={battleEntries}
-            roundNumber={sceneCombatState?.round ?? 1}
-            canAdvanceTurn={canManageCombat}
-            advancing={sceneCombatAdvancing}
-            onEndTurn={() => { void onAdvanceSceneCombatTurn(); }}
-            onSelectEntry={onSelectTokenFromBattle}
-            onEntryContextMenu={(event, id) => contextMenu.open(event, "initiative-entry", id)}
+      <main className="world-fixed-scene-stage">
+        <div className="world-fixed-scene-stage__inner">
+          <WorldCanvas
+            tokens={tokenList}
+            onMoveToken={onMoveToken}
+            gridEnabled={sceneVisualState?.grid.enabled ?? true}
+            gridUnitFeet={sceneVisualState?.grid.unitFeet ?? 5}
+            showHeader={false}
+            canDragToken={canDragToken}
+            selectedTokenId={selectedTokenId}
+            onSelectToken={setSelectedTokenId}
+            onCanvasContextMenu={(event) => contextMenu.open(event, "canvas")}
+            onTokenContextMenu={(event, tokenItem) => {
+              setSelectedTokenId(tokenItem.tokenId);
+              contextMenu.open(event, "token", tokenItem.tokenId);
+            }}
           />
-
-          <div className="stage-canvas">
-            <WorldCanvas
-              tokens={tokenList}
-              onMoveToken={onMoveToken}
-              gridEnabled={sceneVisualState?.grid.enabled ?? true}
-              gridUnitFeet={sceneVisualState?.grid.unitFeet ?? 5}
-              showHeader={false}
-              canDragToken={canDragToken}
-              selectedTokenId={selectedTokenId}
-              onSelectToken={setSelectedTokenId}
-              onCanvasContextMenu={(event) => contextMenu.open(event, "canvas")}
-              onTokenContextMenu={(event, tokenItem) => {
-                setSelectedTokenId(tokenItem.tokenId);
-                contextMenu.open(event, "token", tokenItem.tokenId);
-              }}
-            />
-            <div className="stage-token-indicator">
-              {selectedTokenId
-                ? `已选中 ${tokens[selectedTokenId]?.characterName || selectedTokenId}`
-                : `棋子 ${tokenList.length} · 网格 ${sceneVisualState?.grid.enabled ? "开启" : "关闭"}`}
-            </div>
-          </div>
-
-          {/* HUD 嵌入舞台底部 */}
-          <div className="hud-wrap">
-            <HUDPanel
-              visible={showHUD}
-              config={hudConfig}
-              resources={hudResources}
-              characterName={selectedCharacter?.name}
-              characterLevel={getRecordNumber(selectedCharacter?.snapshot, "level", 1)}
-              onSlotClick={onHudSlotClick}
-              onSlotDrop={onHudSlotDrop}
-              onToggleMode={() => {
-                setHudConfig((prev) => ({ ...prev, mode: prev.mode === "combat" ? "general" : "combat" }));
-              }}
-              resolveLabel={resolveHudLabel}
-              resolveIcon={resolveHudIcon}
-              renderGeneralTab={renderHudGeneralTab}
-            />
+          <div className="world-fixed-scene-stage__token-indicator">
+            {selectedTokenId ? `已选中 ${tokens[selectedTokenId]?.characterName || selectedTokenId}` : `棋子 ${tokenList.length} · 网格 ${sceneVisualState?.grid.enabled ? "开启" : "关闭"}`}
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* ===== 右侧系统面板 ===== */}
-      <div className="area-right">
-        <div className="sys-panel">
-          <div className="sys-tabs" style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, 1fr)` }}>
-            {visibleTabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  type="button"
-                  key={tab.key}
-                  className={`sys-tab ${activeTabMeta.key === tab.key ? "is-active" : ""}`.trim()}
-                  onClick={() => openTab(tab.key)}
-                  title={tab.title}
-                >
-                  <Icon className="ico" />
-                </button>
-              );
-            })}
+      <aside className={`world-fixed-system-panel ${systemPanelCollapsed ? "is-collapsed" : ""}`.trim()}>
+        <div className="world-fixed-system-panel__drawer">
+          <div className="world-fixed-system-tabs">
+            {visibleTabs.map((tab) => (
+              <button
+                type="button"
+                key={tab.key}
+                className={`world-fixed-system-tab ${activeTabMeta.key === tab.key ? "is-active" : ""}`.trim()}
+                onClick={() => openTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <div className="sys-body">
-            <div className="sys-body__head">
-              <div className="sys-body__copy">
+
+          <div className="world-fixed-system-tab-page">
+            <div className="world-fixed-system-tab-page__head">
+              <div className="world-stage-header-copy">
                 <strong>{activeTabMeta.title}</strong>
                 <span>{activeTabMeta.description}</span>
               </div>
-              <div className="sys-body__actions">
-                <button type="button" className="sc-btn sc-btn--ghost" onClick={() => setError(null)}>
+              <div className="world-stage-header-actions">
+                <button type="button" className="world-stage-header-btn" onClick={() => setSystemPanelCollapsed((prev) => !prev)}>
+                  {systemPanelCollapsed ? "展开" : "收起"}
+                </button>
+                <button type="button" className="world-stage-header-btn" onClick={() => setError(null)}>
                   清空提示
                 </button>
               </div>
             </div>
-            <div className={`sys-body__view sys-body__view--${activeTabMeta.view}`.trim()}>
+
+            <div className={`world-fixed-system-tab-page__view world-fixed-system-tab-page__view--${activeTabMeta.view}`.trim()}>
               {renderActiveSystemTab()}
             </div>
           </div>
         </div>
+      </aside>
+
+      <div className="world-fixed-hud">
+        <HUDPanel
+          visible={showHUD}
+          config={hudConfig}
+          resources={hudResources}
+          characterName={selectedCharacter?.name}
+          characterLevel={getRecordNumber(selectedCharacter?.snapshot, "level", 1)}
+          onSlotClick={onHudSlotClick}
+          onSlotDrop={onHudSlotDrop}
+          onToggleMode={() => {
+            setHudConfig((prev) => ({ ...prev, mode: prev.mode === "combat" ? "general" : "combat" }));
+          }}
+          resolveLabel={resolveHudLabel}
+          resolveIcon={resolveHudIcon}
+          renderGeneralTab={renderHudGeneralTab}
+        />
       </div>
 
       <ContextMenu
@@ -3729,7 +3710,9 @@ export default function WorldPage() {
         area={contextMenu.area}
         role={role}
         targetId={contextMenu.targetId}
-        onAction={(action, area, targetId) => { void onContextAction(action, area, targetId); }}
+        onAction={(action, area, targetId) => {
+          void onContextAction(action, area, targetId);
+        }}
         onClose={contextMenu.close}
       />
 
@@ -3760,7 +3743,9 @@ export default function WorldPage() {
               error={memberManageError}
               savingUserId={savingMemberUserId}
               currentUserId={user?.id}
-              onRefresh={() => { void loadWorldMemberManage(); }}
+              onRefresh={() => {
+                void loadWorldMemberManage();
+              }}
               onSave={onSaveWorldMemberManage}
             />
           ) : activeOverlay.kind === "ability" ? (
@@ -3784,7 +3769,7 @@ export default function WorldPage() {
           ) : null}
         </FloatingToolWindow>
       ))}
-    </div>
+    </section>
     </HoverInsightProvider>
   );
 }

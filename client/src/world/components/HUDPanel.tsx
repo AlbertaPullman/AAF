@@ -76,6 +76,14 @@ export const HUDPanel: React.FC<HUDPanelProps> = ({
 
   return (
     <footer className={`hud-panel hud-panel--${config.mode}`.trim()} aria-label="HUD 面板">
+      <div className="hud-panel__avatar" aria-hidden="true">
+        <span className="hud-panel__avatar-initial">
+          {hasCharacter ? (characterName?.trim()?.[0] ?? "?").toUpperCase() : "·"}
+        </span>
+        {characterLevel != null && hasCharacter ? (
+          <span className="hud-panel__avatar-level">Lv.{characterLevel}</span>
+        ) : null}
+      </div>
       <div className="hud-panel__resources">
         <div className="hud-panel__char-info">
           {hasCharacter ? (

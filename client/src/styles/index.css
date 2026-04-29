@@ -7453,9 +7453,8 @@ body,
 }
 
 .world-stage-shell {
-  --stage-pad: clamp(6px, 0.6vw, 10px);
-  --edge-gap: clamp(4px, 0.45vw, 8px);
-  --dial-size: clamp(146px, 11.5vw, 184px);
+  --stage-pad: clamp(6px, 0.6vw, 10px);  --edge-gap: clamp(4px, 0.45vw, 8px);
+  --dial-size: clamp(196px, 15vw, 240px);
   --left-stack-w: var(--dial-size);
   --sys-panel-w: clamp(320px, 24.5vw, 430px);
   --dial-inner-gap: clamp(13px, 0.95vw, 16px);
@@ -7486,13 +7485,18 @@ body,
 
 /* .battle-sequence-bar* → 迁移至 world-components.css (A2) */
 
-.world-fixed-scene-stage {
+.world-stage-alert {
   position: fixed;
-  left: calc(var(--stage-pad) + var(--left-stack-w) + var(--edge-gap));
-  right: calc(var(--sys-panel-w) + var(--edge-gap));
-  top: calc(var(--stage-pad) + var(--battle-top-offset));
-  bottom: calc(var(--stage-pad) + var(--hud-panel-h) + var(--edge-gap));
-  z-index: 50;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 280;
+  min-width: min(720px, calc(100vw - 36px));
+  max-width: calc(100vw - 36px);
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--accent-danger) 8%, var(--surface-card));
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--accent-danger) 22%, transparent);
   border-radius: 14px;
   border: 1px solid rgba(94, 136, 202, 0.28);
   background: linear-gradient(150deg, rgba(255, 255, 255, 0.3), rgba(238, 246, 255, 0.26));
@@ -7557,6 +7561,8 @@ body,
 }
 
 .world-fixed-system-tab {
+  position: relative;
+  aspect-ratio: 1 / 1;
   min-height: clamp(30px, 2.2vw, 36px);
   border-radius: var(--radius-sm);
   border: 1px solid var(--surface-card-border);
@@ -7567,10 +7573,14 @@ body,
   padding: 0;
   cursor: pointer;
   font-family: inherit;
+  font-size: clamp(11px, 0.85vw, 13px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   transition: background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .world-fixed-system-tab:hover:not(:disabled):not(.is-active) {
@@ -7600,6 +7610,46 @@ body,
   color: var(--accent-action);
   font-weight: 600;
   box-shadow: inset 0 -2px 0 var(--accent-action), 0 2px 6px color-mix(in srgb, var(--accent-action) 18%, transparent);
+}
+
+/* mockup .sys-tab .badge —— 红点徽标，DOM 形如 <span class="world-fixed-system-tab__badge"/> 或 data-badge="3" */
+.world-fixed-system-tab__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-danger);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface-card),
+    0 2px 5px color-mix(in srgb, var(--accent-danger) 50%, transparent);
+  pointer-events: none;
+}
+
+.world-fixed-system-tab[data-badge]:not([data-badge=""])::after {
+  content: attr(data-badge);
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-danger);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 14px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--surface-card),
+    0 2px 5px color-mix(in srgb, var(--accent-danger) 50%, transparent);
+  pointer-events: none;
 }
 
 .world-fixed-system-tab-page {
@@ -9860,6 +9910,56 @@ body,
   text-overflow: ellipsis;
 }
 
+.world-online-list__ping {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--text-secondary) 30%, transparent);
+  background: color-mix(in srgb, var(--surface-card) 60%, transparent);
+}
+
+.world-online-list__ping > i {
+  display: block;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent-success);
+}
+
+.world-online-list__ping > i:nth-child(1) { height: 30%; }
+.world-online-list__ping > i:nth-child(2) { height: 55%; }
+.world-online-list__ping > i:nth-child(3) { height: 80%; }
+.world-online-list__ping > i:nth-child(4) { height: 100%; }
+
+.world-online-list__ping.is-good > i { background: var(--accent-success); }
+.world-online-list__ping.is-warn > i { background: var(--accent-warn); }
+.world-online-list__ping.is-bad > i { background: var(--accent-danger); }
+.world-online-list__ping.is-bad > i:nth-child(3),
+.world-online-list__ping.is-bad > i:nth-child(4) {
+  background: color-mix(in srgb, var(--text-secondary) 35%, transparent);
+}
+.world-online-list__ping.is-unknown > i {
+  background: color-mix(in srgb, var(--text-secondary) 40%, transparent);
+}
+
+.world-online-list__ping-text {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 28px;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+.world-online-list__ping-text.is-good { color: color-mix(in srgb, var(--accent-success) 85%, #000); }
+.world-online-list__ping-text.is-warn { color: color-mix(in srgb, var(--accent-warn) 80%, #000); }
+.world-online-list__ping-text.is-bad { color: color-mix(in srgb, var(--accent-danger) 80%, #000); }
+.world-online-list__ping-text.is-unknown { color: color-mix(in srgb, var(--text-secondary) 70%, transparent); }
+
 .world-online-list__latency {
   flex: 0 0 54px;
   width: 54px;
@@ -10157,7 +10257,9 @@ body,
   padding: 10px 10px 10px 12px;
   text-align: left;
   display: grid;
-  gap: 6px;
+  grid-template-columns: 32px 1fr;
+  align-items: start;
+  gap: 8px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.75),
     0 4px 10px color-mix(in srgb, var(--accent-action) 8%, transparent);
@@ -10165,6 +10267,45 @@ body,
     border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
     transform var(--duration-fast) var(--ease-out);
+}
+
+.world-stage-party-card__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent-action) 90%, #fff),
+      color-mix(in srgb, var(--accent-action) 60%, var(--mod-fate-accent)));
+  border: 1px solid color-mix(in srgb, var(--accent-action) 60%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 2px 6px color-mix(in srgb, var(--accent-action) 30%, transparent);
+  letter-spacing: 0;
+  flex-shrink: 0;
+}
+
+.world-stage-party-card.is-active .world-stage-party-card__avatar {
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--mod-fate-accent) 85%, #fff),
+      color-mix(in srgb, var(--mod-fate-accent) 55%, var(--accent-action)));
+  border-color: color-mix(in srgb, var(--mod-fate-accent) 70%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 3px 8px color-mix(in srgb, var(--mod-fate-accent) 40%, transparent);
+}
+
+.world-stage-party-card__body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
 }
 
 .world-stage-party-card:hover {
@@ -12174,7 +12315,7 @@ body,
   .world-stage-shell {
     --stage-pad: clamp(6px, 1vw, 10px);
     --edge-gap: clamp(4px, 0.8vw, 8px);
-    --dial-size: clamp(112px, 14vw, 156px);
+    --dial-size: clamp(160px, 18vw, 200px);
     --left-stack-w: var(--dial-size);
     --sys-panel-w: clamp(270px, 34vw, 360px);
     --battle-bar-h: clamp(100px, 10vw, 122px);
@@ -12220,7 +12361,7 @@ body,
   .world-stage-shell {
     --stage-pad: clamp(5px, 1.6vw, 8px);
     --edge-gap: clamp(3px, 1vw, 6px);
-    --dial-size: clamp(96px, 24vw, 128px);
+    --dial-size: clamp(132px, 30vw, 168px);
     --left-stack-w: var(--dial-size);
     --sys-panel-w: clamp(220px, 58vw, 286px);
     --battle-bar-h: clamp(92px, 21vw, 112px);
