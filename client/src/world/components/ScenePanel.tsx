@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import type { SceneItem } from "../../pages/world/types";
 
 type ScenePanelProps = {
@@ -20,6 +20,13 @@ type ScenePanelProps = {
   onDeleteScene: () => void;
   onMoveSceneUp: () => void;
   onMoveSceneDown: () => void;
+};
+
+type FolderNode = {
+  path: string;
+  name: string;
+  scenes: SceneItem[];
+  collapsed: boolean;
 };
 
 export function ScenePanel(props: ScenePanelProps) {
@@ -44,73 +51,89 @@ export function ScenePanel(props: ScenePanelProps) {
     onMoveSceneDown
   } = props;
 
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+
+  // 按 sortOrder 分组场景到虚拟文件夹
+  const folders: FolderNode[] = [];
+  const chapterSize = 5; // 每 5 个场景一个章节
+
+  for (let i = 0; i < scenes.length; i += chapterSize) {
+    const chapterScenes = scenes.slice(i, Math.min(i + chapterSize, scenes.length));
+    const chapterNum = Math.floor(i / chapterSize) + 1;
+    const folderPath = `第 ${chapterNum} 章`;
+    folders.push({
+      path: folderPath,
+      name: folderPath,
+      scenes: chapterScenes,
+      collapsed: collapsedFolders.has(folderPath)
+    });
+  }
+
+  const toggleFolder = (path: string) => {
+    setCollapsedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
   return (
-    <div className="world-card">
-      <strong>场景航图</strong>
-      <p>当前已收录场景：{scenes.length}</p>
+    <>
+      <div className="res-toolbar">
+        <button type="button" className="sc-btn sc-btn--gold" onClick={(e) => {
+          e.preventDefault();
+          const fakeEvent = { preventDefault: () => {}, target: { value: createName } } as unknown as FormEvent;
+          onCreateScene(fakeEvent);
+        }} disabled={creating || !createName.trim()}>
+          新 建 场 景
+        </button>
+        <button type="button" className="sc-btn" disabled>新 建 目 录</button>
+        <button type="button" className="sc-btn" disabled>导 入</button>
+        <button type="button" className="sc-btn" disabled>导 出</button>
+      </div>
+      <div className="res-tree">
+        <ul>
+          {folders.map((folder) => (
+            <li key={folder.path}>
+              <li className={`dir ${folder.collapsed ? 'collapsed' : ''}`.trim()} onClick={() => toggleFolder(folder.path)}>
+                <span className="caret">▾</span>
+                <span className="ic">📁</span>
+                <span>{folder.name}</span>
+                <span className="meta">{folder.scenes.length}</span>
+              </li>
+              <ul>
+                {folder.scenes.map((scene) => (
+                  <li
+                    key={scene.id}
+                    className={`leaf ${scene.id === selectedSceneId ? 'active' : ''}`.trim()}
+                    onClick={() => onSelectScene(scene.id)}
+                  >
+                    <span className="ic">🏞️</span>
+                    <span>{scene.name}</span>
+                    {scene.id === selectedSceneId ? <span className="meta tag-ok">激活</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="text-xs" style={{ color: 'var(--sc-ink-mute)', marginTop: '8px', padding: '0 4px' }}>
+        左键点击场景切换；右键场景 → <b style={{ color: 'var(--sc-accent-deep)' }}>场景配置弹窗</b>（网格 / 光照 / 迷雾 / 背景）
+      </div>
 
-      <label className="block text-sm text-gray-700">当前舞台</label>
-      <select className="mb-2 mt-1 w-full rounded border px-2 py-1.5" value={selectedSceneId} onChange={(e) => onSelectScene(e.target.value)}>
-        {scenes.map((scene) => (
-          <option key={scene.id} value={scene.id}>
-            #{scene.sortOrder} {scene.name}
-          </option>
-        ))}
-      </select>
-
-      <form className="space-y-2" onSubmit={onCreateScene}>
-        <label className="block text-sm text-gray-700">开辟新舞台（GM）</label>
+      {/* 隐藏的创建表单，用于保持现有功能 */}
+      <div style={{ display: 'none' }}>
         <input
-          className="w-full rounded border px-2 py-1.5"
           value={createName}
           onChange={(e) => onCreateNameChange(e.target.value)}
           placeholder="场景名称"
         />
-        <button className="rounded bg-cyan-700 px-3 py-1.5 text-sm text-white disabled:opacity-60" disabled={creating} type="submit">
-          {creating ? "开辟中..." : "创建场景"}
-        </button>
-      </form>
-
-      <form className="mt-3 space-y-2" onSubmit={onRenameScene}>
-        <label className="block text-sm text-gray-700">修改当前舞台名称（GM）</label>
-        <input
-          className="w-full rounded border px-2 py-1.5"
-          value={renameName}
-          onChange={(e) => onRenameNameChange(e.target.value)}
-          placeholder="新场景名称"
-        />
-        <button className="rounded bg-sky-700 px-3 py-1.5 text-sm text-white disabled:opacity-60" disabled={renaming || !selectedSceneId} type="submit">
-          {renaming ? "铭刻中..." : "保存名称"}
-        </button>
-      </form>
-
-      <button
-        className="mt-3 rounded bg-rose-700 px-3 py-1.5 text-sm text-white disabled:opacity-60"
-        disabled={deleting || !selectedSceneId || scenes.length <= 1}
-        onClick={onDeleteScene}
-        type="button"
-      >
-        {deleting ? "抹除中..." : "删除当前场景"}
-      </button>
-
-      <div className="mt-3 flex gap-2">
-        <button
-          className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white disabled:opacity-60"
-          disabled={sorting || !canMoveUp}
-          onClick={onMoveSceneUp}
-          type="button"
-        >
-          上移
-        </button>
-        <button
-          className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white disabled:opacity-60"
-          disabled={sorting || !canMoveDown}
-          onClick={onMoveSceneDown}
-          type="button"
-        >
-          下移
-        </button>
       </div>
-    </div>
+    </>
   );
 }
