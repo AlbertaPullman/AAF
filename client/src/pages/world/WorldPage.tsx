@@ -3608,14 +3608,18 @@ export default function WorldPage() {
                   ? characters.find((item) => item.id === member.boundCharacterId)
                   : null;
                 const latency = worldLatencyByUserId[member.userId]?.latencyMs ?? null;
+                const roleLabel = member.role === "GM" ? "主" : "玩";
                 return (
                   <button
                     type="button"
                     key={member.userId}
-                    className={`online-item ${member.boundCharacterId === selectedCharacterId ? "is-active" : ""}`.trim()}
+                    className={`online-item ${!online ? "offline" : ""} ${member.boundCharacterId === selectedCharacterId ? "is-active" : ""}`.trim()}
                     onClick={() => { if (boundCharacter) setSelectedCharacterId(boundCharacter.id); }}
                   >
-                    <span className="online-name">{getRosterDisplayName(member)}</span>
+                    <span className="online-name">
+                      <b>{roleLabel}</b>
+                      {getRosterDisplayName(member)}
+                    </span>
                     <span className={`ping ${getLatencyClass(latency, online)}`.trim()} aria-hidden="true">
                       <i /><i /><i /><i />
                     </span>
