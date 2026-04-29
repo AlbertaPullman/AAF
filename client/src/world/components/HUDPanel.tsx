@@ -75,134 +75,207 @@ export const HUDPanel: React.FC<HUDPanelProps> = ({
   }
 
   return (
-    <footer className={`hud-panel hud-panel--${config.mode}`.trim()} aria-label="HUD 面板">
-      <div className="hud-panel__avatar" aria-hidden="true">
-        <span className="hud-panel__avatar-initial">
-          {hasCharacter ? (characterName?.trim()?.[0] ?? "?").toUpperCase() : "·"}
-        </span>
+    <div className="hud-wrap" aria-label="HUD 面板">
+      {/* 大头像：80×80 圆形，嵌入 HUD 左侧凹槽 */}
+      <div className="hud-avatar" title="点击查看角色卡">
+        <div className="hud-avatar__name">
+          {hasCharacter ? characterName?.split("").join(" ") : "· · ·"}
+        </div>
         {characterLevel != null && hasCharacter ? (
-          <span className="hud-panel__avatar-level">Lv.{characterLevel}</span>
-        ) : null}
-      </div>
-      <div className="hud-panel__resources">
-        <div className="hud-panel__char-info">
-          {hasCharacter ? (
-            <>
-              <span className="hud-panel__char-name">{characterName}</span>
-              {characterLevel != null ? <span className="hud-panel__char-level">Lv.{characterLevel}</span> : null}
-            </>
-          ) : emptyStateTitle ? (
-            <div className="hud-panel__empty-state">
-              <span className="hud-panel__char-name">{emptyStateTitle}</span>
-              {emptyStateDescription ? <span className="hud-panel__char-level">{emptyStateDescription}</span> : null}
-            </div>
-          ) : null}
-        </div>
-
-        {hasCharacter ? (
-          <div className="hud-panel__bars">
-            <div className="hud-panel__bar hud-panel__bar--hp" title={`生命值 ${resources.hp}/${resources.maxHp}`}>
-              <div className="hud-panel__bar-fill" style={{ width: `${hpPct}%` }} />
-              <span className="hud-panel__bar-text">
-                {resources.hp}/{resources.maxHp}
-              </span>
-            </div>
-            <div className="hud-panel__bar hud-panel__bar--mp" title={`魔力值 ${resources.mp}/${resources.maxMp}`}>
-              <div className="hud-panel__bar-fill" style={{ width: `${mpPct}%` }} />
-              <span className="hud-panel__bar-text">
-                {resources.mp}/{resources.maxMp}
-              </span>
-            </div>
-            {resources.maxStamina > 0 ? (
-              <div
-                className="hud-panel__bar hud-panel__bar--stamina"
-                title={`体力 ${resources.stamina}/${resources.maxStamina}`}
-              >
-                <div className="hud-panel__bar-fill" style={{ width: `${staminaPct}%` }} />
-                <span className="hud-panel__bar-text">
-                  {resources.stamina}/{resources.maxStamina}
-                </span>
-              </div>
-            ) : null}
-            {resources.maxFury > 0 ? (
-              <div className="hud-panel__bar hud-panel__bar--fury" title={`怒气 ${resources.fury}/${resources.maxFury}`}>
-                <div className="hud-panel__bar-fill" style={{ width: `${furyPct}%` }} />
-                <span className="hud-panel__bar-text">
-                  {resources.fury}/{resources.maxFury}
-                </span>
-              </div>
-            ) : null}
-          </div>
+          <div className="hud-avatar__lv">LV. {characterLevel}</div>
         ) : null}
       </div>
 
-      {config.mode === "combat" ? (
-        <div className="hud-panel__hotbar">
-          {config.combatSlots.map((slot) => {
-            const label =
-              slot.type !== "empty" && slot.linkedId
-                ? resolveLabel?.(slot.type, slot.linkedId) ?? slot.customLabel ?? ""
-                : slot.customLabel ?? "";
+      {/* HUD 主体：SVG 金边描线 + 4×10 格子 + 特殊功能区 */}
+      <div className="hud">
+        {/* SVG 金边描线：只描上/右/下三边，左侧凹槽不描 */}
+        <svg className="hud-frame" viewBox="0 0 800 152" preserveAspectRatio="none" aria-hidden="true">
+          <path
+            className="hud-frame__outer"
+            d="M 0 0 L 788 0 Q 800 0 800 12 L 800 140 Q 800 152 788 152 L 0 152"
+          />
+          <path
+            className="hud-frame__inner"
+            d="M 6 6 L 786 6 Q 794 6 794 14 L 794 138 Q 794 146 786 146 L 6 146"
+          />
+        </svg>
 
-            const iconUrl = slot.type !== "empty" && slot.linkedId ? resolveIcon?.(slot.type, slot.linkedId) : slot.customIconUrl;
-
-            return (
-              <div
-                key={slot.index}
-                className={`hud-panel__slot ${slot.type === "empty" ? "hud-panel__slot--empty" : ""}`.trim()}
-                title={label || `快捷栏位 ${slot.index + 1}`}
-                onClick={() => {
-                  if (slot.type !== "empty") {
-                    onSlotClick?.(slot);
-                  }
-                }}
-                onDragOver={handleDragOver}
-                onDrop={(event) => handleDrop(slot.index, event)}
-                role="button"
-                tabIndex={0}
-              >
-                {iconUrl ? (
-                  <img src={iconUrl} alt={label} className="hud-panel__slot-icon" draggable={false} />
-                ) : (
-                  <span className="hud-panel__slot-key">{slot.index < 9 ? slot.index + 1 : 0}</span>
-                )}
-                {label ? <span className="hud-panel__slot-label">{label}</span> : null}
-              </div>
-            );
-          })}
+        {/* 拖拽热区：仅边缘 8px 可拖动 */}
+        <div className="hud-drag-rim">
+          <i />
+          <i />
+          <i />
+          <i />
         </div>
-      ) : null}
 
-      {config.mode === "general" ? (
-        <div className="hud-panel__tabs">
-          <nav className="hud-panel__tab-nav">
-            {visibleTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`hud-panel__tab-btn ${activeTab === tab.id ? "hud-panel__tab-btn--active" : ""}`.trim()}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-          <div className="hud-panel__tab-content">
-            {renderGeneralTab ? renderGeneralTab(activeTab) : <div className="hud-panel__tab-placeholder">{activeTab} 内容区</div>}
+        {/* 4 排 × 10 槽 */}
+        <div className="hud-slots">
+          {/* 第一排：主要技能，带快捷键 1-0 */}
+          <div className="hud-row primary">
+            {config.combatSlots.slice(0, 10).map((slot, idx) => {
+              const label =
+                slot.type !== "empty" && slot.linkedId
+                  ? resolveLabel?.(slot.type, slot.linkedId) ?? slot.customLabel ?? ""
+                  : slot.customLabel ?? "";
+              const iconUrl = slot.type !== "empty" && slot.linkedId ? resolveIcon?.(slot.type, slot.linkedId) : slot.customIconUrl;
+              const isFilled = slot.type !== "empty";
+
+              return (
+                <div
+                  key={slot.index}
+                  className={`slot ${isFilled ? "filled" : ""}`.trim()}
+                  title={label || `快捷栏位 ${idx + 1}`}
+                  onClick={() => {
+                    if (isFilled) {
+                      onSlotClick?.(slot);
+                    }
+                  }}
+                  onDragOver={handleDragOver}
+                  onDrop={(event) => handleDrop(slot.index, event)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {iconUrl ? (
+                    <img src={iconUrl} alt={label} className="icon" draggable={false} />
+                  ) : isFilled ? (
+                    <span className="emoji">{label || "?"}</span>
+                  ) : (
+                    <span className="plus">＋</span>
+                  )}
+                  <span className="key">{idx < 9 ? idx + 1 : 0}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 第二排 */}
+          <div className="hud-row">
+            {config.combatSlots.slice(10, 20).map((slot) => {
+              const label =
+                slot.type !== "empty" && slot.linkedId
+                  ? resolveLabel?.(slot.type, slot.linkedId) ?? slot.customLabel ?? ""
+                  : slot.customLabel ?? "";
+              const iconUrl = slot.type !== "empty" && slot.linkedId ? resolveIcon?.(slot.type, slot.linkedId) : slot.customIconUrl;
+              const isFilled = slot.type !== "empty";
+
+              return (
+                <div
+                  key={slot.index}
+                  className={`slot ${isFilled ? "filled" : ""}`.trim()}
+                  title={label || `快捷栏位 ${slot.index + 1}`}
+                  onClick={() => {
+                    if (isFilled) {
+                      onSlotClick?.(slot);
+                    }
+                  }}
+                  onDragOver={handleDragOver}
+                  onDrop={(event) => handleDrop(slot.index, event)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {iconUrl ? (
+                    <img src={iconUrl} alt={label} className="icon" draggable={false} />
+                  ) : isFilled ? (
+                    <span className="emoji">{label || "?"}</span>
+                  ) : (
+                    <span className="plus">＋</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 第三排 */}
+          <div className="hud-row">
+            {config.combatSlots.slice(20, 30).map((slot) => {
+              const label =
+                slot.type !== "empty" && slot.linkedId
+                  ? resolveLabel?.(slot.type, slot.linkedId) ?? slot.customLabel ?? ""
+                  : slot.customLabel ?? "";
+              const iconUrl = slot.type !== "empty" && slot.linkedId ? resolveIcon?.(slot.type, slot.linkedId) : slot.customIconUrl;
+              const isFilled = slot.type !== "empty";
+
+              return (
+                <div
+                  key={slot.index}
+                  className={`slot ${isFilled ? "filled" : ""}`.trim()}
+                  title={label || `快捷栏位 ${slot.index + 1}`}
+                  onClick={() => {
+                    if (isFilled) {
+                      onSlotClick?.(slot);
+                    }
+                  }}
+                  onDragOver={handleDragOver}
+                  onDrop={(event) => handleDrop(slot.index, event)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {iconUrl ? (
+                    <img src={iconUrl} alt={label} className="icon" draggable={false} />
+                  ) : isFilled ? (
+                    <span className="emoji">{label || "?"}</span>
+                  ) : (
+                    <span className="plus">＋</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 第四排 */}
+          <div className="hud-row">
+            {config.combatSlots.slice(30, 40).map((slot) => {
+              const label =
+                slot.type !== "empty" && slot.linkedId
+                  ? resolveLabel?.(slot.type, slot.linkedId) ?? slot.customLabel ?? ""
+                  : slot.customLabel ?? "";
+              const iconUrl = slot.type !== "empty" && slot.linkedId ? resolveIcon?.(slot.type, slot.linkedId) : slot.customIconUrl;
+              const isFilled = slot.type !== "empty";
+
+              return (
+                <div
+                  key={slot.index}
+                  className={`slot ${isFilled ? "filled" : ""}`.trim()}
+                  title={label || `快捷栏位 ${slot.index + 1}`}
+                  onClick={() => {
+                    if (isFilled) {
+                      onSlotClick?.(slot);
+                    }
+                  }}
+                  onDragOver={handleDragOver}
+                  onDrop={(event) => handleDrop(slot.index, event)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  {iconUrl ? (
+                    <img src={iconUrl} alt={label} className="icon" draggable={false} />
+                  ) : isFilled ? (
+                    <span className="emoji">{label || "?"}</span>
+                  ) : (
+                    <span className="plus">＋</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-      ) : null}
 
-      {onToggleMode ? (
-        <button
-          type="button"
-          className="hud-panel__mode-toggle"
-          onClick={onToggleMode}
-          title={config.mode === "combat" ? "切换到常规模式" : "切换到战斗模式"}
-        >
-          {config.mode === "combat" ? "⌘" : "◈"}
-        </button>
-      ) : null}
-    </footer>
+        {/* 特殊功能区：2×2 切换态图标 */}
+        <div className="hud-special" title="切换类能力">
+          <div className="tog on" title="圣盾姿态（开）">
+            🛡
+          </div>
+          <div className="tog" title="潜行">
+            👤
+          </div>
+          <div className="tog" title="专注">
+            🎯
+          </div>
+          <div className="tog" title="疾驰">
+            ⚡
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
