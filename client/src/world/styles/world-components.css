@@ -234,12 +234,28 @@
 
 .battle-sequence-bar__entry--current {
   z-index: 4;
-  border-color: color-mix(in srgb, var(--mod-fate-accent) 80%, transparent);
+  border-color: var(--mod-fate-accent);
+  transform: translateY(-4px) scale(1.1);
   box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--mod-fate-accent) 50%, transparent),
-    0 0 26px color-mix(in srgb, var(--mod-fate-accent) 65%, transparent),
-    0 12px 24px color-mix(in srgb, var(--mod-fate-accent) 25%, transparent);
-  transform: scale(1.14);
+    0 0 0 3px rgba(245, 166, 35, 0.55),
+    0 0 18px 4px rgba(245, 166, 35, 0.7),
+    0 8px 18px rgba(21, 49, 92, 0.3);
+  animation: initPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes initPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px rgba(245, 166, 35, 0.55),
+      0 0 16px 3px rgba(245, 166, 35, 0.6),
+      0 8px 18px rgba(21, 49, 92, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(245, 166, 35, 0.9),
+      0 0 28px 8px rgba(245, 166, 35, 0.85),
+      0 8px 22px rgba(21, 49, 92, 0.35);
+  }
 }
 
 .battle-sequence-bar__entry--current::before {
@@ -252,12 +268,7 @@
     color-mix(in srgb, var(--mod-fate-accent) 70%, transparent),
     color-mix(in srgb, var(--mod-fate-accent) 28%, transparent) 48%,
     transparent);
-  animation: battleSeqCurrentGlow 1.6s ease-in-out infinite;
-}
-
-@keyframes battleSeqCurrentGlow {
-  0%, 100% { opacity: 0.65; transform: scale(0.96); }
-  50% { opacity: 1; transform: scale(1.06); }
+  opacity: 0.8;
 }
 
 .battle-sequence-bar__entry--mine:not(.battle-sequence-bar__entry--current) {
