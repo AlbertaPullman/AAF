@@ -1348,6 +1348,52 @@ export async function getWorldDetail(worldId: string, userId: string) {
   };
 }
 
+/**
+ * 由 GM 调用：设置 / 清除世界级视觉风格包，以及是否强制覆盖玩家偏好。
+ * 仅 owner 或 GM 角色可调用。
+ */
+export async function updateWorldThemePack(
+  worldId: string,
+  userId: string,
+  input: { themePack: string | null; themePackForcedByGM: boolean }
+) {
+  const world = await prisma.world.findUnique({ where: { id: worldId } });
+  if (!world) {
+    throw new Error("world not found");
+  }
+
+  const isOwner = world.ownerId === userId;
+  let isGm = isOwner;
+  if (!isGm) {
+    const membership = await prisma.worldMember.findUnique({
+      where: { worldId_userId: { worldId, userId } },
+      select: { role: true }
+    });
+    isGm = membership?.role === WorldRole.GM;
+  }
+  if (!isGm) {
+    throw new Error("forbidden");
+  }
+
+  const safePack = typeof input.themePack === "string" && input.themePack.trim().length > 0
+    ? input.themePack.trim()
+    : null;
+  const forced = !!safePack && !!input.themePackForcedByGM;
+
+  const updated = await prisma.world.update({
+    where: { id: worldId },
+    data: {
+      themePack: safePack,
+      themePackForcedByGM: forced
+    }
+  });
+
+  return {
+    themePack: updated.themePack,
+    themePackForcedByGM: updated.themePackForcedByGM
+  };
+}
+
 export async function listWorldRosterData(worldId: string, actorId: string): Promise<WorldRosterMember[]> {
   const membership = await prisma.worldMember.findUnique({
     where: {

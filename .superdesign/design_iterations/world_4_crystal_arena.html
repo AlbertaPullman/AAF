@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AAF · 水晶斗技场 Crystal Arena</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="./world_theme_4_crystal_arena.css" />
+<style>
+  /* GBF-style layout: stage max, bottom = 4 hero cards merging party + HUD */
+  .world-grid {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    grid-template-rows: 60px 1fr 160px;
+    gap: 10px;
+    padding: 10px;
+    height: 100vh;
+  }
+  .area-top { grid-column: 1 / 3; grid-row: 1; }
+  .area-stage { grid-column: 1; grid-row: 2; }
+  .area-right { grid-column: 2; grid-row: 2; }
+  .area-bottom { grid-column: 1 / 3; grid-row: 3; }
+
+  .stage-canvas {
+    position: relative; height: 100%;
+    border-radius: var(--ca-radius-lg);
+    background:
+      radial-gradient(700px 350px at 50% 20%, rgba(255,255,255,0.85), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(44,123,229,0.08) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(90deg, rgba(44,123,229,0.08) 0 1px, transparent 1px 48px),
+      linear-gradient(180deg,#dde9ff, #c3d6f7);
+    border: 2px solid rgba(255,255,255,0.8);
+    box-shadow: var(--ca-shadow-soft);
+    overflow:hidden;
+  }
+  .token { position:absolute; width:46px; height:46px; border-radius:50%; border:3px solid #fff; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; box-shadow: 0 6px 16px rgba(20,76,171,0.4);}
+  .token.t1 { background: var(--ca-grad-blue); top:38%; left:30%;}
+  .token.t2 { background: linear-gradient(180deg,#ff8a5a,#c1481a); top:52%; left:42%;}
+  .token.t3 { background: linear-gradient(180deg,#a37dff,#5b3fd1); top:30%; left:55%;}
+  .token.enemy { background: linear-gradient(180deg,#3a4659,#0d121a); top:22%; left:70%; border-color: var(--ca-rose);}
+  .aoe { position:absolute; width:170px; height:170px; border-radius:50%; top:18%; left:50%; background: radial-gradient(closest-side, rgba(140,95,255,0.30), transparent 70%); border: 3px solid rgba(140,95,255,0.7);}
+
+  .top-bar {
+    height: 100%; display:flex; align-items:center; justify-content:space-between;
+    padding: 0 16px; border-radius: var(--ca-radius);
+    background: rgba(255,255,255,0.7); backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: var(--ca-shadow-soft);
+  }
+  .fate-clock {
+    display:flex; align-items:center; gap:10px;
+    padding: 6px 14px; border-radius: 999px;
+    background: var(--ca-grad-blue); color:#fff;
+    font-family: var(--ca-font-heading); font-weight:700; letter-spacing:.06em;
+    box-shadow: 0 4px 12px rgba(44,123,229,0.4);
+  }
+  .fate-clock .dot { width:8px; height:8px; border-radius:50%; background:#fff;}
+
+  .battle-seq-bar {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    display:flex; gap:8px; padding: 8px 14px;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
+    border-radius: 999px; border: 1px solid rgba(44,123,229,0.3);
+    box-shadow: var(--ca-shadow-soft); align-items:center;
+  }
+  .seq-pill { padding:4px 10px; border-radius:999px; background: rgba(44,123,229,0.08); color: var(--ca-text-soft); font-size: 11px; font-weight: 700;}
+  .seq-pill.active { background: var(--ca-grad-blue); color:#fff; box-shadow: 0 4px 10px rgba(44,123,229,0.4);}
+
+  /* Right system - narrow */
+  .sys-tabs { display:flex; padding: 8px; gap:6px; border-bottom: 1px solid rgba(44,123,229,0.15);}
+  .sys-tab {
+    flex:1; padding: 8px 4px;
+    text-align:center; cursor: pointer;
+    font-family: var(--ca-font-heading); font-size: 14px; font-weight: 700;
+    color: var(--ca-text-mute);
+    border-radius: var(--ca-radius-sm);
+    transition: all .15s; position: relative;
+  }
+  .sys-tab:hover { background: rgba(44,123,229,0.06); color: var(--ca-primary);}
+  .sys-tab.active { background: var(--ca-grad-blue); color:#fff; box-shadow: 0 4px 10px rgba(44,123,229,0.35); }
+  .sys-tab .badge { position:absolute; top:0; right:6px; width:14px; height:14px; border-radius:50%; background: var(--ca-rose); color:#fff; font-size:9px; display:flex; align-items:center; justify-content:center;}
+
+  .sys-content { padding: 10px; overflow:auto; height: calc(100% - 50px);}
+
+  /* Bottom — 4 hero portrait cards */
+  .hero-deck {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 220px;
+    gap: 10px;
+    height: 100%;
+  }
+  .hero-actions {
+    background: rgba(255,255,255,0.75); backdrop-filter: blur(14px);
+    border-radius: var(--ca-radius);
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow: var(--ca-shadow-soft);
+    padding: 10px;
+    display: flex; flex-direction: column; gap: 6px; justify-content: center;
+  }
+
+  /* Tool window */
+  .tool-window {
+    position: absolute; width: 320px;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,1);
+    border-radius: var(--ca-radius);
+    box-shadow: 0 24px 48px rgba(20,76,171,0.35), 0 0 0 1px rgba(44,123,229,0.2);
+    overflow: hidden;
+  }
+  .tool-window header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 12px; background: var(--ca-grad-blue); color:#fff;
+    cursor: grab;
+  }
+  .tool-window h4 { margin:0; font-family: var(--ca-font-heading); font-weight: 700; font-size: 13px;}
+  .tool-window .body { padding: 12px; max-height: 280px; overflow:auto; font-size: 12px;}
+
+  .dmg-float { position:absolute; font-family: var(--ca-font-heading); font-weight:800; color: var(--ca-purple); text-shadow: 0 0 12px rgba(140,95,255,0.7); animation: dmgRise 1.6s ease-out forwards; }
+  @keyframes dmgRise { 0%{transform:translateY(0); opacity:0;} 15%{opacity:1;} 100%{transform:translateY(-50px); opacity:0;} }
+</style>
+</head>
+<body>
+<div class="world-grid">
+  <!-- TOP -->
+  <div class="area-top">
+    <div class="top-bar">
+      <div class="flex items-center gap-3">
+        <div class="fate-clock"><span class="dot"></span><span>命运 23:14</span><span class="opacity-70 text-xs">第三章</span></div>
+        <span class="ca-chip ca-chip--purple">在线 4</span>
+        <span class="ca-chip">GM 视角</span>
+      </div>
+      <div style="font-family:var(--ca-font-heading); font-weight:800; font-size:18px; letter-spacing:.04em; color:var(--ca-primary-deep);">⟢ 水晶斗技场 · 翡翠群岛 ⟣</div>
+      <div class="flex gap-2">
+        <button class="ca-btn"><i data-lucide="bell" class="w-4 h-4"></i>通知</button>
+        <button class="ca-btn"><i data-lucide="settings" class="w-4 h-4"></i>设置</button>
+        <button class="ca-btn"><i data-lucide="keyboard" class="w-4 h-4"></i>快捷键</button>
+        <button class="ca-btn ca-btn--ghost"><i data-lucide="log-out" class="w-4 h-4"></i>退出</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE -->
+  <div class="area-stage stage-canvas">
+    <div class="battle-seq-bar ca-anim-rise">
+      <span style="font-weight:800; color:var(--ca-primary-deep); font-size:12px;">⚔ 先攻</span>
+      <span class="seq-pill active">1 莉娅</span>
+      <span class="seq-pill">2 拉尔夫</span>
+      <span class="seq-pill">3 龙骑士</span>
+      <span class="seq-pill">4 暗影</span>
+      <span class="seq-pill">5 法师</span>
+      <span class="seq-pill" style="opacity:.5;">6 哥布林·王</span>
+      <button class="ca-btn ca-btn--primary ml-2"><i data-lucide="skip-forward" class="w-3 h-3"></i>END</button>
+    </div>
+
+    <div class="aoe ca-anim-pulse"></div>
+    <div class="token t1">莉</div>
+    <div class="token t2">拉</div>
+    <div class="token t3">龙</div>
+    <div class="token enemy">敌</div>
+
+    <div class="dmg-float" style="top:22%; left:72%; font-size:36px;">−128</div>
+    <div class="dmg-float" style="top:32%; left:74%; font-size:14px; color:var(--ca-rose); animation-delay:.2s;">CRITICAL!</div>
+
+    <div class="tool-window ca-anim-rise" style="top:80px; right:24px;">
+      <header><h4>资源库 · 能力</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body space-y-2">
+        <div class="flex justify-between p-2 rounded" style="background: rgba(44,123,229,0.06);"><span>🔥 火球术</span><span class="ca-chip">Lv3</span></div>
+        <div class="flex justify-between p-2 rounded" style="background: rgba(44,123,229,0.06);"><span>✨ 圣光治疗</span><span class="ca-chip ca-chip--emerald">Lv2</span></div>
+        <div class="flex justify-between p-2 rounded" style="background: rgba(44,123,229,0.06);"><span>⚔ 破甲斩</span><span class="ca-chip ca-chip--purple">Lv1</span></div>
+      </div>
+    </div>
+
+    <div class="tool-window ca-anim-rise" style="top:80px; left:24px;">
+      <header><h4>能力结算台</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body">
+        <div class="mb-2">施法者: <b style="color:var(--ca-primary-deep);">莉娅</b> → <b style="color:var(--ca-rose);">哥布林·王</b></div>
+        <div class="p-2 rounded mb-2" style="background:rgba(44,123,229,0.06);">命中 1d20+5 = <b style="color:var(--ca-emerald);">17 ✓</b></div>
+        <div class="p-2 rounded mb-2" style="background:rgba(44,123,229,0.06);">伤害 2d8+3 火 = <b style="color:var(--ca-purple);">128</b></div>
+        <div class="flex gap-2"><button class="ca-btn ca-btn--primary flex-1">应用</button><button class="ca-btn flex-1">取消</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM (narrow) -->
+  <div class="area-right ca-glass overflow-hidden">
+    <div class="sys-tabs">
+      <div class="sys-tab" title="聊">聊<span class="badge">3</span></div>
+      <div class="sys-tab">战</div>
+      <div class="sys-tab active">景</div>
+      <div class="sys-tab">角</div>
+      <div class="sys-tab">包</div>
+      <div class="sys-tab">系</div>
+    </div>
+    <div class="sys-content text-xs space-y-2">
+      <div class="font-bold" style="color:var(--ca-primary-deep);">景 · 风之回廊</div>
+      <div class="ca-glass p-2">
+        <div class="flex justify-between mb-1"><span><b>当前:</b> 风之回廊</span><button class="ca-btn">切</button></div>
+      </div>
+      <div class="ca-glass p-2">
+        <div class="font-bold mb-1">视觉</div>
+        <div class="grid grid-cols-3 gap-1">
+          <button class="ca-btn">日</button><button class="ca-btn ca-btn--primary">暮</button><button class="ca-btn">夜</button>
+        </div>
+      </div>
+      <div class="ca-glass p-2">
+        <div class="font-bold mb-1">棋子</div>
+        <div class="grid grid-cols-2 gap-1 text-[11px]">
+          <button class="ca-btn">＋ 添加</button>
+          <button class="ca-btn">导入</button>
+          <button class="ca-btn">复制</button>
+          <button class="ca-btn ca-btn--danger">移除</button>
+        </div>
+      </div>
+      <div class="ca-glass p-2">
+        <div class="font-bold mb-1">测距</div>
+        <div class="flex gap-1"><button class="ca-btn">线</button><button class="ca-btn">圆</button><button class="ca-btn">扇</button></div>
+      </div>
+      <div class="ca-glass p-2">
+        <div class="font-bold mb-1">场景列表</div>
+        <ul class="space-y-1">
+          <li class="flex justify-between"><span>· 风之回廊</span><span class="ca-chip">在</span></li>
+          <li class="flex justify-between"><span>· 旧城广场</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+          <li class="flex justify-between"><span>· 殿之奥</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM — 4 hero cards + actions -->
+  <div class="area-bottom">
+    <div class="hero-deck">
+      <!-- Hero 1 -->
+      <div class="ca-hero-card ca-anim-rise" style="border-color: var(--ca-primary);">
+        <div class="portrait" style="background:linear-gradient(180deg,#a4d6ff,#2c7be5 70%);">
+          <div class="face">莉</div>
+          <span style="position:relative; z-index:1; font-weight:700; font-size:13px;">莉娅 Lv12</span>
+        </div>
+        <div class="info">
+          <div class="flex items-center gap-1">
+            <div class="ca-ring" style="--p:78%"><span>78</span></div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px]" style="color:var(--ca-text-mute);">HP</div>
+              <div class="ca-bar hp"><i style="width:78%"></i></div>
+              <div class="text-[10px] mt-1" style="color:var(--ca-text-mute);">MP</div>
+              <div class="ca-bar mp"><i style="width:54%"></i></div>
+            </div>
+          </div>
+          <div class="flex gap-1 mt-1">
+            <div class="ca-skill" style="font-size:14px;">A<span class="cd-num">2</span></div>
+            <div class="ca-skill cd" style="font-size:14px;">B<span class="cd-num">5</span></div>
+            <div class="ca-skill" style="font-size:14px;">C</div>
+          </div>
+        </div>
+      </div>
+      <!-- Hero 2 -->
+      <div class="ca-hero-card ca-anim-rise" style="border-color:#ff8a5a;">
+        <div class="portrait" style="background: linear-gradient(180deg,#ffd2b3,#c1481a 70%);">
+          <div class="face">拉</div>
+          <span style="position:relative; z-index:1; font-weight:700; font-size:13px;">拉尔夫 Lv11</span>
+        </div>
+        <div class="info">
+          <div class="flex items-center gap-1">
+            <div class="ca-ring" style="--p:62%; background: conic-gradient(#ff8a5a 0 62%, rgba(255,138,90,0.15) 0);"><span>62</span></div>
+            <div class="flex-1">
+              <div class="text-[10px]" style="color:var(--ca-text-mute);">HP</div>
+              <div class="ca-bar hp"><i style="width:62%"></i></div>
+              <div class="text-[10px] mt-1" style="color:var(--ca-text-mute);">MP</div>
+              <div class="ca-bar mp"><i style="width:30%"></i></div>
+            </div>
+          </div>
+          <div class="flex gap-1 mt-1">
+            <div class="ca-skill" style="font-size:14px;">A</div>
+            <div class="ca-skill" style="font-size:14px;">B</div>
+            <div class="ca-skill cd" style="font-size:14px;">C<span class="cd-num">1</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Hero 3 -->
+      <div class="ca-hero-card ca-anim-rise" style="border-color: var(--ca-purple);">
+        <div class="portrait" style="background: linear-gradient(180deg,#d6c2ff,#5b3fd1 70%);">
+          <div class="face">龙</div>
+          <span style="position:relative; z-index:1; font-weight:700; font-size:13px;">龙骑士 Lv13</span>
+        </div>
+        <div class="info">
+          <div class="flex items-center gap-1">
+            <div class="ca-ring" style="--p:90%; background: conic-gradient(var(--ca-purple) 0 90%, rgba(140,95,255,0.15) 0);"><span>90</span></div>
+            <div class="flex-1">
+              <div class="text-[10px]" style="color:var(--ca-text-mute);">HP</div>
+              <div class="ca-bar hp"><i style="width:90%"></i></div>
+              <div class="text-[10px] mt-1" style="color:var(--ca-text-mute);">MP</div>
+              <div class="ca-bar mp"><i style="width:75%"></i></div>
+            </div>
+          </div>
+          <div class="flex gap-1 mt-1">
+            <div class="ca-skill" style="font-size:14px;">A</div>
+            <div class="ca-skill" style="font-size:14px;">B</div>
+            <div class="ca-skill" style="font-size:14px;">C</div>
+          </div>
+        </div>
+      </div>
+      <!-- Hero 4 (empty slot) -->
+      <div class="ca-hero-card ca-anim-rise" style="border: 2px dashed rgba(44,123,229,0.4); background: rgba(255,255,255,0.5); display:flex; align-items:center; justify-content:center;">
+        <div class="text-center" style="color:var(--ca-text-mute);">
+          <div style="font-size:24px;">＋</div>
+          <div class="text-xs mt-1">招募</div>
+        </div>
+      </div>
+
+      <!-- Action panel -->
+      <div class="hero-actions">
+        <div class="text-[11px] font-bold text-center" style="color:var(--ca-primary-deep); letter-spacing:.06em;">⚔ 莉娅 · 第 1 回 ⚔</div>
+        <button class="ca-btn ca-btn--primary justify-center"><i data-lucide="sword" class="w-4 h-4"></i>结束回合</button>
+        <button class="ca-btn justify-center"><i data-lucide="shield" class="w-4 h-4"></i>防御</button>
+        <button class="ca-btn justify-center"><i data-lucide="footprints" class="w-4 h-4"></i>逃跑</button>
+        <div class="flex gap-1 mt-1">
+          <button class="ca-btn flex-1 justify-center" style="font-size:11px;">人</button>
+          <button class="ca-btn flex-1 justify-center" style="font-size:11px;">包</button>
+          <button class="ca-btn flex-1 justify-center" style="font-size:11px;">能</button>
+          <button class="ca-btn flex-1 justify-center" style="font-size:11px;">志</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

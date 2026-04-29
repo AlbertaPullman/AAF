@@ -27,6 +27,9 @@ import { TokenPanel } from "../../world/components/TokenPanel";
 import { WorldCanvas } from "../../world/components/WorldCanvas";
 import { CollectionPackPanel } from "../../world/components/system/CollectionPackPanel";
 import { EntityManager } from "../../world/components/system/EntityManager";
+import { ThemePickerOverlay } from "../../world/components/system/ThemePickerOverlay";
+import { useThemeStore } from "../../store/themeStore";
+import { isKnownPack as isKnownThemePack, type ThemePackId } from "../../lib/theme";
 import { mapWorldRuntimeErrorMessage } from "../../world/i18n/messages";
 import { useKeyboardShortcuts } from "../../world/hooks/useKeyboardShortcuts";
 import { useWorldEntityStore, type EntityRecord, type EntityType } from "../../world/stores/worldEntityStore";
@@ -220,6 +223,7 @@ type OverlayState =
   | { id: string; kind: "ability"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
   | { id: string; kind: "story"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
   | { id: string; kind: "hotkeys"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
+  | { id: string; kind: "theme"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
   | { id: string; kind: "character"; title: string; characterId?: string; mode: "view" | "create"; placement: FloatingToolWindowPlacement; compact?: boolean };
 
 type OverlayDraft =
@@ -228,6 +232,7 @@ type OverlayDraft =
   | { kind: "ability"; title: string; compact?: boolean }
   | { kind: "story"; title: string; compact?: boolean }
   | { kind: "hotkeys"; title: string; compact?: boolean }
+  | { kind: "theme"; title: string; compact?: boolean }
   | { kind: "character"; title: string; characterId?: string; mode: "view" | "create"; compact?: boolean };
 
 type WorldMemberManageRole = "PLAYER" | "ASSISTANT" | "OBSERVER" | "GM";
@@ -1227,6 +1232,15 @@ export default function WorldPage() {
 
       setWorldName(worldData?.name || "世界");
       setMyRole(worldData?.myRole ?? null);
+      // 应用 GM 设置的世界级风格（最高优先级覆盖玩家偏好）
+      {
+        const rawPack = worldData?.themePack ?? null;
+        const safePack: ThemePackId | null = rawPack && isKnownThemePack(rawPack) ? (rawPack as ThemePackId) : null;
+        useThemeStore.getState().enterWorld({
+          worldPack: safePack,
+          forcedByGM: !!(safePack && worldData?.themePackForcedByGM),
+        });
+      }
       setCharacters(characterItems);
       setScenes(sceneItems);
       setWorldRoster(rosterItems);
@@ -1530,6 +1544,11 @@ export default function WorldPage() {
 
   const openHotkeyOverlay = () => {
     openOverlay({ kind: "hotkeys", title: "快捷键设置" });
+    setSystemPanelCollapsed(false);
+  };
+
+  const openThemeOverlay = () => {
+    openOverlay({ kind: "theme", title: "设计风格" });
     setSystemPanelCollapsed(false);
   };
 
@@ -2549,6 +2568,8 @@ export default function WorldPage() {
       socket.off(SOCKET_EVENTS.sceneTokenMoved, onTokenMoved);
       socket.off(SOCKET_EVENTS.worldMessageNew, onWorldMessageNew);
       disconnectSocket();
+      // 离开世界 → 恢复到玩家个人偏好
+      useThemeStore.getState().leaveWorld();
     };
   }, [token, worldId]);
 
@@ -3146,6 +3167,40 @@ export default function WorldPage() {
     </div>
   );
 
+  const themeEffective = useThemeStore((s) => s.effective);
+  const themeUserPref = useThemeStore((s) => s.userPreference);
+  const themeWorldPack = useThemeStore((s) => s.worldPack);
+  const themeWorldForced = useThemeStore((s) => s.worldPackForcedByGM);
+  const themeSetUserPref = useThemeStore((s) => s.setUserPreference);
+  const themeEnterWorld = useThemeStore((s) => s.enterWorld);
+
+  const onSaveWorldThemePack = async (input: { themePack: ThemePackId | null; forced: boolean }) => {
+    if (!worldId) return;
+    // 立即在客户端预览（即使后端 API 尚未连通也可看到效果）
+    themeEnterWorld({ worldPack: input.themePack, forcedByGM: !!(input.themePack && input.forced) });
+    try {
+      await http.patch(`/worlds/${worldId}/theme`, {
+        themePack: input.themePack,
+        themePackForcedByGM: input.forced,
+      });
+    } catch (err) {
+      // 后端尚未实装时静默失败：本地 store 已生效，刷新会回滚。
+      console.warn("[theme] 世界级风格保存失败（后端可能尚未实装）", err);
+    }
+  };
+
+  const renderThemePickerOverlay = () => (
+    <ThemePickerOverlay
+      effective={themeEffective}
+      userPreference={themeUserPref}
+      worldPack={themeWorldPack}
+      worldPackForcedByGM={themeWorldForced}
+      isGm={isGm}
+      onPickUserPack={themeSetUserPref}
+      onSaveWorldPack={isGm ? onSaveWorldThemePack : undefined}
+    />
+  );
+
   const renderSystemTab = () => (
     <div className="world-system-config-page">
       <div className="world-system-section-title">
@@ -3203,6 +3258,10 @@ export default function WorldPage() {
           ) : null}
           <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={openHotkeyOverlay}>
             <span className="world-system-action-btn__title">快捷键设置</span>
+            <span className="world-system-action-btn__arrow">›</span>
+          </button>
+          <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={openThemeOverlay}>
+            <span className="world-system-action-btn__title">设计风格</span>
             <span className="world-system-action-btn__arrow">›</span>
           </button>
         </div>
@@ -3662,6 +3721,8 @@ export default function WorldPage() {
                 saveWorldHotkeyBindings(worldId, user?.id, nextBindings);
               }}
             />
+          ) : activeOverlay.kind === "theme" ? (
+            renderThemePickerOverlay()
           ) : activeOverlay.kind === "character" ? (
             renderCharacterSheetOverlay(activeOverlay)
           ) : null}

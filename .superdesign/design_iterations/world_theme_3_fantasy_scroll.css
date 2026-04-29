@@ -1,0 +1,150 @@
+/* ============================================================
+   AAF World Theme 3 — 幻想绘卷 Fantasy Scroll
+   Parchment + ink-blue + soft gold (storybook hand-drawn JRPG)
+   ============================================================ */
+:root {
+  --fs-parchment: #f5ecd6;
+  --fs-parchment-2: #ede1c2;
+  --fs-parchment-3: #e3d4ac;
+  --fs-paper-shadow: rgba(108, 78, 30, 0.20);
+  --fs-ink: #2c3e72;
+  --fs-ink-soft: #4a5e91;
+  --fs-ink-mute: #8a7d62;
+  --fs-line: #c8b889;
+  --fs-line-soft: #ddcfa3;
+  --fs-gold: #c79a3a;
+  --fs-gold-deep: #8b6418;
+  --fs-rose: #b94a6a;
+  --fs-leaf: #5e8c4f;
+
+  --fs-grad-paper:
+    radial-gradient(1200px 600px at 50% 0%, #fbf6e5, transparent 65%),
+    linear-gradient(180deg, #f5ecd6 0%, #e9dcb6 100%);
+  --fs-grad-ink: linear-gradient(180deg, #4a5e91, #2c3e72);
+  --fs-grad-gold: linear-gradient(180deg, #f0d27e, #c79a3a);
+
+  --fs-font-heading: "Noto Serif SC", "Playfair Display", "Lora", serif;
+  --fs-font-body: "Noto Serif SC", "Lora", "Source Serif Pro", serif;
+
+  --fs-radius: 4px;
+  --fs-radius-lg: 10px;
+  --fs-shadow-paper: 0 6px 16px rgba(108, 78, 30, 0.18), 0 0 0 1px rgba(199,154,58,0.15) inset;
+  --fs-shadow-deep: 0 14px 36px rgba(108, 78, 30, 0.28), 0 0 0 1px var(--fs-gold) inset;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin:0; padding:0;
+  font-family: var(--fs-font-body);
+  color: var(--fs-ink);
+  background:
+    /* paper grain */
+    radial-gradient(circle at 30% 20%, rgba(108,78,30,0.05) 1px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(108,78,30,0.04) 1px, transparent 2px),
+    var(--fs-grad-paper);
+  background-size: 120px 120px, 90px 90px, 100% 100%;
+  min-height: 100vh;
+}
+
+/* Scroll panel — top/bottom rolled edges */
+.fs-panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0)) ,
+    var(--fs-parchment);
+  border: 1px solid var(--fs-line);
+  border-radius: var(--fs-radius-lg);
+  box-shadow: var(--fs-shadow-paper);
+}
+.fs-panel--scroll::before,
+.fs-panel--scroll::after {
+  content:""; position: absolute; left: -6px; right: -6px; height: 14px;
+  background: linear-gradient(180deg, var(--fs-parchment-3), var(--fs-parchment));
+  border: 1px solid var(--fs-line);
+  border-radius: 14px;
+  box-shadow: var(--fs-shadow-paper);
+}
+.fs-panel--scroll::before { top: -8px; }
+.fs-panel--scroll::after  { bottom: -8px; }
+
+.fs-title {
+  font-family: var(--fs-font-heading);
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--fs-ink);
+}
+
+/* Buttons — like printed seals */
+.fs-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 6px 14px;
+  background: linear-gradient(180deg, #fff, var(--fs-parchment-2));
+  border: 1px solid var(--fs-line);
+  border-radius: var(--fs-radius);
+  color: var(--fs-ink);
+  font-family: var(--fs-font-body); font-weight: 600; font-size: 13px;
+  cursor: pointer;
+  transition: all .18s;
+  position: relative;
+}
+.fs-btn:hover { border-color: var(--fs-gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(199,154,58,0.25);}
+.fs-btn--ink {
+  background: var(--fs-grad-ink);
+  color: #fff8e0; border-color: var(--fs-ink);
+}
+.fs-btn--seal {
+  background: var(--fs-grad-gold);
+  color: var(--fs-gold-deep); border-color: var(--fs-gold-deep);
+  font-family: var(--fs-font-heading);
+}
+.fs-btn--ghost { background: transparent; }
+
+.fs-chip {
+  display:inline-flex; padding: 2px 8px;
+  font-size: 11px; font-weight: 600;
+  border-radius: var(--fs-radius);
+  background: rgba(199,154,58,0.18);
+  color: var(--fs-gold-deep);
+  border: 1px solid var(--fs-line);
+}
+.fs-chip--ink { background: rgba(44,62,114,0.10); color: var(--fs-ink); border-color: var(--fs-ink-soft); }
+.fs-chip--rose { background: rgba(185,74,106,0.12); color: var(--fs-rose); border-color: rgba(185,74,106,0.4);}
+
+/* Bars */
+.fs-bar { height: 8px; background: var(--fs-parchment-3); border-radius: 999px; border: 1px solid var(--fs-line); overflow:hidden; }
+.fs-bar > i { display:block; height:100%; }
+.fs-bar.hp > i { background: linear-gradient(90deg, #6cb15c, var(--fs-leaf));}
+.fs-bar.mp > i { background: var(--fs-grad-ink);}
+.fs-bar.tp > i { background: var(--fs-grad-gold);}
+
+/* Hand-drawn divider */
+.fs-divider {
+  height: 14px; margin: 6px 12px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--fs-gold) 3px, transparent 4px),
+    linear-gradient(90deg, transparent 0, var(--fs-line) 30%, var(--fs-line) 70%, transparent 100%);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* Seal / wax stamp */
+.fs-seal {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #d8b25a, #8b6418 80%);
+  color: #fff8e0;
+  display:flex; align-items:center; justify-content:center;
+  font-family: var(--fs-font-heading); font-weight: 700;
+  box-shadow: 0 4px 10px rgba(108,78,30,0.4), 0 0 0 2px var(--fs-parchment) inset;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width:10px; height:10px; }
+::-webkit-scrollbar-thumb { background: var(--fs-line); border-radius: 999px; border: 2px solid var(--fs-parchment);}
+::-webkit-scrollbar-track { background: var(--fs-parchment-2);}
+
+/* Animations */
+@keyframes fs-unfold { from{transform: scaleY(0.6); opacity:0; transform-origin: top;} to{transform: none; opacity:1;} }
+@keyframes fs-pen { 0%{stroke-dashoffset: 100;} 100%{stroke-dashoffset:0;} }
+@keyframes fs-wave { 0%,100%{transform: translateY(0);} 50%{transform: translateY(-2px);} }
+.fs-anim-unfold { animation: fs-unfold .45s ease-out both; }
+.fs-anim-wave { animation: fs-wave 3s ease-in-out infinite; }

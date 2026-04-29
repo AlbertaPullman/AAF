@@ -220,6 +220,42 @@ export async function getWorldDetail(req: Request, res: Response) {
   }
 }
 
+export async function patchWorldTheme(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const { themePack, themePackForcedByGM } = req.body ?? {};
+    const result = await worldService.updateWorldThemePack(req.params.worldId, req.userId, {
+      themePack: typeof themePack === "string" ? themePack : null,
+      themePackForcedByGM: !!themePackForcedByGM
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      error: null,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    const status = message === "world not found" ? 404 : message === "forbidden" ? 403 : 400;
+    res.status(status).json({
+      success: false,
+      data: null,
+      error: { code: "WORLD_THEME_UPDATE_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
 export async function getWorldMemberManage(req: Request, res: Response) {
   try {
     if (!req.userId) {

@@ -96,28 +96,34 @@ export const FateClockWidget: React.FC<FateClockWidgetProps> = ({
   return (
     <div className={`fate-clock fate-clock--${status}`} aria-label={`命刻: ${name}`}>
       <div className="fate-clock__header">
-        <h4 className="fate-clock__name">{name}</h4>
+        <span className="fate-clock__label-cn">命 运 刻 度</span>
         <span className="fate-clock__meta">
-          {dirLabel} · {statusLabel} · {filledSegments}/{segments}
+          {dirLabel} · {statusLabel}
         </span>
       </div>
 
-      <svg className="fate-clock__ring" viewBox="0 0 100 100" aria-hidden="true">
-        {segmentPaths.map((seg, i) => (
-          <path
-            key={i}
-            d={seg.d}
-            className={[
-              "fate-clock__segment",
-              seg.filled && "fate-clock__segment--filled",
-              seg.isThreshold && "fate-clock__segment--threshold",
-            ].filter(Boolean).join(" ")}
-          />
-        ))}
-        <text x={cx} y={cy + 4} textAnchor="middle" className="fate-clock__center-text">
-          {filledSegments}
-        </text>
-      </svg>
+      <div className="fate-clock__dial">
+        <svg className="fate-clock__ring" viewBox="0 0 100 100" aria-hidden="true">
+          {segmentPaths.map((seg, i) => (
+            <path
+              key={i}
+              d={seg.d}
+              className={[
+                "fate-clock__segment",
+                seg.filled && "fate-clock__segment--filled",
+                seg.isThreshold && "fate-clock__segment--threshold",
+              ].filter(Boolean).join(" ")}
+            />
+          ))}
+        </svg>
+        <div className="fate-clock__dial-inner">
+          <div className="fate-clock__dial-num">
+            {filledSegments}
+            <small>/{segments}</small>
+          </div>
+          <div className="fate-clock__dial-name" title={name}>{name}</div>
+        </div>
+      </div>
 
       {description && <p className="fate-clock__desc">{description}</p>}
 

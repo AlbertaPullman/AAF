@@ -8,7 +8,8 @@ import {
   getWorldRoster,
   joinWorld,
   listWorlds,
-  patchWorldMemberManage
+  patchWorldMemberManage,
+  patchWorldTheme
 } from "../controllers/world.controller";
 import { getWorldCharacters, postWorldCharacter, putWorldCharacter } from "../controllers/character.controller";
 import {
@@ -107,6 +108,7 @@ export const worldRoutes = Router();
 worldRoutes.get("/", authMiddleware, listWorlds);
 worldRoutes.post("/", authMiddleware, createWorld);
 worldRoutes.get("/:worldId", authMiddleware, getWorldDetail);
+worldRoutes.patch("/:worldId/theme", authMiddleware, patchWorldTheme);
 worldRoutes.post("/:worldId/join", authMiddleware, joinWorld);
 worldRoutes.delete("/:worldId", authMiddleware, deleteWorld);
 worldRoutes.get("/:worldId/roster", authMiddleware, getWorldRoster);

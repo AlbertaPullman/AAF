@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AAF · 幻想绘卷 Fantasy Scroll</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700;900&family=Playfair+Display:wght@500;700&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="./world_theme_3_fantasy_scroll.css" />
+<style>
+  .world-grid {
+    display: grid;
+    grid-template-columns: 220px 1fr 320px;
+    grid-template-rows: 64px 1fr 110px;
+    gap: 14px;
+    padding: 16px;
+    height: 100vh;
+  }
+  .area-top { grid-column: 1 / 4; grid-row: 1; }
+  .area-left { grid-column: 1; grid-row: 2; }
+  .area-stage { grid-column: 2; grid-row: 2; }
+  .area-right { grid-column: 3; grid-row: 2; }
+  .area-bottom { grid-column: 1 / 4; grid-row: 3; }
+
+  .stage-canvas {
+    position: relative; height: 100%; border-radius: var(--fs-radius-lg);
+    background:
+      radial-gradient(800px 400px at 50% 30%, #fff8e0 0%, transparent 60%),
+      repeating-linear-gradient(0deg, rgba(108,78,30,0.07) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(90deg, rgba(108,78,30,0.07) 0 1px, transparent 1px 48px),
+      var(--fs-parchment);
+    border: 2px solid var(--fs-gold);
+    box-shadow: var(--fs-shadow-deep);
+    overflow: hidden;
+  }
+  .token { position:absolute; width:46px; height:46px; border-radius:50%; border:3px solid var(--fs-parchment); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-family: var(--fs-font-heading); box-shadow: 0 4px 8px rgba(108,78,30,0.4);}
+  .token.t1 { background: var(--fs-grad-ink); top:38%; left:30%;}
+  .token.t2 { background: linear-gradient(180deg,#d4744f,#a8431f); top:50%; left:42%;}
+  .token.t3 { background: linear-gradient(180deg,#7a5fb4,#3d2c70); top:30%; left:55%;}
+  .token.enemy { background: linear-gradient(180deg,#3a2e22,#1a130b); top:22%; left:70%; border-color: var(--fs-rose);}
+  .aoe { position:absolute; width:170px; height:170px; border-radius:50%; top:18%; left:50%; background: radial-gradient(closest-side, rgba(199,154,58,0.30), transparent 70%); border: 3px dashed var(--fs-gold);}
+
+  .top-bar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 8px 16px;
+    border-radius: var(--fs-radius-lg);
+    border: 2px solid var(--fs-gold);
+    background: var(--fs-parchment);
+    box-shadow: var(--fs-shadow-paper);
+    position: relative;
+  }
+  .fate-clock {
+    display:flex; align-items:center; gap:10px;
+    padding: 6px 14px;
+    background: var(--fs-grad-gold);
+    border: 1px solid var(--fs-gold-deep);
+    border-radius: var(--fs-radius);
+    font-family: var(--fs-font-heading);
+    color: var(--fs-gold-deep);
+  }
+  .fate-clock .dot { width:8px; height:8px; border-radius:50%; background: var(--fs-rose);}
+
+  .battle-seq {
+    margin-top: 10px;
+    display:flex; gap:8px; align-items:center; padding: 8px 14px;
+    border-radius: var(--fs-radius-lg);
+    background: var(--fs-parchment);
+    border: 1px dashed var(--fs-gold);
+  }
+  .seq-pill {
+    padding:4px 10px; border-radius: var(--fs-radius);
+    background: #fff; border: 1px solid var(--fs-line);
+    font-size: 12px; font-weight:600; color: var(--fs-ink);
+    font-family: var(--fs-font-heading);
+  }
+  .seq-pill.active { background: var(--fs-grad-ink); color: #fff; border-color: var(--fs-ink); }
+
+  /* Party scroll cards */
+  .party-card { display:flex; gap:10px; align-items:center; padding: 8px 12px; }
+  .party-card + .party-card { border-top: 1px dashed var(--fs-line);}
+  .party-card .name { font-family: var(--fs-font-heading); font-weight: 700; font-size: 14px;}
+
+  /* Right system */
+  .sys-tabs { padding: 12px 8px; display:flex; flex-direction:column; gap:8px; align-items:center; border-right: 1px dashed var(--fs-line);}
+  .sys-tab {
+    width: 50px; padding: 8px 6px;
+    text-align:center; cursor: pointer;
+    font-family: var(--fs-font-heading); font-size: 14px;
+    background: var(--fs-parchment);
+    border: 1px solid var(--fs-line);
+    border-radius: var(--fs-radius);
+    color: var(--fs-ink);
+    transition: all .18s; position: relative;
+  }
+  .sys-tab:hover { border-color: var(--fs-gold); transform: translateY(-1px);}
+  .sys-tab.active { background: var(--fs-grad-gold); color: var(--fs-gold-deep); border-color: var(--fs-gold-deep); font-weight:700; }
+  .sys-tab .badge { position:absolute; top:-4px; right:-4px; width:16px; height:16px; border-radius:50%; background: var(--fs-rose); color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center; font-family: var(--fs-font-body);}
+
+  .sys-body { display:flex; height:100%;}
+  .sys-content { flex:1; padding: 12px; overflow:auto;}
+
+  /* HUD — handwritten feel */
+  .hud {
+    display:flex; align-items:center; gap:12px; padding: 8px 14px;
+    border-radius: var(--fs-radius-lg);
+    border: 2px solid var(--fs-gold);
+    background: var(--fs-parchment);
+    box-shadow: var(--fs-shadow-deep);
+    position: relative;
+  }
+  .hud-slot {
+    width:54px; height:54px; border-radius: var(--fs-radius);
+    background: linear-gradient(180deg,#fff, var(--fs-parchment-2));
+    border: 1.5px solid var(--fs-line);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-family: var(--fs-font-heading);
+    color: var(--fs-ink); position:relative; cursor: pointer;
+    transition: all .15s;
+  }
+  .hud-slot:hover { border-color: var(--fs-gold); transform: translateY(-2px); }
+  .hud-slot.filled { background: var(--fs-grad-ink); color: #fff8e0; border-color: var(--fs-ink);}
+  .hud-slot .key { position:absolute; bottom:1px; right:3px; font-size:9px; opacity:.6; font-family: var(--fs-font-body);}
+
+  .hud-divider { width:1px; height:42px; background: var(--fs-line);}
+  .hud-tab {
+    padding: 6px 10px; border:1px solid var(--fs-line); background: var(--fs-parchment);
+    border-radius: var(--fs-radius); font-family: var(--fs-font-heading); font-size: 12px; cursor:pointer;
+  }
+  .hud-tab.active { background: var(--fs-grad-gold); color: var(--fs-gold-deep); border-color: var(--fs-gold-deep);}
+
+  /* Tool window — like opened scroll */
+  .tool-window {
+    position: absolute; width: 320px;
+    background: var(--fs-parchment);
+    border: 2px solid var(--fs-gold);
+    border-radius: var(--fs-radius-lg);
+    box-shadow: var(--fs-shadow-deep);
+    overflow: hidden;
+  }
+  .tool-window header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 8px 12px;
+    background: var(--fs-grad-gold);
+    color: var(--fs-gold-deep);
+    border-bottom: 1px solid var(--fs-gold-deep);
+    cursor: grab;
+  }
+  .tool-window h4 { margin:0; font-family: var(--fs-font-heading); font-size:13px; letter-spacing:.06em;}
+  .tool-window .body { padding: 12px; max-height: 280px; overflow:auto; font-size: 12px;}
+
+  .dmg-float { position:absolute; font-family: var(--fs-font-heading); font-weight:900; color: var(--fs-rose); text-shadow: 1px 1px 0 #fff8e0; animation: dmgRise 1.6s ease-out forwards; }
+  @keyframes dmgRise { 0%{transform:translateY(0); opacity:0;} 15%{opacity:1;} 100%{transform:translateY(-40px); opacity:0;} }
+
+  .label { font-family: var(--fs-font-heading); font-size: 11px; letter-spacing:.18em; color: var(--fs-ink-mute); padding: 6px 12px;}
+</style>
+</head>
+<body>
+<div class="world-grid">
+  <!-- TOP -->
+  <div class="area-top">
+    <div class="top-bar">
+      <div class="flex items-center gap-3">
+        <div class="fate-clock"><span class="dot"></span><span>命刻 · 廿三时一刻</span></div>
+        <span class="fs-chip fs-chip--ink">第三章</span>
+        <span class="fs-chip">在 · 四</span>
+      </div>
+      <div style="font-family:var(--fs-font-heading); font-weight:900; font-size:22px; letter-spacing:.2em; color:var(--fs-gold-deep);">幻 想 绘 卷 · 翡翠群岛</div>
+      <div class="flex gap-2">
+        <button class="fs-btn"><i data-lucide="settings" class="w-4 h-4"></i>设置</button>
+        <button class="fs-btn"><i data-lucide="keyboard" class="w-4 h-4"></i>快捷</button>
+        <button class="fs-btn fs-btn--ghost"><i data-lucide="log-out" class="w-4 h-4"></i>归乡</button>
+      </div>
+    </div>
+    <div class="battle-seq fs-anim-unfold">
+      <span style="font-family:var(--fs-font-heading); font-weight:700; color:var(--fs-gold-deep);">⚜ 先攻顺序 ⚜</span>
+      <span class="seq-pill active">壹 ▶ 莉娅</span>
+      <span class="seq-pill">贰 拉尔夫</span>
+      <span class="seq-pill">叁 龙骑士</span>
+      <span class="seq-pill">肆 暗影</span>
+      <span class="seq-pill">伍 法师</span>
+      <span class="seq-pill" style="opacity:.55;">陆 哥布林·王</span>
+      <div class="flex-1"></div>
+      <button class="fs-btn fs-btn--seal"><i data-lucide="skip-forward" class="w-4 h-4"></i>结束此回</button>
+    </div>
+  </div>
+
+  <!-- LEFT -->
+  <div class="area-left fs-panel fs-panel--scroll overflow-hidden flex flex-col" style="margin-top:8px; margin-bottom:8px;">
+    <div class="label">队 伍 · 同 行 者</div>
+    <div class="overflow-auto" style="flex:1;">
+      <div class="party-card">
+        <div class="fs-seal">莉</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between"><span class="name">莉娅</span><span class="text-xs" style="color:var(--fs-ink-mute);">阶 12</span></div>
+          <div class="fs-bar hp mt-1"><i style="width:78%"></i></div>
+          <div class="fs-bar mp mt-1"><i style="width:54%"></i></div>
+        </div>
+      </div>
+      <div class="party-card">
+        <div class="fs-seal" style="background: radial-gradient(circle at 30% 30%, #e08e6a, #802f0f 80%);">拉</div>
+        <div class="flex-1">
+          <div class="flex justify-between"><span class="name">拉尔夫</span><span class="text-xs" style="color:var(--fs-ink-mute);">阶 11</span></div>
+          <div class="fs-bar hp mt-1"><i style="width:62%"></i></div>
+          <div class="fs-bar mp mt-1"><i style="width:30%"></i></div>
+        </div>
+      </div>
+      <div class="party-card">
+        <div class="fs-seal" style="background: radial-gradient(circle at 30% 30%, #a78bd6, #4a2f88 80%);">龙</div>
+        <div class="flex-1">
+          <div class="flex justify-between"><span class="name">龙骑士</span><span class="text-xs" style="color:var(--fs-ink-mute);">阶 13</span></div>
+          <div class="fs-bar hp mt-1"><i style="width:90%"></i></div>
+          <div class="fs-bar mp mt-1"><i style="width:75%"></i></div>
+        </div>
+      </div>
+      <div class="text-center text-xs mx-3 my-2 p-2 border border-dashed rounded cursor-pointer" style="border-color:var(--fs-line); color:var(--fs-ink-mute);">＋ 招 新 友</div>
+    </div>
+    <div class="fs-divider"></div>
+    <div class="label">同 行 在 此</div>
+    <div class="px-3 pb-3 text-xs space-y-1">
+      <div class="flex items-center gap-2"><span class="fs-chip">主</span> Nubes</div>
+      <div class="flex items-center gap-2"><span class="fs-chip fs-chip--ink">客</span> Aria</div>
+      <div class="flex items-center gap-2"><span class="fs-chip fs-chip--ink">客</span> Ralph</div>
+      <div class="flex items-center gap-2"><span class="fs-chip" style="opacity:.5;">观</span> Visitor</div>
+    </div>
+  </div>
+
+  <!-- STAGE -->
+  <div class="area-stage stage-canvas">
+    <div class="aoe"></div>
+    <div class="token t1">莉</div>
+    <div class="token t2">拉</div>
+    <div class="token t3">龙</div>
+    <div class="token enemy">敌</div>
+    <div class="dmg-float" style="top:22%; left:72%; font-size:30px;">壹貳捌</div>
+    <div class="dmg-float" style="top:32%; left:74%; font-size:14px; animation-delay:.2s;">极！</div>
+
+    <div class="tool-window fs-anim-unfold" style="top:24px; right:24px;">
+      <header><h4>书 卷 · 能 力</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body space-y-2">
+        <div class="flex justify-between p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);"><span>火 球 术</span><span class="fs-chip">阶三</span></div>
+        <div class="flex justify-between p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);"><span>圣 光 治 疗</span><span class="fs-chip">阶二</span></div>
+        <div class="flex justify-between p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);"><span>破 甲 斩</span><span class="fs-chip">阶一</span></div>
+      </div>
+    </div>
+
+    <div class="tool-window fs-anim-unfold" style="bottom:24px; left:24px; width:320px;">
+      <header><h4>结 算 卷 · 火 球 术</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body">
+        <div class="mb-2">施法者 <b>莉娅</b> 点向 <b>哥布林·王</b></div>
+        <div class="p-2 rounded mb-2" style="background:#fff; border:1px solid var(--fs-line);">命中 1d20+5 = <b style="color:var(--fs-leaf);">17 ✓</b></div>
+        <div class="p-2 rounded mb-2" style="background:#fff; border:1px solid var(--fs-line);">伤害 2d8+3 火焰 = <b style="color:var(--fs-rose);">14</b></div>
+        <div class="flex gap-2"><button class="fs-btn fs-btn--seal flex-1">落印</button><button class="fs-btn flex-1">封卷</button></div>
+      </div>
+    </div>
+
+    <div class="tool-window" style="top:55%; left:38%; width:230px;">
+      <header><h4>解 注 · 晕 眩</h4></header>
+      <div class="body">
+        <p>失去稳定行动节奏，下回合先攻 −5。</p>
+        <div class="flex gap-1 mt-2"><span class="fs-chip">控制</span><span class="fs-chip">两回合</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="area-right fs-panel fs-panel--scroll overflow-hidden" style="margin-top:8px; margin-bottom:8px;">
+    <div class="sys-body">
+      <div class="sys-tabs">
+        <div class="sys-tab" title="聊">聊<span class="badge">3</span></div>
+        <div class="sys-tab">战</div>
+        <div class="sys-tab active">景</div>
+        <div class="sys-tab">角</div>
+        <div class="sys-tab">包</div>
+        <div class="sys-tab">系</div>
+      </div>
+      <div class="sys-content">
+        <div class="fs-title text-sm mb-2">景 · 风之回廊</div>
+        <div class="fs-divider"></div>
+
+        <div class="text-xs space-y-2">
+          <div class="p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);">
+            <div class="flex justify-between items-center"><span><b>当前章节：</b>风之回廊</span><button class="fs-btn">改</button></div>
+          </div>
+          <div class="p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);">
+            <div class="font-bold mb-1">天 候</div>
+            <div class="grid grid-cols-3 gap-1">
+              <button class="fs-btn">日</button><button class="fs-btn fs-btn--seal">暮</button><button class="fs-btn">夜</button>
+            </div>
+          </div>
+          <div class="p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);">
+            <div class="font-bold mb-1">棋 子</div>
+            <div class="grid grid-cols-2 gap-1">
+              <button class="fs-btn">＋ 落子</button>
+              <button class="fs-btn">摹本</button>
+              <button class="fs-btn">复印</button>
+              <button class="fs-btn">拭去</button>
+            </div>
+          </div>
+          <div class="p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);">
+            <div class="font-bold mb-1">测 量</div>
+            <div class="flex gap-1"><button class="fs-btn">直</button><button class="fs-btn">圆</button><button class="fs-btn">扇</button></div>
+          </div>
+          <div class="p-2 rounded" style="background:#fff; border:1px solid var(--fs-line);">
+            <div class="font-bold mb-1">章 节 列</div>
+            <ul class="space-y-1">
+              <li class="flex justify-between"><span>· 风之回廊</span><span class="fs-chip">在</span></li>
+              <li class="flex justify-between"><span>· 旧城广场</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+              <li class="flex justify-between"><span>· 殿之奥</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div class="area-bottom hud">
+    <div class="flex flex-col items-start">
+      <span class="text-[11px]" style="color:var(--fs-ink-mute); letter-spacing:.18em;">行 者</span>
+      <span class="font-bold" style="font-family:var(--fs-font-heading); color:var(--fs-gold-deep); font-size:16px;">莉娅 · 第壹回</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex gap-2">
+      <div class="hud-slot filled">火<span class="key">1</span></div>
+      <div class="hud-slot filled">圣<span class="key">2</span></div>
+      <div class="hud-slot filled">斩<span class="key">3</span></div>
+      <div class="hud-slot">＋<span class="key">4</span></div>
+      <div class="hud-slot">＋<span class="key">5</span></div>
+      <div class="hud-slot">＋<span class="key">6</span></div>
+      <div class="hud-slot">＋<span class="key">7</span></div>
+      <div class="hud-slot">＋<span class="key">8</span></div>
+      <div class="hud-slot">＋<span class="key">9</span></div>
+      <div class="hud-slot">＋<span class="key">0</span></div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex flex-col gap-1 text-[11px]">
+      <div class="flex items-center gap-2"><span style="width:24px; color:var(--fs-ink-mute);">命</span><div class="fs-bar hp" style="width:120px;"><i style="width:78%"></i></div></div>
+      <div class="flex items-center gap-2"><span style="width:24px; color:var(--fs-ink-mute);">魔</span><div class="fs-bar mp" style="width:120px;"><i style="width:54%"></i></div></div>
+      <div class="flex items-center gap-2"><span style="width:24px; color:var(--fs-ink-mute);">气</span><div class="fs-bar tp" style="width:120px;"><i style="width:62%"></i></div></div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex gap-1">
+      <div class="hud-tab active">人</div>
+      <div class="hud-tab">袋</div>
+      <div class="hud-tab">能</div>
+      <div class="hud-tab">志</div>
+    </div>
+    <div class="flex-1"></div>
+    <div class="flex gap-2">
+      <button class="fs-btn fs-btn--seal"><i data-lucide="sword" class="w-4 h-4"></i>结 束 此 回</button>
+      <button class="fs-btn"><i data-lucide="shield" class="w-4 h-4"></i>守 势</button>
+      <button class="fs-btn"><i data-lucide="footprints" class="w-4 h-4"></i>退 走</button>
+    </div>
+  </div>
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

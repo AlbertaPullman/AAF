@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AAF · 苍辉骑士团 Azure Knights</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="./world_theme_2_azure_knights.css" />
+<style>
+  .world-grid {
+    display: grid;
+    grid-template-columns: 220px 1fr 320px;
+    grid-template-rows: 64px 1fr 110px;
+    gap: 10px;
+    padding: 10px;
+    height: 100vh;
+  }
+  .area-top { grid-column: 1 / 4; grid-row: 1; }
+  .area-left { grid-column: 1; grid-row: 2; }
+  .area-stage { grid-column: 2; grid-row: 2; }
+  .area-right { grid-column: 3; grid-row: 2; }
+  .area-bottom { grid-column: 1 / 4; grid-row: 3; }
+
+  .stage-canvas {
+    position: relative; height: 100%; border-radius: var(--ak-radius);
+    background:
+      radial-gradient(900px 400px at 50% 0%, rgba(93,177,255,0.20), transparent 65%),
+      repeating-linear-gradient(0deg, rgba(214,220,236,0.05) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(90deg, rgba(214,220,236,0.05) 0 1px, transparent 1px 48px),
+      var(--ak-grad-deep);
+    border: 1px solid var(--ak-line); overflow:hidden;
+    box-shadow: var(--ak-shadow-deep);
+  }
+  .token { position:absolute; width:42px; height:42px; border-radius:50%; border:2px solid var(--ak-silver); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:12px; box-shadow: 0 4px 14px rgba(0,0,0,.5);}
+  .token.t1 { background: linear-gradient(180deg,#5db1ff,#1a4cb8); top:38%; left:30%;}
+  .token.t2 { background: linear-gradient(180deg,#ff8c5a,#c94c1a); top:50%; left:42%;}
+  .token.t3 { background: linear-gradient(180deg,#9d6dff,#5b2fd1); top:30%; left:55%;}
+  .token.enemy { background: linear-gradient(180deg,#3a4659,#0d121a); top:22%; left:70%; border-color: var(--ak-crimson);}
+  .aoe { position:absolute; width:170px; height:170px; border-radius:50%; top:18%; left:50%; background: radial-gradient(closest-side, rgba(245,166,35,0.26), transparent 70%); border: 2px dashed var(--ak-amber);}
+
+  .top-bar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 14px;
+    border-radius: var(--ak-radius);
+    border: 1px solid var(--ak-line);
+    background: linear-gradient(180deg, rgba(36,58,102,0.85), rgba(11,20,38,0.85));
+    box-shadow: var(--ak-shadow-deep);
+    border-top: 2px solid var(--ak-amber);
+  }
+  .fate-clock {
+    display:flex; align-items:center; gap:10px;
+    padding: 6px 14px; border-radius: 4px;
+    background: rgba(11,20,38,0.85);
+    border: 1px solid var(--ak-amber);
+    font-family: var(--ak-font-heading); letter-spacing:.08em;
+  }
+  .fate-clock .dot { width:8px; height:8px; border-radius:50%; background: var(--ak-amber); animation: ak-glow 2s infinite; }
+
+  .battle-seq {
+    margin-top: 6px;
+    display:flex; gap:6px; align-items:center; padding: 8px 12px;
+    border-radius: var(--ak-radius);
+    background: rgba(11,20,38,0.85);
+    border: 1px solid var(--ak-line-soft);
+  }
+  .seq-pill { padding:4px 10px; border-radius:4px; background: var(--ak-bg-2); border:1px solid var(--ak-line); font-size:11px; font-weight:600; color: var(--ak-text-soft);}
+  .seq-pill.active { background: var(--ak-grad-amber); color:#321500; border-color: var(--ak-amber); }
+
+  /* System tabs (medals) */
+  .sys-body { display:flex; height: 100%; }
+  .sys-tabs { padding: 12px 8px; display:flex; flex-direction:column; gap:10px; align-items:center; border-right: 1px solid var(--ak-line); }
+  .sys-content { flex:1; padding: 12px; overflow:auto; }
+  .sys-content h3 { font-family: var(--ak-font-heading); font-size: 12px; letter-spacing:.14em; text-transform: uppercase; color: var(--ak-silver); margin: 0 0 10px;}
+
+  /* HUD */
+  .hud {
+    display:flex; align-items:center; gap:10px; padding: 8px 14px;
+    border-radius: var(--ak-radius);
+    border: 1px solid var(--ak-amber);
+    background: linear-gradient(180deg, rgba(36,58,102,0.85), rgba(11,20,38,0.92));
+    box-shadow: var(--ak-shadow-amber);
+    border-top: 2px solid var(--ak-amber);
+  }
+  .hud-slot {
+    width:54px; height:54px; border-radius: 4px;
+    background: var(--ak-bg-2); border: 1px solid var(--ak-line-soft);
+    display:flex; align-items:center; justify-content:center;
+    color: var(--ak-text-soft); font-weight:700;
+    position:relative; cursor:pointer;
+    transition: all .15s;
+  }
+  .hud-slot:hover { border-color: var(--ak-cyan); box-shadow: var(--ak-glow-cyan); transform: translateY(-2px);}
+  .hud-slot.filled { background: linear-gradient(180deg,#5db1ff,#1a4cb8); color:#fff; border-color: transparent; }
+  .hud-slot .key { position:absolute; bottom:2px; right:4px; font-size:10px; opacity:.6;}
+  .hud-divider { width:1px; height:42px; background: var(--ak-line-soft);}
+  .hud-tab { padding:6px 10px; border-radius: 4px; border:1px solid var(--ak-line-soft); background: var(--ak-bg-2); font-size:12px; cursor:pointer; }
+  .hud-tab.active { background: var(--ak-grad-amber); border-color: var(--ak-amber); color:#321500;}
+
+  /* Tool window */
+  .tool-window {
+    position: absolute; width: 320px;
+    background: linear-gradient(180deg, rgba(28,44,77,0.96), rgba(11,20,38,0.96));
+    border: 1px solid var(--ak-amber);
+    border-radius: var(--ak-radius);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.55), var(--ak-shadow-amber);
+    overflow: hidden;
+  }
+  .tool-window header { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background: linear-gradient(180deg, rgba(245,166,35,0.18), transparent); border-bottom: 1px solid var(--ak-line-soft); cursor: grab;}
+  .tool-window h4 { margin:0; font-family: var(--ak-font-heading); font-size: 12px; letter-spacing:.1em; color: var(--ak-amber);}
+  .tool-window .body { padding: 10px; max-height: 280px; overflow:auto; font-size: 12px;}
+
+  .dmg-float { position:absolute; font-family: var(--ak-font-heading); font-weight: 700; color: var(--ak-amber); text-shadow: 0 0 10px var(--ak-amber); animation: dmgRise 1.6s ease-out forwards;}
+  @keyframes dmgRise { 0%{transform:translateY(0);opacity:0;} 15%{opacity:1;} 100%{transform:translateY(-40px);opacity:0;} }
+
+  .label { font-family: var(--ak-font-heading); font-size: 10px; letter-spacing:.18em; color: var(--ak-silver-deep); text-transform: uppercase; padding: 6px 12px; }
+</style>
+</head>
+<body>
+<div class="world-grid">
+  <!-- TOP BAR -->
+  <div class="area-top">
+    <div class="top-bar">
+      <div class="flex items-center gap-3">
+        <div class="fate-clock"><span class="dot"></span><span>FATE · 23:14</span><span class="text-xs opacity-70">第三章</span></div>
+        <span class="ak-chip">GM 视角</span>
+        <span class="ak-chip ak-chip--amber">在线 4</span>
+      </div>
+      <div style="font-family:var(--ak-font-heading); font-size:18px; letter-spacing:.18em; color:var(--ak-amber);">★ 苍辉骑士团 · 翡翠群岛 ★</div>
+      <div class="flex items-center gap-2">
+        <button class="ak-btn"><i data-lucide="settings" class="w-4 h-4"></i>设置</button>
+        <button class="ak-btn"><i data-lucide="keyboard" class="w-4 h-4"></i>快捷键</button>
+        <button class="ak-btn ak-btn--ghost"><i data-lucide="log-out" class="w-4 h-4"></i>退出</button>
+      </div>
+    </div>
+    <div class="battle-seq ak-anim-slide">
+      <span style="font-family:var(--ak-font-heading); font-size:11px; letter-spacing:.18em; color:var(--ak-amber);">⚔ INITIATIVE</span>
+      <span class="seq-pill active">1 ▶ 莉娅</span>
+      <span class="seq-pill">2 拉尔夫</span>
+      <span class="seq-pill">3 龙骑士</span>
+      <span class="seq-pill">4 暗影</span>
+      <span class="seq-pill">5 法师</span>
+      <span class="seq-pill" style="opacity:.55;">6 哥布林·王</span>
+      <div class="flex-1"></div>
+      <button class="ak-btn ak-btn--amber"><i data-lucide="skip-forward" class="w-4 h-4"></i>END TURN</button>
+    </div>
+  </div>
+
+  <!-- LEFT PARTY -->
+  <div class="area-left ak-panel overflow-hidden flex flex-col">
+    <div class="label">PARTY · 队伍</div>
+    <div class="overflow-auto" style="flex:1;">
+      <div class="ak-dogtag">
+        <div style="width:36px; height:36px; border-radius:50%; background: linear-gradient(180deg,#5db1ff,#1a4cb8); border:2px solid var(--ak-amber); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;">莉</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between"><span class="name">LIA</span><span class="text-[10px]" style="color:var(--ak-text-mute);">Lv.12</span></div>
+          <div class="ak-bar hp mt-1"><i style="width:78%"></i></div>
+          <div class="ak-bar mp mt-1"><i style="width:54%"></i></div>
+        </div>
+      </div>
+      <div class="ak-dogtag">
+        <div style="width:36px; height:36px; border-radius:50%; background: linear-gradient(180deg,#ff8c5a,#c94c1a); border:2px solid var(--ak-amber); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;">拉</div>
+        <div class="flex-1">
+          <div class="flex justify-between"><span class="name">RALPH</span><span class="text-[10px]" style="color:var(--ak-text-mute);">Lv.11</span></div>
+          <div class="ak-bar hp mt-1"><i style="width:62%"></i></div>
+          <div class="ak-bar mp mt-1"><i style="width:30%"></i></div>
+        </div>
+      </div>
+      <div class="ak-dogtag">
+        <div style="width:36px; height:36px; border-radius:50%; background: linear-gradient(180deg,#9d6dff,#5b2fd1); border:2px solid var(--ak-amber); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;">龙</div>
+        <div class="flex-1">
+          <div class="flex justify-between"><span class="name">DRAGOON</span><span class="text-[10px]" style="color:var(--ak-text-mute);">Lv.13</span></div>
+          <div class="ak-bar hp mt-1"><i style="width:90%"></i></div>
+          <div class="ak-bar mp mt-1"><i style="width:75%"></i></div>
+        </div>
+      </div>
+      <div class="text-center text-xs mx-2 my-2 p-2 border border-dashed rounded cursor-pointer" style="border-color:var(--ak-line-soft); color:var(--ak-text-mute);">＋ 招募新骑士</div>
+    </div>
+    <div class="label" style="border-top:1px solid var(--ak-line);">ONLINE · 在线</div>
+    <div class="px-3 pb-3 text-xs space-y-1">
+      <div class="flex items-center gap-2"><span class="ak-chip">GM</span> Nubes</div>
+      <div class="flex items-center gap-2"><span class="ak-chip ak-chip--amber">玩家</span> Aria</div>
+      <div class="flex items-center gap-2"><span class="ak-chip ak-chip--amber">玩家</span> Ralph</div>
+      <div class="flex items-center gap-2"><span class="ak-chip ak-chip--silver">旁观</span> Visitor</div>
+    </div>
+  </div>
+
+  <!-- STAGE -->
+  <div class="area-stage stage-canvas">
+    <div class="aoe ak-anim-glow"></div>
+    <div class="token t1">莉</div>
+    <div class="token t2">拉</div>
+    <div class="token t3">龙</div>
+    <div class="token enemy">敌</div>
+    <div class="dmg-float" style="top:22%; left:72%; font-size:24px;">−128</div>
+    <div class="dmg-float" style="top:30%; left:74%; font-size:14px; color:var(--ak-crimson); animation-delay:.2s;">CRITICAL</div>
+
+    <div class="tool-window ak-anim-slide" style="top:24px; right:24px;">
+      <header><h4>Library · Abilities</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body space-y-2">
+        <div class="flex justify-between p-2 rounded" style="background:rgba(255,255,255,0.05); border:1px solid var(--ak-line);"><span>🔥 Fire Bolt</span><span class="ak-chip ak-chip--amber">Lv3</span></div>
+        <div class="flex justify-between p-2 rounded" style="background:rgba(255,255,255,0.05); border:1px solid var(--ak-line);"><span>✨ Sacred Heal</span><span class="ak-chip">Lv2</span></div>
+        <div class="flex justify-between p-2 rounded" style="background:rgba(255,255,255,0.05); border:1px solid var(--ak-line);"><span>⚔ Sunder</span><span class="ak-chip">Lv1</span></div>
+      </div>
+    </div>
+
+    <div class="tool-window ak-anim-slide" style="bottom:24px; left:24px; width:320px;">
+      <header><h4>Resolve · Cast</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body">
+        <div class="mb-2">Caster: <b style="color:var(--ak-cyan)">Lia</b> → Target: <b style="color:var(--ak-crimson)">Goblin King</b></div>
+        <div class="p-2 rounded mb-2" style="background:rgba(255,255,255,0.05); border:1px solid var(--ak-line);">Hit: 1d20+5 = <b style="color:var(--ak-emerald);">17 ✓</b></div>
+        <div class="p-2 rounded mb-2" style="background:rgba(255,255,255,0.05); border:1px solid var(--ak-line);">Damage: 2d8+3 fire = <b style="color:var(--ak-amber);">14</b></div>
+        <div class="flex gap-2">
+          <button class="ak-btn ak-btn--amber flex-1">Apply</button>
+          <button class="ak-btn flex-1">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tool-window" style="top:55%; left:38%; width:230px;">
+      <header style="background: linear-gradient(180deg, rgba(245,166,35,0.3), transparent);"><h4>Tooltip · Dazed</h4></header>
+      <div class="body">
+        <p>失去稳定行动节奏，下回合先攻 −5。</p>
+        <div class="flex gap-1 mt-2"><span class="ak-chip">Control</span><span class="ak-chip ak-chip--amber">2 turns</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM PANEL -->
+  <div class="area-right ak-panel overflow-hidden">
+    <div class="sys-body">
+      <div class="sys-tabs">
+        <div class="ak-medal" title="聊"><span style="position:relative; z-index:1;">聊</span><span class="badge">3</span></div>
+        <div class="ak-medal" title="战"><span style="position:relative; z-index:1;">战</span></div>
+        <div class="ak-medal active" title="景"><span style="position:relative; z-index:1;">景</span></div>
+        <div class="ak-medal" title="角"><span style="position:relative; z-index:1;">角</span></div>
+        <div class="ak-medal" title="包"><span style="position:relative; z-index:1;">包</span></div>
+        <div class="ak-medal" title="系"><span style="position:relative; z-index:1;">系</span></div>
+      </div>
+      <div class="sys-content">
+        <h3>Scene Command · 翡翠群岛</h3>
+        <div class="ak-panel p-2 mb-2 text-xs flex justify-between">
+          <span><b>Current:</b> 风之回廊</span>
+          <button class="ak-btn">SWITCH</button>
+        </div>
+        <div class="ak-panel p-2 mb-2 text-xs">
+          <div class="font-bold mb-2" style="color:var(--ak-amber);">VISUALS</div>
+          <div class="grid grid-cols-3 gap-1">
+            <button class="ak-btn">DAY</button>
+            <button class="ak-btn ak-btn--amber">DUSK</button>
+            <button class="ak-btn">NIGHT</button>
+          </div>
+        </div>
+        <div class="ak-panel p-2 mb-2 text-xs">
+          <div class="font-bold mb-2" style="color:var(--ak-amber);">TOKENS</div>
+          <div class="grid grid-cols-2 gap-1">
+            <button class="ak-btn">＋ Add</button>
+            <button class="ak-btn">Import</button>
+            <button class="ak-btn">Clone</button>
+            <button class="ak-btn ak-btn--danger">Remove</button>
+          </div>
+        </div>
+        <div class="ak-panel p-2 mb-2 text-xs">
+          <div class="font-bold mb-2" style="color:var(--ak-amber);">MEASURE</div>
+          <div class="flex gap-1"><button class="ak-btn">Line</button><button class="ak-btn">Circle</button><button class="ak-btn">Cone</button></div>
+        </div>
+        <div class="ak-panel p-2 text-xs">
+          <div class="font-bold mb-2" style="color:var(--ak-amber);">SCENES</div>
+          <ul class="space-y-1">
+            <li class="flex justify-between"><span>· 风之回廊</span><span class="ak-chip ak-chip--amber">Active</span></li>
+            <li class="flex justify-between"><span>· 旧城广场</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+            <li class="flex justify-between"><span>· BOSS 殿堂</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div class="area-bottom hud">
+    <div class="flex flex-col items-start">
+      <span class="text-[10px]" style="color:var(--ak-text-mute); letter-spacing:.18em;">ACTIVE</span>
+      <span class="font-bold" style="font-family:var(--ak-font-heading); color:var(--ak-amber); letter-spacing:.1em;">LIA · TURN 1</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex gap-2">
+      <div class="hud-slot filled">🔥<span class="key">1</span></div>
+      <div class="hud-slot filled">✨<span class="key">2</span></div>
+      <div class="hud-slot filled">⚔<span class="key">3</span></div>
+      <div class="hud-slot">＋<span class="key">4</span></div>
+      <div class="hud-slot">＋<span class="key">5</span></div>
+      <div class="hud-slot">＋<span class="key">6</span></div>
+      <div class="hud-slot">＋<span class="key">7</span></div>
+      <div class="hud-slot">＋<span class="key">8</span></div>
+      <div class="hud-slot">＋<span class="key">9</span></div>
+      <div class="hud-slot">＋<span class="key">0</span></div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex flex-col gap-1 text-[10px]">
+      <div class="flex items-center gap-2"><span style="color:var(--ak-text-mute); width:24px;">HP</span><div class="ak-bar hp" style="width:120px;"><i style="width:78%"></i></div></div>
+      <div class="flex items-center gap-2"><span style="color:var(--ak-text-mute); width:24px;">MP</span><div class="ak-bar mp" style="width:120px;"><i style="width:54%"></i></div></div>
+      <div class="flex items-center gap-2"><span style="color:var(--ak-text-mute); width:24px;">TP</span><div class="ak-bar tp" style="width:120px;"><i style="width:62%"></i></div></div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex gap-1">
+      <div class="hud-tab active">CHAR</div>
+      <div class="hud-tab">BAG</div>
+      <div class="hud-tab">SKILL</div>
+      <div class="hud-tab">LOG</div>
+    </div>
+    <div class="flex-1"></div>
+    <div class="flex gap-2">
+      <button class="ak-btn ak-btn--amber"><i data-lucide="sword" class="w-4 h-4"></i>END TURN</button>
+      <button class="ak-btn"><i data-lucide="shield" class="w-4 h-4"></i>GUARD</button>
+      <button class="ak-btn"><i data-lucide="footprints" class="w-4 h-4"></i>FLEE</button>
+    </div>
+  </div>
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>

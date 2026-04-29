@@ -1,0 +1,159 @@
+/* ============================================================
+   AAF World Theme 2 — 苍辉骑士团 Azure Knights
+   Deep navy + silver + amber accent (BG3 / FF Tactics serious)
+   ============================================================ */
+:root {
+  --ak-bg-0: #0b1426;
+  --ak-bg-1: #131f37;
+  --ak-bg-2: #1c2c4d;
+  --ak-bg-3: #243a66;
+  --ak-line: #2e4775;
+  --ak-line-soft: #3a5688;
+
+  --ak-text: #eaf0ff;
+  --ak-text-soft: #b9c6e3;
+  --ak-text-mute: #7a8aaf;
+
+  --ak-silver: #d6dcec;
+  --ak-silver-deep: #8995b3;
+  --ak-amber: #f5a623;
+  --ak-amber-deep: #c97400;
+  --ak-crimson: #e3506b;
+  --ak-cyan: #5db1ff;
+  --ak-emerald: #2fbf8f;
+
+  --ak-grad-deep: linear-gradient(180deg,#0b1426,#1c2c4d 80%,#243a66);
+  --ak-grad-silver: linear-gradient(180deg,#eef2ff,#9aa6c4);
+  --ak-grad-amber: linear-gradient(180deg,#ffd06a,#c97400);
+  --ak-grad-medal: conic-gradient(from 90deg,#fff7d0,#f5a623,#c97400,#f5a623,#fff7d0);
+
+  --ak-font-heading: "Cinzel", "Trajan Pro", "Noto Serif SC", serif;
+  --ak-font-body: "Inter", "Noto Sans SC", system-ui, sans-serif;
+
+  --ak-radius: 6px;
+  --ak-radius-sm: 4px;
+  --ak-shadow-deep: 0 12px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(214,220,236,0.08) inset;
+  --ak-shadow-amber: 0 0 0 1px var(--ak-amber) inset, 0 6px 18px rgba(245,166,35,0.35);
+  --ak-glow-cyan: 0 0 14px rgba(93,177,255,0.45);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin:0; padding:0;
+  font-family: var(--ak-font-body);
+  color: var(--ak-text);
+  background:
+    radial-gradient(800px 400px at 12% 0%, rgba(93,177,255,0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% 100%, rgba(245,166,35,0.12), transparent 60%),
+    var(--ak-grad-deep);
+  min-height: 100vh;
+}
+
+.ak-panel {
+  background:
+    linear-gradient(180deg, rgba(36,58,102,0.85), rgba(19,31,55,0.92));
+  border: 1px solid var(--ak-line);
+  border-radius: var(--ak-radius);
+  box-shadow: var(--ak-shadow-deep);
+  position: relative;
+}
+.ak-panel-title {
+  font-family: var(--ak-font-heading); letter-spacing: .12em; text-transform: uppercase;
+  font-size: 12px; color: var(--ak-silver);
+}
+
+/* Heraldic medal tab */
+.ak-medal {
+  width: 56px; height: 56px;
+  position: relative; cursor: pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-family: var(--ak-font-heading); font-size: 16px; color: var(--ak-silver);
+  background: var(--ak-bg-2);
+  border: 1px solid var(--ak-line);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  transition: all .2s;
+}
+.ak-medal::before {
+  content:""; position:absolute; inset: 3px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(180deg, rgba(214,220,236,0.06), rgba(0,0,0,0.4));
+  pointer-events: none;
+}
+.ak-medal:hover { color: #fff; transform: translateY(-1px); }
+.ak-medal.active {
+  color: #321500;
+  background: var(--ak-grad-amber);
+  border-color: var(--ak-amber);
+  box-shadow: var(--ak-shadow-amber);
+}
+.ak-medal .badge {
+  position:absolute; top:-2px; right:-2px;
+  background: var(--ak-crimson); color:#fff; font-size:10px;
+  width:16px; height:16px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+  font-family: var(--ak-font-body);
+}
+
+/* Buttons */
+.ak-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, var(--ak-bg-3), var(--ak-bg-1));
+  border: 1px solid var(--ak-line-soft);
+  border-radius: var(--ak-radius-sm);
+  color: var(--ak-text); font-family: var(--ak-font-body); font-weight: 600; font-size: 12px;
+  letter-spacing: .04em; cursor: pointer; transition: all .18s;
+}
+.ak-btn:hover { border-color: var(--ak-cyan); box-shadow: var(--ak-glow-cyan); }
+.ak-btn--amber { background: var(--ak-grad-amber); color:#321500; border-color: var(--ak-amber-deep); }
+.ak-btn--amber:hover { box-shadow: var(--ak-shadow-amber); }
+.ak-btn--ghost { background: transparent; }
+.ak-btn--danger { background: linear-gradient(180deg,#e3506b,#a13049); color:#fff; border-color:#7c2032; }
+
+/* Dog-tag party card */
+.ak-dogtag {
+  position:relative;
+  padding: 10px 12px 10px 18px;
+  background: linear-gradient(180deg, rgba(48,72,124,0.55), rgba(19,31,55,0.85));
+  border: 1px solid var(--ak-line);
+  border-left: 3px solid var(--ak-amber);
+  border-radius: var(--ak-radius-sm);
+  margin: 6px 8px;
+  display:flex; gap:10px; align-items:center;
+}
+.ak-dogtag::before {
+  content:""; position:absolute; top:8px; bottom:8px; left:8px; width:2px; background: var(--ak-amber); opacity:.4;
+}
+.ak-dogtag .name { font-family: var(--ak-font-heading); font-size:13px; color: var(--ak-silver); letter-spacing:.08em; }
+
+/* Bars */
+.ak-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.5);}
+.ak-bar > i { display:block; height:100%; }
+.ak-bar.hp > i { background: linear-gradient(90deg,#3ed598,#0fa57b);}
+.ak-bar.mp > i { background: linear-gradient(90deg,#5db1ff,#1a4cb8);}
+.ak-bar.tp > i { background: var(--ak-grad-amber);}
+
+/* Chip */
+.ak-chip {
+  display:inline-flex; padding:2px 8px; border-radius:999px;
+  background: rgba(93,177,255,0.12); color: var(--ak-cyan);
+  border: 1px solid rgba(93,177,255,0.3); font-size: 10px; font-weight:600;
+}
+.ak-chip--amber { background: rgba(245,166,35,0.15); color: var(--ak-amber); border-color: rgba(245,166,35,0.4);}
+.ak-chip--silver { background: rgba(214,220,236,0.10); color: var(--ak-silver); border-color: rgba(214,220,236,0.3);}
+
+/* Scrollbar */
+::-webkit-scrollbar { width:8px; height:8px; }
+::-webkit-scrollbar-thumb { background: var(--ak-line-soft); border-radius:999px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+
+/* Animations */
+@keyframes ak-glow { 0%,100%{box-shadow: 0 0 8px rgba(245,166,35,0.4)} 50%{box-shadow: 0 0 18px rgba(245,166,35,0.8)} }
+@keyframes ak-slide { from{transform:translateY(-8px); opacity:0;} to{transform:none; opacity:1;} }
+@keyframes ak-shine { 0%{background-position: -200%;} 100%{background-position: 200%;} }
+.ak-anim-glow { animation: ak-glow 2.4s ease-in-out infinite; }
+.ak-anim-slide { animation: ak-slide .35s ease-out both; }
+.ak-shine {
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%) var(--ak-grad-amber);
+  background-size: 200% 100%;
+  animation: ak-shine 3.5s linear infinite;
+}

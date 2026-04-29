@@ -28,6 +28,7 @@
 - `folderPath` 是当前多级分类字段，使用 `/` 分隔。
 - 玩家可读描述和 GM 结算配置必须拆开。
 - 检定方式要驱动字段显隐：攻击、豁免、对抗各自显示必要字段。
+- **本地缓存（B2）**：`worldEntityStore.loadEntities` 走 stale-while-revalidate — 先从 IndexedDB 读到缓存即时渲染，再向 `/worlds/:id/{type}` 发请求，差异时更新 store 并写回缓存。`createEntity / updateEntity / deleteEntity / advanceFateClock` 同步写穿透；`importPack` 调用 `cacheInvalidateWorld(worldId)` 失效全部 8 类缓存。缓存失败（无 IndexedDB / 浏览器隐私模式）静默回退到纯网络模式，不影响主流程。缓存层文件：`client/src/world/lib/worldCache.ts`。
 
 ## 常见任务定位
 

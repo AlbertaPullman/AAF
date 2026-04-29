@@ -2,103 +2,118 @@
    AAF 世界页面新增组件样式
    ============================================================ */
 
-/* ──── 战斗序列栏 BattleSequenceBar ──── */
+/* ============================================================
+   战斗序列栏 BattleSequenceBar
+   ------------------------------------------------------------
+   单一来源 / token 驱动 / 取代 index.css 旧重复定义 (A2)
+   舞台几何变量来自 .world-stage-shell（--stage-pad / --left-stack-w
+   / --edge-gap / --sys-panel-w / --battle-bar-h / --battle-card-w/h），
+   颜色全部走 var(--mod-fate-*) / var(--accent-*) / var(--text-*)。
+   ============================================================ */
 
 .battle-sequence-bar {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 900;
-  padding: 8px 16px;
-  transform: translateY(-100%);
-  transition: transform var(--duration-normal) var(--ease-out);
+  top: var(--stage-pad);
+  left: calc(var(--stage-pad) + var(--left-stack-w) + var(--edge-gap));
+  right: calc(var(--sys-panel-w) + var(--edge-gap));
+  z-index: 52;
+  height: var(--battle-bar-h);
+  opacity: 0;
   pointer-events: none;
+  transform: translateY(calc(-100% - var(--stage-pad) - 10px));
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
 }
 
 .battle-sequence-bar--visible {
-  transform: translateY(0);
+  opacity: 1;
   pointer-events: auto;
+  transform: translateY(0);
 }
 
+/* 框：羊皮金 ↔ 浅蓝渐变，烫金外缘 */
 .battle-sequence-bar__frame {
-  display: flex;
-  align-items: stretch;
-  gap: 12px;
-  padding: 8px 14px;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(92px, 128px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(8px, 0.8vw, 12px);
+  padding: 8px 10px;
   border-radius: var(--radius-md);
-  border: 1px solid var(--surface-card-border);
+  border: 1px solid color-mix(in srgb, var(--mod-fate-accent) 40%, transparent);
   background:
-    radial-gradient(circle at 0% 50%, rgba(47, 198, 255, 0.16), transparent 40%),
-    radial-gradient(circle at 100% 50%, rgba(245, 158, 11, 0.14), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 243, 255, 0.92));
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--mod-fate-accent) 18%, var(--surface-card)) 0%,
+      var(--surface-card) 46%,
+      color-mix(in srgb, var(--accent-action-soft) 8%, var(--surface-card)) 100%);
   box-shadow:
     var(--shadow-elevated),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px) saturate(1.05);
-  -webkit-backdrop-filter: blur(12px) saturate(1.05);
-  font-family: var(--font-base);
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px) saturate(1.05);
+  -webkit-backdrop-filter: blur(8px) saturate(1.05);
+  overflow: visible;
+  font-family: var(--mod-hud-font);
 }
 
+/* 左侧：回合编号 + 提示 */
 .battle-sequence-bar__round {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 1px;
-  min-width: 96px;
-  padding: 4px 12px 4px 4px;
-  border-right: 1px solid var(--surface-card-border);
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  line-height: 1.2;
+  padding-left: 4px;
+  border-right: 1px solid color-mix(in srgb, var(--mod-fate-accent) 28%, transparent);
+  padding-right: 8px;
+  align-self: stretch;
+  align-content: center;
 }
 
-.battle-sequence-bar__round-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--accent-emphasis);
-  text-transform: uppercase;
+.battle-sequence-bar__round-label,
+.battle-sequence-bar__round-hint {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--mod-fate-accent) 75%, var(--text-secondary));
 }
 
 .battle-sequence-bar__round strong {
+  min-width: 0;
   font-family: var(--font-display);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.03em;
   color: var(--text-primary);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
-}
-
-.battle-sequence-bar__round-hint {
-  font-size: 10px;
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .battle-sequence-bar__round-number {
   font-family: var(--font-display);
   font-size: 20px;
-  font-weight: 700;
-  color: var(--accent-emphasis);
+  font-weight: 800;
+  color: var(--mod-fate-accent);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
+/* 中段：先攻轨道 */
 .battle-sequence-bar__track {
+  min-width: 0;
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: clamp(6px, 0.7vw, 9px);
   overflow-x: auto;
-  overflow-y: hidden;
-  flex: 1;
-  padding: 4px 2px;
+  overflow-y: visible;
+  scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: var(--surface-scroll-thumb) transparent;
+  padding: 8px 12px;
 }
 
 .battle-sequence-bar__track::-webkit-scrollbar {
-  height: 6px;
+  height: 5px;
 }
 
 .battle-sequence-bar__track::-webkit-scrollbar-track {
@@ -107,35 +122,44 @@
 
 .battle-sequence-bar__track::-webkit-scrollbar-thumb {
   background: var(--surface-scroll-thumb);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-pill);
 }
 
 .battle-sequence-bar__track::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-action);
+  background: var(--mod-fate-accent);
 }
 
 .battle-sequence-bar__empty {
-  flex: 1;
-  text-align: center;
-  font-size: 12px;
+  flex: 1 1 auto;
+  min-height: var(--battle-card-h);
+  display: grid;
+  place-items: center;
   color: var(--text-muted);
-  padding: 10px 0;
+  font-size: 12px;
+  font-weight: 700;
   font-style: italic;
 }
 
 .battle-sequence-bar__sequence-cell {
+  flex: 0 0 auto;
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: clamp(6px, 0.7vw, 9px);
 }
 
+/* 回合分割条（红色光带 + ↻ 角标） */
 .battle-sequence-bar__round-divider {
+  flex: 0 0 2px;
   width: 2px;
-  align-self: stretch;
-  border-radius: 1px;
-  background: linear-gradient(180deg, transparent, var(--accent-emphasis), transparent);
-  margin: 0 2px;
+  height: calc(var(--battle-card-h) + 8px);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg,
+    transparent,
+    var(--accent-danger) 18%,
+    color-mix(in srgb, var(--accent-danger) 80%, #000) 82%,
+    transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent-danger) 50%, transparent);
   position: relative;
 }
 
@@ -145,43 +169,50 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 10px;
-  color: var(--accent-emphasis);
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--surface-card-border);
-  border-radius: var(--radius-pill);
   width: 16px;
   height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--mod-fate-accent);
+  background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--mod-fate-accent) 40%, transparent);
+  border-radius: var(--radius-pill);
 }
 
+/* 单个先攻卡片 */
 .battle-sequence-bar__entry {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  min-width: 64px;
-  padding: 5px 7px 6px;
-  border-radius: var(--radius-sm);
+  position: relative;
+  isolation: isolate;
+  flex: 0 0 var(--battle-card-w);
+  width: var(--battle-card-w);
+  height: var(--battle-card-h);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding: 0;
   border: 1px solid var(--surface-card-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(232, 243, 255, 0.78));
-  cursor: pointer;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg,
+    var(--surface-card),
+    color-mix(in srgb, var(--accent-action-soft) 12%, var(--surface-card)));
   color: var(--text-primary);
+  cursor: pointer;
   font: inherit;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 4px rgba(12, 30, 68, 0.06);
-  transition: transform var(--duration-fast) var(--ease-out),
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    var(--shadow-soft);
+  transform-origin: center;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
-    background var(--duration-fast) var(--ease-out),
-    box-shadow var(--duration-fast) var(--ease-out);
+    filter var(--duration-fast) var(--ease-out);
 }
 
 .battle-sequence-bar__entry:hover {
-  transform: translateY(-1px);
-  background: linear-gradient(180deg, #ffffff, #d8ecff);
   border-color: var(--accent-action);
-  box-shadow: 0 4px 12px rgba(18, 116, 255, 0.22);
+  filter: brightness(1.04);
+  transform: translateY(-1px);
 }
 
 .battle-sequence-bar__entry:active {
@@ -202,140 +233,189 @@
 }
 
 .battle-sequence-bar__entry--current {
-  background: linear-gradient(180deg, #fff9eb, #ffd98a);
-  border-color: var(--accent-emphasis);
+  z-index: 4;
+  border-color: color-mix(in srgb, var(--mod-fate-accent) 80%, transparent);
   box-shadow:
-    0 0 0 2px rgba(245, 158, 11, 0.32),
-    0 6px 16px rgba(245, 158, 11, 0.28);
-  animation: battleSeqCurrentPulse 1.8s ease-in-out infinite;
+    0 0 0 2px color-mix(in srgb, var(--mod-fate-accent) 50%, transparent),
+    0 0 26px color-mix(in srgb, var(--mod-fate-accent) 65%, transparent),
+    0 12px 24px color-mix(in srgb, var(--mod-fate-accent) 25%, transparent);
+  transform: scale(1.14);
 }
 
-@keyframes battleSeqCurrentPulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.32), 0 6px 16px rgba(245, 158, 11, 0.24); }
-  50% { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.5), 0 6px 22px rgba(245, 158, 11, 0.42); }
+.battle-sequence-bar__entry--current::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  z-index: -1;
+  border-radius: calc(var(--radius-sm) + 4px);
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--mod-fate-accent) 70%, transparent),
+    color-mix(in srgb, var(--mod-fate-accent) 28%, transparent) 48%,
+    transparent);
+  animation: battleSeqCurrentGlow 1.6s ease-in-out infinite;
 }
 
-.battle-sequence-bar__entry--mine {
-  border-color: var(--accent-success);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 0 0 1px rgba(8, 163, 123, 0.32);
+@keyframes battleSeqCurrentGlow {
+  0%, 100% { opacity: 0.65; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.06); }
 }
 
-.battle-sequence-bar__entry--npc {
-  background: linear-gradient(180deg, rgba(255, 250, 240, 0.96), rgba(255, 235, 213, 0.85));
+.battle-sequence-bar__entry--mine:not(.battle-sequence-bar__entry--current) {
+  border-color: color-mix(in srgb, var(--accent-action) 70%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 0 0 1px color-mix(in srgb, var(--accent-action) 28%, transparent),
+    var(--shadow-soft);
+}
+
+.battle-sequence-bar__entry--npc:not(.battle-sequence-bar__entry--current) {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--mod-fate-accent) 8%, var(--surface-card)),
+    color-mix(in srgb, var(--accent-action-soft) 6%, var(--surface-card)));
 }
 
 .battle-sequence-bar__entry--loop-preview {
-  opacity: 0.55;
+  opacity: 0.72;
+  transform: scale(0.94);
   filter: saturate(0.7);
   border-style: dashed;
 }
 
 .battle-sequence-bar__entry--loop-preview:hover {
-  opacity: 0.85;
+  opacity: 0.9;
+  transform: scale(0.96);
 }
 
+/* 头像格 */
 .battle-sequence-bar__avatar {
-  position: relative;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-pill);
+  min-height: 0;
   overflow: hidden;
-  background: rgba(93, 130, 206, 0.12);
-  border: 1px solid var(--surface-card-border);
-  flex-shrink: 0;
+  border-radius: calc(var(--radius-sm) - 2px) calc(var(--radius-sm) - 2px) 0 0;
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--accent-action) 18%, transparent),
+      color-mix(in srgb, var(--mod-fate-accent) 22%, transparent)),
+    color-mix(in srgb, var(--accent-action-soft) 12%, var(--surface-card));
+}
+
+.battle-sequence-bar__avatar img,
+.battle-sequence-bar__avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
 }
 
 .battle-sequence-bar__avatar img {
-  width: 100%;
-  height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .battle-sequence-bar__avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
   font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-size: clamp(24px, 2vw, 34px);
+  font-weight: 800;
+  color: var(--accent-action);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
+/* 信息条（卡片底部） */
 .battle-sequence-bar__info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  min-width: 0;
+  display: grid;
   gap: 1px;
+  padding: 4px 5px 5px;
+  background: color-mix(in srgb, var(--surface-card) 92%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--surface-card-border) 80%, transparent);
 }
 
 .battle-sequence-bar__name {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60px;
-  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
 .battle-sequence-bar__init {
   font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--accent-emphasis);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
   letter-spacing: 0.04em;
+  color: var(--mod-fate-accent);
 }
 
+/* HP 条 — 卡片底部绝对定位 */
 .battle-sequence-bar__hp-bar {
-  width: 100%;
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 3px;
   height: 3px;
-  background: rgba(93, 130, 206, 0.18);
-  border-radius: 2px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 14%, transparent);
   overflow: hidden;
 }
 
 .battle-sequence-bar__hp-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-success), #34d399);
+  border-radius: inherit;
+  background: linear-gradient(90deg,
+    var(--accent-success),
+    color-mix(in srgb, var(--accent-success) 60%, #ffffff));
   transition: width var(--duration-normal) var(--ease-out);
 }
 
+/* 状态 tag — 卡片右上角 */
 .battle-sequence-bar__tags {
-  display: flex;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
   gap: 2px;
-  flex-wrap: wrap;
-  justify-content: center;
 }
 
 .battle-sequence-bar__tag {
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 4px;
+  max-width: calc(var(--battle-card-w) - 10px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border-radius: var(--radius-xs);
-  background: rgba(220, 38, 38, 0.1);
-  color: var(--accent-danger);
-  border: 1px solid rgba(220, 38, 38, 0.32);
-  letter-spacing: 0.02em;
+  background: color-mix(in srgb, var(--surface-card) 86%, transparent);
+  color: var(--mod-fate-accent);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, var(--mod-fate-accent) 30%, transparent);
 }
 
+/* 右侧"结束回合"按钮 */
 .battle-sequence-bar__end-turn {
-  padding: 8px 18px;
+  min-width: 78px;
+  min-height: 34px;
+  padding: 8px 16px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--accent-emphasis);
-  background: linear-gradient(180deg, #fff9eb, #ffd98a);
-  color: #8a4f06;
+  border: 1px solid color-mix(in srgb, var(--mod-fate-accent) 60%, transparent);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--mod-fate-accent) 18%, var(--surface-card)),
+    color-mix(in srgb, var(--mod-fate-accent) 38%, var(--surface-card)));
+  color: color-mix(in srgb, var(--mod-fate-accent) 70%, var(--text-primary));
   font-family: var(--font-display);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.06em;
   cursor: pointer;
   white-space: nowrap;
   align-self: center;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset, 0 3px 8px rgba(245, 158, 11, 0.22);
-  transition: transform var(--duration-fast) var(--ease-out),
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 3px 8px color-mix(in srgb, var(--mod-fate-accent) 30%, transparent);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
     background var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out);
@@ -343,8 +423,12 @@
 
 .battle-sequence-bar__end-turn:hover {
   transform: translateY(-1px);
-  background: linear-gradient(180deg, #fff5d6, #ffc66a);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.36);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--mod-fate-accent) 28%, var(--surface-card)),
+    color-mix(in srgb, var(--mod-fate-accent) 55%, var(--surface-card)));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 6px 14px color-mix(in srgb, var(--mod-fate-accent) 45%, transparent);
 }
 
 .battle-sequence-bar__end-turn:active {
@@ -432,34 +516,113 @@
 .fate-clock__header {
   text-align: center;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
-.fate-clock__name {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--text-primary);
+.fate-clock__label-cn {
+  font-family: var(--mod-fate-font);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  color: var(--accent-emphasis);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .fate-clock__meta {
   display: inline-block;
-  margin-top: 3px;
   padding: 1px 8px;
   font-family: var(--font-base);
   font-size: 10px;
   font-weight: 500;
   color: var(--text-secondary);
-  background: rgba(47, 198, 255, 0.1);
-  border: 1px solid rgba(47, 198, 255, 0.22);
+  background: color-mix(in srgb, var(--accent-info) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-info) 22%, transparent);
   border-radius: var(--radius-xs);
 }
 
+/* mockup 风圆环包：内圈金属光泽 + 中心大数字 + 章节名 */
+.fate-clock__dial {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface-card) 55%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent-emphasis),
+    0 6px 18px color-mix(in srgb, var(--accent-emphasis) 18%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--surface-card) 60%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.fate-clock__dial::before {
+  content: "";
+  position: absolute;
+  inset: 22px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    var(--surface-card),
+    color-mix(in srgb, var(--surface-card) 92%, var(--accent-info) 8%) 65%,
+    color-mix(in srgb, var(--surface-card) 80%, var(--accent-info) 20%) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--accent-emphasis) 40%, transparent);
+  box-shadow:
+    inset 0 1px 4px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 6px color-mix(in srgb, var(--text-primary) 6%, transparent);
+  z-index: 1;
+}
+
 .fate-clock__ring {
-  width: 96px;
-  height: 96px;
-  filter: drop-shadow(0 2px 4px rgba(18, 116, 255, 0.18));
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--accent-info) 18%, transparent));
+}
+
+.fate-clock__dial-inner {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 0 6px;
+}
+
+.fate-clock__dial-num {
+  font-family: var(--mod-fate-font);
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--accent-emphasis);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 6px color-mix(in srgb, var(--accent-emphasis) 25%, transparent);
+}
+
+.fate-clock__dial-num small {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.fate-clock__dial-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  font-family: var(--font-base);
+  letter-spacing: 0.26em;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .fate-clock__segment {
@@ -480,13 +643,6 @@
   stroke: var(--accent-action);
   stroke-width: 1.4;
   stroke-dasharray: 1.5 1;
-}
-
-.fate-clock__center-text {
-  font-size: 22px;
-  font-weight: 800;
-  font-family: var(--mod-fate-font);
-  fill: var(--text-primary);
 }
 
 .fate-clock__desc {
@@ -792,9 +948,9 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--surface-card-border);
   background:
-    radial-gradient(circle at 8% 0%, rgba(47, 198, 255, 0.16), transparent 45%),
-    radial-gradient(circle at 92% 0%, rgba(245, 158, 11, 0.12), transparent 45%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(236, 245, 255, 0.93));
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--mod-hud-accent) 18%, transparent), transparent 45%),
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--mod-fate-accent) 16%, transparent), transparent 45%),
+    linear-gradient(145deg, var(--surface-card), color-mix(in srgb, var(--accent-action-soft) 6%, var(--surface-card)));
   box-shadow:
     var(--shadow-elevated),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -848,11 +1004,11 @@
 .hud-panel__char-level {
   font-size: 10px;
   font-weight: 700;
-  color: var(--accent-emphasis);
+  color: var(--mod-fate-accent);
   padding: 1px 6px;
   border-radius: var(--radius-xs);
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.32);
+  background: color-mix(in srgb, var(--mod-fate-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mod-fate-accent) 36%, transparent);
 }
 
 .hud-panel__empty-state {
@@ -885,7 +1041,7 @@
   position: relative;
   width: 158px;
   height: 13px;
-  background: rgba(93, 130, 206, 0.14);
+  background: color-mix(in srgb, var(--accent-action) 14%, transparent);
   border-radius: var(--radius-xs);
   overflow: hidden;
   border: 1px solid var(--surface-card-border);
@@ -900,7 +1056,7 @@
 }
 
 .hud-panel__bar--hp .hud-panel__bar-fill {
-  background: linear-gradient(90deg, #b91c1c, var(--accent-danger));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-danger) 70%, #000), var(--accent-danger));
 }
 
 .hud-panel__bar--mp .hud-panel__bar-fill {
@@ -908,11 +1064,11 @@
 }
 
 .hud-panel__bar--stamina .hud-panel__bar-fill {
-  background: linear-gradient(90deg, #b88708, var(--accent-warn));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-warn) 70%, #000), var(--accent-warn));
 }
 
 .hud-panel__bar--fury .hud-panel__bar-fill {
-  background: linear-gradient(90deg, var(--accent-danger), var(--accent-emphasis));
+  background: linear-gradient(90deg, var(--accent-danger), var(--mod-fate-accent));
 }
 
 .hud-panel__bar-text {
@@ -942,14 +1098,14 @@
   height: 46px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--surface-card-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(232, 243, 255, 0.78));
+  background: linear-gradient(180deg, var(--surface-card), color-mix(in srgb, var(--accent-action-soft) 12%, var(--surface-card)));
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   position: relative;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 2px 4px rgba(12, 30, 68, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), var(--shadow-soft);
   transition: transform var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     background var(--duration-fast) var(--ease-out),
@@ -959,8 +1115,8 @@
 .hud-panel__slot:hover {
   transform: translateY(-1px);
   border-color: var(--accent-action);
-  background: linear-gradient(180deg, #ffffff, #d8ecff);
-  box-shadow: 0 4px 12px rgba(18, 116, 255, 0.22);
+  background: linear-gradient(180deg, var(--surface-card), color-mix(in srgb, var(--accent-action) 18%, var(--surface-card)));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-action) 28%, transparent);
 }
 
 .hud-panel__slot:active {
@@ -977,13 +1133,13 @@
 .hud-panel__slot--empty {
   opacity: 0.5;
   cursor: not-allowed;
-  background: rgba(255, 255, 255, 0.4);
+  background: color-mix(in srgb, var(--surface-card) 60%, transparent);
   border-style: dashed;
 }
 
 .hud-panel__slot--empty:hover {
   transform: none;
-  background: rgba(255, 255, 255, 0.45);
+  background: color-mix(in srgb, var(--surface-card) 65%, transparent);
   border-color: var(--surface-card-border);
   box-shadow: var(--shadow-inset);
 }
@@ -992,7 +1148,7 @@
   width: 28px;
   height: 28px;
   object-fit: contain;
-  filter: drop-shadow(0 1px 1px rgba(12, 30, 68, 0.18));
+  filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--text-primary) 22%, transparent));
 }
 
 .hud-panel__slot-key {
@@ -1033,7 +1189,7 @@
   border: 1px solid var(--surface-card-border);
   border-bottom: none;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  background: rgba(255, 255, 255, 0.6);
+  background: color-mix(in srgb, var(--surface-card) 70%, transparent);
   color: var(--text-secondary);
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-out),
@@ -1043,7 +1199,7 @@
 }
 
 .hud-panel__tab-btn:hover {
-  background: rgba(225, 240, 255, 0.9);
+  background: color-mix(in srgb, var(--accent-action) 14%, var(--surface-card));
   color: var(--accent-action);
   border-color: var(--accent-action);
 }
@@ -1063,10 +1219,10 @@
 }
 
 .hud-panel__tab-btn--active {
-  background: linear-gradient(180deg, #ffffff, #e0eeff);
+  background: linear-gradient(180deg, var(--surface-card), color-mix(in srgb, var(--accent-action) 14%, var(--surface-card)));
   color: var(--accent-action);
   border-color: var(--accent-action);
-  box-shadow: 0 -2px 0 var(--accent-emphasis) inset;
+  box-shadow: 0 -2px 0 var(--mod-fate-accent) inset;
 }
 
 .hud-panel__tab-content {
@@ -1074,7 +1230,7 @@
   padding: 10px;
   border: 1px solid var(--surface-card-border);
   border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);
-  background: rgba(255, 255, 255, 0.55);
+  background: color-mix(in srgb, var(--surface-card) 65%, transparent);
   box-shadow: var(--shadow-inset);
 }
 
@@ -1092,7 +1248,7 @@
   height: 38px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--surface-card-border);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 243, 255, 0.85));
+  background: linear-gradient(180deg, var(--surface-card), color-mix(in srgb, var(--accent-action-soft) 14%, var(--surface-card)));
   color: var(--text-primary);
   font-family: var(--mod-hud-font);
   font-size: 17px;
@@ -1101,7 +1257,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 2px 6px rgba(12, 30, 68, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), var(--shadow-soft);
   transition: transform var(--duration-fast) var(--ease-out),
     background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
@@ -1110,9 +1266,9 @@
 
 .hud-panel__mode-toggle:hover {
   transform: translateY(-1px);
-  background: linear-gradient(180deg, #ffffff, #d8ecff);
+  background: linear-gradient(180deg, var(--surface-card), color-mix(in srgb, var(--accent-action) 18%, var(--surface-card)));
   border-color: var(--accent-action);
-  box-shadow: 0 4px 12px rgba(18, 116, 255, 0.22);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-action) 28%, transparent);
 }
 
 .hud-panel__mode-toggle:active {
@@ -2048,8 +2204,97 @@
 }
 
 .world-stage-empty-hint {
-  color: #7a9ab8;
+  color: var(--text-muted);
   font-size: 13px;
   font-style: italic;
+}
+
+/* ============================================================
+   命刻枢纽 FateGauge Hub  (left-top fixed circular dial)
+   ------------------------------------------------------------
+   单一来源 / 完全 token 驱动 / 取代 index.css 中三处旧定义
+   ============================================================ */
+
+.world-fixed-gauge {
+  position: fixed;
+  top: calc(var(--stage-pad) + 2px);
+  left: var(--stage-pad);
+  width: var(--dial-size);
+  height: var(--dial-size);
+  border-radius: 50%;
+  z-index: 57;
+  display: grid;
+  place-items: center;
+  font-family: var(--mod-fate-font);
+
+  /* 鎏金外缘 + 浅羊皮内核 */
+  background:
+    radial-gradient(circle at 50% 32%,
+      color-mix(in srgb, var(--mod-fate-accent) 22%, transparent),
+      transparent 58%),
+    radial-gradient(circle,
+      var(--surface-card) 48%,
+      color-mix(in srgb, var(--mod-fate-accent) 8%, var(--surface-card)) 100%);
+
+  border: 2px solid color-mix(in srgb, var(--mod-fate-accent) 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--mod-fate-accent) 35%, transparent),
+    var(--shadow-elevated),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 24px color-mix(in srgb, var(--mod-fate-accent) 18%, transparent);
+
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.world-fixed-gauge:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--mod-fate-accent) 50%, transparent),
+    0 22px 48px rgba(12, 30, 68, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 28px color-mix(in srgb, var(--mod-fate-accent) 26%, transparent);
+}
+
+/* 内圈虚线轨道（装饰） */
+.world-fixed-gauge__ring {
+  position: absolute;
+  inset: var(--dial-inner-gap);
+  border-radius: 50%;
+  border: 1px dashed color-mix(in srgb, var(--mod-fate-accent) 50%, transparent);
+  pointer-events: none;
+}
+
+/* 中心数字 + 标签 */
+.world-fixed-gauge__center {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.world-fixed-gauge__center strong {
+  font-family: var(--mod-fate-font);
+  font-size: clamp(22px, 1.9vw, 28px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7),
+    0 0 14px color-mix(in srgb, var(--mod-fate-accent) 35%, transparent);
+}
+
+.world-fixed-gauge__center span {
+  font-family: var(--font-base);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: color-mix(in srgb, var(--mod-fate-accent) 65%, var(--text-secondary));
+  max-width: calc(var(--dial-size) - var(--dial-inner-gap) * 2 - 16px);
+  line-height: 1.3;
 }
 

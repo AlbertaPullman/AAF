@@ -90,6 +90,10 @@ export type ChatMessage = {
 export type WorldDetail = {
   name: string;
   myRole: "GM" | "PLAYER" | "OBSERVER" | "ASSISTANT" | null;
+  /** GM-defined visual theme pack for this world. null = use system default + player preference. */
+  themePack?: string | null;
+  /** When true, the world's themePack is forced on every member (overrides player preference). */
+  themePackForcedByGM?: boolean;
 };
 
 export type WorldRuntimeState = {

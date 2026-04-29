@@ -1,0 +1,68 @@
+/*
+ * Theme Pack: Crimson Dynasty (朱砂王朝)
+ * ======================================
+ * 深朱红 + 鎏金 + 墨黑——中式古典宫廷风。
+ * 适合东方 TRPG / 武侠 / 仙侠 / 朝堂阴谋。
+ */
+
+[data-theme="crimson-dynasty"] {
+  /* Surfaces */
+  --surface-stage-bg: radial-gradient(circle at 14% 14%, rgba(255, 200, 130, 0.22), transparent 32%),
+    radial-gradient(circle at 86% 18%, rgba(220, 60, 60, 0.32), transparent 36%),
+    radial-gradient(circle at 50% 92%, rgba(120, 18, 18, 0.45), transparent 50%),
+    linear-gradient(140deg, #1a0808 0%, #2a0d0d 30%, #3d1414 70%, #14060a 100%);
+  --surface-tool-bg: #2a0e10;
+  --surface-card: rgba(58, 18, 22, 0.86);
+  --surface-card-border: rgba(218, 165, 80, 0.42);
+  --surface-overlay: rgba(20, 4, 4, 0.7);
+  --surface-scroll-thumb: rgba(218, 165, 80, 0.55);
+
+  /* Text */
+  --text-primary: #f5e6c8;
+  --text-secondary: #d6b889;
+  --text-muted: #a08960;
+  --text-on-accent: #1a0808;
+
+  /* Accent */
+  --accent-action: #daa550;        /* 鎏金主行动 */
+  --accent-action-soft: #f0c878;
+  --accent-emphasis: #d62828;      /* 朱砂朱红强调 */
+  --accent-success: #6dbf6d;
+  --accent-warn: #f0a850;
+  --accent-danger: #ff5252;
+
+  /* Shadows */
+  --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-elevated: 0 18px 44px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 0 0 3px rgba(218, 165, 80, 0.42);
+  --shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+
+  /* Fonts */
+  --font-display: "STKaiti", "KaiTi", "FangSong", "Noto Serif SC", serif;
+  --font-base: "STSong", "Microsoft YaHei", "Noto Serif SC", serif;
+  --font-serif: "STSong", "FangSong", "Noto Serif SC", serif;
+
+  /* Per-module */
+  --mod-fate-bg: rgba(58, 18, 22, 0.92);
+  --mod-fate-accent: var(--accent-action);
+  --mod-fate-font: var(--font-display);
+
+  --mod-hud-bg: rgba(58, 18, 22, 0.86);
+  --mod-hud-accent: var(--accent-action);
+  --mod-hud-font: var(--font-display);
+
+  --mod-panel-bg: #2a0e10;
+  --mod-panel-accent: var(--accent-action);
+
+  --mod-sheet-bg: rgba(58, 18, 22, 0.88);
+  --mod-sheet-accent: var(--accent-action);
+  --mod-sheet-font: var(--font-display);
+
+  --mod-auth-bg: rgba(20, 4, 4, 0.92);
+  --mod-auth-accent: #daa550;
+  --mod-auth-font: var(--font-display);
+
+  --mod-rulebook-bg: #2a0e10;
+  --mod-rulebook-accent: var(--accent-action);
+  --mod-rulebook-font: var(--font-serif);
+}

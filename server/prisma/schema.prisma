@@ -106,6 +106,10 @@ model World {
   passwordHash    String?
   inviteCode      String?         @unique
   inviteExpiresAt DateTime?
+  /// GM 设置的世界级视觉风格包 id（如 "dark-arcane"）。null 表示跟随系统默认 + 玩家偏好。
+  themePack            String?
+  /// true = 锁定本世界风格，覆盖所有玩家个人偏好；仅在 themePack 非空时生效。
+  themePackForcedByGM  Boolean   @default(false)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   owner           User            @relation("WorldOwner", fields: [ownerId], references: [id])

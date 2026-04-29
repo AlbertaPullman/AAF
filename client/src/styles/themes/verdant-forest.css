@@ -1,0 +1,66 @@
+/*
+ * Theme Pack: Verdant Forest (翠野秘林)
+ * =====================================
+ * 翠绿 + 暗绿 + 赤土 + 米黄。森系自然 / 德鲁伊 / 精灵聚落。
+ */
+
+[data-theme="verdant-forest"] {
+  /* Surfaces */
+  --surface-stage-bg: radial-gradient(circle at 16% 14%, rgba(186, 230, 158, 0.28), transparent 32%),
+    radial-gradient(circle at 84% 18%, rgba(238, 196, 130, 0.26), transparent 34%),
+    radial-gradient(circle at 50% 92%, rgba(82, 132, 70, 0.32), transparent 48%),
+    linear-gradient(140deg, #f3f6e9 0%, #e7eed1 36%, #d8e6b4 70%, #f8f1d6 100%);
+  --surface-tool-bg: #f1f4e0;
+  --surface-card: rgba(252, 252, 232, 0.92);
+  --surface-card-border: rgba(108, 142, 78, 0.4);
+  --surface-overlay: rgba(30, 50, 26, 0.45);
+  --surface-scroll-thumb: rgba(108, 142, 78, 0.45);
+
+  /* Text */
+  --text-primary: #1f3a1a;
+  --text-secondary: #466439;
+  --text-muted: #6e8a5d;
+  --text-on-accent: #ffffff;
+
+  /* Accent */
+  --accent-action: #4d8a3e;        /* 苔绿主行动 */
+  --accent-action-soft: #7cb35f;
+  --accent-emphasis: #c8541a;      /* 赤土橙强调 */
+  --accent-success: #3f9c5a;
+  --accent-warn: #d99020;
+  --accent-danger: #b03030;
+
+  /* Shadows */
+  --shadow-soft: 0 4px 12px rgba(60, 80, 30, 0.12);
+  --shadow-elevated: 0 16px 40px rgba(60, 80, 30, 0.18);
+  --shadow-glow: 0 0 0 3px rgba(124, 179, 95, 0.42);
+  --shadow-inset: inset 0 1px 2px rgba(60, 80, 30, 0.08);
+
+  /* Fonts */
+  --font-display: "STKaiti", "KaiTi", "Microsoft YaHei", sans-serif;
+  --font-base: "Microsoft YaHei", "Segoe UI", "Noto Sans SC", sans-serif;
+
+  /* Per-module */
+  --mod-fate-bg: rgba(252, 252, 232, 0.94);
+  --mod-fate-accent: var(--accent-emphasis);
+  --mod-fate-font: var(--font-display);
+
+  --mod-hud-bg: rgba(252, 252, 232, 0.92);
+  --mod-hud-accent: var(--accent-action);
+  --mod-hud-font: var(--font-base);
+
+  --mod-panel-bg: #f1f4e0;
+  --mod-panel-accent: var(--accent-action);
+
+  --mod-sheet-bg: #faf6e1;
+  --mod-sheet-accent: var(--accent-action);
+  --mod-sheet-font: var(--font-base);
+
+  --mod-auth-bg: rgba(40, 60, 32, 0.88);
+  --mod-auth-accent: #d9c277;
+  --mod-auth-font: var(--font-display);
+
+  --mod-rulebook-bg: #f3ecc8;
+  --mod-rulebook-accent: #6e4520;
+  --mod-rulebook-font: var(--font-serif);
+}

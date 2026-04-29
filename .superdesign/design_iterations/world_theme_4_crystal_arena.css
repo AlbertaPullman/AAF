@@ -1,0 +1,186 @@
+/* ============================================================
+   AAF World Theme 4 — 水晶斗技场 Crystal Arena
+   GBF battle UI — bottom is hero deck (4 portrait cards w/ ABC slots)
+   White / crystal-blue / lavender, glassy bright
+   ============================================================ */
+:root {
+  --ca-bg-0: #eaf3ff;
+  --ca-bg-1: #f6faff;
+  --ca-bg-2: #dde9ff;
+  --ca-bg-3: #c3d6f7;
+
+  --ca-text: #1f2a44;
+  --ca-text-soft: #4a5775;
+  --ca-text-mute: #8a96b3;
+
+  --ca-primary: #2c7be5;
+  --ca-primary-deep: #144cab;
+  --ca-cyan: #36c2e5;
+  --ca-purple: #8c5fff;
+  --ca-rose: #ff6b8b;
+  --ca-amber: #ffb537;
+  --ca-emerald: #2bc48a;
+
+  --ca-grad-sky: linear-gradient(180deg,#a4c8ff 0%, #ffffff 80%);
+  --ca-grad-blue: linear-gradient(135deg,#36c2e5,#2c7be5 60%, #5b3fd1);
+  --ca-grad-card: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(220,233,255,0.7));
+  --ca-grad-portrait: linear-gradient(180deg,#ffe6c8,#ffaa57 60%, #b85b1f);
+  --ca-grad-amber: linear-gradient(180deg,#ffd06a,#ff8a1b);
+
+  --ca-radius: 10px;
+  --ca-radius-sm: 6px;
+  --ca-radius-lg: 16px;
+
+  --ca-shadow-soft: 0 8px 24px rgba(44,123,229,0.18), 0 0 0 1px rgba(255,255,255,0.6) inset;
+  --ca-shadow-card: 0 14px 30px rgba(20,76,171,0.25), 0 0 0 1px #fff inset;
+  --ca-glow-cyan: 0 0 18px rgba(54,194,229,0.5);
+
+  --ca-font-heading: "Sora", "Inter", "Noto Sans SC", system-ui, sans-serif;
+  --ca-font-body: "Inter", "Noto Sans SC", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin:0; padding:0;
+  font-family: var(--ca-font-body);
+  color: var(--ca-text);
+  background:
+    radial-gradient(900px 500px at 80% 0%, rgba(140,95,255,0.18), transparent 60%),
+    radial-gradient(800px 400px at 0% 100%, rgba(54,194,229,0.20), transparent 60%),
+    var(--ca-grad-sky);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.ca-glass {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: var(--ca-radius);
+  box-shadow: var(--ca-shadow-soft);
+}
+
+.ca-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 7px 14px;
+  background: linear-gradient(180deg,#fff,#dfe9ff);
+  border: 1px solid rgba(44,123,229,0.4);
+  border-radius: 999px;
+  color: var(--ca-primary-deep); font-weight: 600; font-size: 12px;
+  cursor: pointer; transition: all .2s;
+}
+.ca-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(44,123,229,0.3); }
+.ca-btn--primary {
+  background: var(--ca-grad-blue); color:#fff; border-color: transparent;
+  box-shadow: 0 4px 12px rgba(44,123,229,0.45);
+}
+.ca-btn--amber {
+  background: var(--ca-grad-amber); color:#5a2c00; border-color: transparent;
+}
+.ca-btn--ghost { background: transparent; border-color: rgba(44,123,229,0.3); }
+.ca-btn--danger { background: linear-gradient(180deg,#ff6b8b,#c12549); color:#fff; border-color: transparent;}
+
+.ca-chip {
+  display:inline-flex; padding: 2px 10px; border-radius: 999px;
+  background: rgba(44,123,229,0.12); color: var(--ca-primary-deep);
+  border: 1px solid rgba(44,123,229,0.25);
+  font-size: 11px; font-weight: 600;
+}
+.ca-chip--purple { background: rgba(140,95,255,0.13); color:#5b3fd1; border-color: rgba(140,95,255,0.3);}
+.ca-chip--rose { background: rgba(255,107,139,0.15); color:#c12549; border-color: rgba(255,107,139,0.3);}
+.ca-chip--emerald { background: rgba(43,196,138,0.15); color:#0d8a60; border-color: rgba(43,196,138,0.3);}
+
+/* Bars */
+.ca-bar { height:6px; background: rgba(20,76,171,0.10); border-radius: 999px; overflow:hidden; }
+.ca-bar > i { display:block; height:100%; }
+.ca-bar.hp > i { background: linear-gradient(90deg,#3ed598,#0d8a60);}
+.ca-bar.mp > i { background: var(--ca-grad-blue);}
+.ca-bar.tp > i { background: var(--ca-grad-amber);}
+
+/* Hero portrait card (GBF style) */
+.ca-hero-card {
+  position: relative;
+  width: 100%; height: 100%;
+  border-radius: var(--ca-radius);
+  background: var(--ca-grad-card);
+  border: 2px solid #fff;
+  box-shadow: var(--ca-shadow-card);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 110px 1fr;
+}
+.ca-hero-card .portrait {
+  background: var(--ca-grad-portrait);
+  position: relative;
+  display:flex; align-items:flex-end; justify-content:center;
+  padding-bottom: 6px;
+  font-family: var(--ca-font-heading); color:#fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+.ca-hero-card .portrait::after {
+  content:""; position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.5), transparent 60%),
+    linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.25));
+}
+.ca-hero-card .portrait .face {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+  width: 60px; height: 60px; border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  border: 2px solid #fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size: 22px; color: var(--ca-primary-deep);
+  z-index:1;
+}
+.ca-hero-card .info {
+  padding: 8px 10px; display:flex; flex-direction:column; gap: 4px;
+}
+
+/* Ability slot (ABC) */
+.ca-skill {
+  width: 50px; height: 50px; border-radius: 8px;
+  background: linear-gradient(180deg,#fff,#dfe9ff);
+  border: 2px solid var(--ca-primary);
+  display:flex; align-items:center; justify-content:center;
+  font-family: var(--ca-font-heading); font-weight:700; font-size: 18px; color: var(--ca-primary-deep);
+  cursor: pointer; transition: all .15s;
+  position: relative;
+  box-shadow: 0 4px 10px rgba(44,123,229,0.25);
+}
+.ca-skill:hover { transform: translateY(-2px); box-shadow: var(--ca-glow-cyan), 0 6px 14px rgba(54,194,229,0.4); }
+.ca-skill.cd { opacity: .55; cursor: not-allowed; }
+.ca-skill .cd-num {
+  position:absolute; top:-4px; right:-4px;
+  width:18px; height:18px; border-radius:50%;
+  background: var(--ca-rose); color:#fff; font-size: 10px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* Ring meter */
+.ca-ring {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: conic-gradient(var(--ca-primary) 0 var(--p,75%), rgba(20,76,171,0.15) 0);
+  display:flex; align-items:center; justify-content:center;
+  position: relative;
+}
+.ca-ring::before { content:""; position:absolute; inset:4px; background:#fff; border-radius:50%;}
+.ca-ring span { position: relative; font-size: 11px; font-weight:700; color: var(--ca-primary-deep);}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px;}
+::-webkit-scrollbar-thumb { background: rgba(44,123,229,0.4); border-radius: 999px;}
+::-webkit-scrollbar-track { background: rgba(255,255,255,0.4);}
+
+/* Animations */
+@keyframes ca-rise { from{transform: translateY(20px); opacity:0;} to{transform: none; opacity:1;}}
+@keyframes ca-pulse { 0%,100%{box-shadow: 0 0 0 0 rgba(54,194,229,0.6);} 50%{box-shadow: 0 0 0 12px rgba(54,194,229,0);}}
+@keyframes ca-shimmer { 0%{background-position: -200%;} 100%{background-position: 200%;} }
+.ca-anim-rise { animation: ca-rise .4s ease-out both; }
+.ca-anim-pulse { animation: ca-pulse 2s infinite; }
+.ca-shimmer {
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%) var(--ca-grad-blue);
+  background-size: 200% 100%;
+  animation: ca-shimmer 3s linear infinite;
+}

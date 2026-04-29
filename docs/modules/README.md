@@ -24,6 +24,7 @@
 | 大厅账号与外部页面 | 登录、注册、大厅、社交、世界列表，非世界核心页面 | `08-lobby-auth-social.md` |
 | 共享契约与数据层 | shared 类型、Prisma、接口契约、资源包 JSON | `09-shared-data-contracts.md` |
 | 上下文预算流程 | 如何最少读取文件、如何定位、如何验证 | `10-context-budget-playbook.md` |
+| 主题与设计方案切换 | 改 CSS token、新增/删除主题包、设计风格弹窗、GM 锁定逻辑 | `11-theming-system.md` |
 
 ## 当前优先级分区
 

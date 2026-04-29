@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AAF · 极光圣战 Aurora Crusade</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Sora:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link rel="stylesheet" href="./world_theme_5_aurora_crusade.css" />
+<style>
+  .world-grid {
+    position: relative; z-index:1;
+    display: grid;
+    grid-template-columns: 220px 1fr 320px;
+    grid-template-rows: 64px 1fr 110px;
+    gap: 10px;
+    padding: 10px;
+    height: 100vh;
+  }
+  .area-top { grid-column: 1 / 4; grid-row: 1; }
+  .area-left { grid-column: 1; grid-row: 2; }
+  .area-stage { grid-column: 2; grid-row: 2; }
+  .area-right { grid-column: 3; grid-row: 2; }
+  .area-bottom { grid-column: 1 / 4; grid-row: 3; }
+
+  .stage-canvas {
+    position: relative; height: 100%; border-radius: var(--au-radius-lg);
+    background:
+      radial-gradient(800px 400px at 50% 0%, rgba(56,225,255,0.18), transparent 60%),
+      radial-gradient(600px 300px at 100% 100%, rgba(255,90,212,0.16), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(56,225,255,0.07) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(90deg, rgba(56,225,255,0.07) 0 1px, transparent 1px 48px),
+      var(--au-grad-deep);
+    border: 1px solid rgba(56,225,255,0.3);
+    box-shadow: var(--au-shadow-deep);
+    overflow: hidden;
+  }
+  .stage-canvas::before {
+    content:""; position: absolute; left:0; right:0; top:0; height:2px;
+    background: var(--au-grad-aurora); background-size:200% 100%; animation: au-stream 4s linear infinite;
+    opacity: .8;
+  }
+  .stage-canvas::after {
+    content:""; position: absolute; left:0; right:0; bottom:0; height:2px;
+    background: var(--au-grad-aurora); background-size:200% 100%; animation: au-stream 4s linear infinite reverse;
+    opacity: .8;
+  }
+  .token { position:absolute; width:46px; height:46px; border-radius:50%; border:2px solid #fff; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; box-shadow: 0 0 20px rgba(56,225,255,0.6);}
+  .token.t1 { background: linear-gradient(180deg,#38e1ff,#1a4cb8); top:38%; left:30%;}
+  .token.t2 { background: linear-gradient(180deg,#ffc14d,#c97400); top:50%; left:42%;}
+  .token.t3 { background: linear-gradient(180deg,#8a5bff,#5b2fd1); top:30%; left:55%;}
+  .token.enemy { background: linear-gradient(180deg,#ff5d7c,#7a1c34); top:22%; left:70%; border-color: var(--au-magenta); box-shadow: var(--au-glow-magenta);}
+  .aoe { position:absolute; width:170px; height:170px; border-radius:50%; top:18%; left:50%;
+    background: radial-gradient(closest-side, rgba(255,90,212,0.30), transparent 70%);
+    border: 2px solid var(--au-magenta); box-shadow: var(--au-glow-magenta), inset 0 0 20px rgba(255,90,212,0.4);
+  }
+
+  .top-bar {
+    height:100%; display:flex; align-items:center; justify-content:space-between; padding: 0 16px;
+    border-radius: var(--au-radius-lg);
+    background: rgba(10,15,31,0.6); backdrop-filter: blur(18px);
+    border: 1px solid rgba(56,225,255,0.2);
+    box-shadow: var(--au-shadow-deep);
+    position: relative; overflow:hidden;
+  }
+  .top-bar::after {
+    content:""; position:absolute; left:0; right:0; bottom:0; height:1px;
+    background: var(--au-grad-aurora); background-size: 200% 100%; animation: au-stream 4s linear infinite;
+  }
+  .fate-clock {
+    display:flex; align-items:center; gap:10px; padding: 6px 14px;
+    background: rgba(56,225,255,0.10); color: var(--au-cyan);
+    border: 1px solid rgba(56,225,255,0.35);
+    font-family: var(--au-font-heading); font-weight:700; letter-spacing:.16em;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  .fate-clock .dot { width:8px; height:8px; border-radius:50%; background: var(--au-cyan); box-shadow: var(--au-glow-cyan);}
+
+  /* battle seq floating */
+  .battle-seq-bar {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    display:flex; gap:6px; padding: 8px 14px;
+    background: rgba(10,15,31,0.7); backdrop-filter: blur(14px);
+    border: 1px solid rgba(56,225,255,0.3);
+    box-shadow: var(--au-shadow-deep);
+    align-items:center;
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  }
+  .seq-pill {
+    padding: 4px 12px; background: rgba(255,255,255,0.06);
+    color: var(--au-text-soft); font-size: 11px; font-weight: 700; letter-spacing:.08em;
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  }
+  .seq-pill.active {
+    background: var(--au-grad-aurora); color:#fff;
+    box-shadow: var(--au-shadow-glow);
+  }
+
+  /* Party */
+  .party-card {
+    margin: 6px 8px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.04);
+    border-left: 2px solid var(--au-cyan);
+    display:flex; gap:10px; align-items:center;
+    transition: all .2s;
+  }
+  .party-card:hover { background: rgba(56,225,255,0.08); border-left-color: var(--au-magenta); }
+  .party-avatar {
+    width: 38px; height: 38px;
+    background: linear-gradient(180deg,#38e1ff,#1a4cb8);
+    color:#fff; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+    clip-path: polygon(50% 0, 100% 30%, 100% 70%, 50% 100%, 0 70%, 0 30%);
+    box-shadow: var(--au-glow-cyan);
+  }
+
+  /* System tabs */
+  .sys-tabs {
+    display:flex; gap: 0; padding: 8px 0; border-bottom: 1px solid rgba(56,225,255,0.2);
+    overflow-x: auto;
+  }
+  .sys-tabs .au-tab { padding: 10px 16px; font-size: 11px; }
+
+  .sys-content { padding: 12px; overflow:auto; height: calc(100% - 56px);}
+
+  /* HUD */
+  .hud {
+    height:100%; display:flex; align-items:center; gap:10px; padding: 8px 16px;
+    border-radius: var(--au-radius-lg);
+    background: rgba(10,15,31,0.7); backdrop-filter: blur(18px);
+    border: 1px solid rgba(56,225,255,0.3);
+    box-shadow: var(--au-shadow-deep);
+    position: relative; overflow:hidden;
+  }
+  .hud::before {
+    content:""; position:absolute; left:0; right:0; top:0; height:1px;
+    background: var(--au-grad-aurora); background-size:200% 100%; animation: au-stream 4s linear infinite;
+  }
+  .hud-slot {
+    width:54px; height:54px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(56,225,255,0.3);
+    color: var(--au-cyan); font-weight:700; font-family: var(--au-font-heading);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    position: relative; transition: all .15s;
+    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  }
+  .hud-slot:hover { background: rgba(56,225,255,0.18); box-shadow: var(--au-glow-cyan);}
+  .hud-slot.filled { background: var(--au-grad-aurora); color:#fff; border-color: transparent; box-shadow: var(--au-shadow-glow);}
+  .hud-slot .key { position:absolute; bottom:2px; right:6px; font-size:9px; opacity:.6; font-family: var(--au-font-body);}
+
+  .hud-divider { width: 1px; height:42px; background: linear-gradient(180deg, transparent, rgba(56,225,255,0.5), transparent);}
+
+  /* Tool window */
+  .tool-window {
+    position: absolute; width: 320px;
+    background: rgba(10,15,31,0.85); backdrop-filter: blur(24px);
+    border: 1px solid rgba(56,225,255,0.4);
+    border-radius: var(--au-radius-lg);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), var(--au-shadow-glow);
+    overflow: hidden;
+  }
+  .tool-window header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 14px;
+    background: var(--au-grad-aurora); color:#fff;
+    cursor: grab;
+    font-family: var(--au-font-heading); letter-spacing:.16em; text-transform: uppercase;
+  }
+  .tool-window h4 { margin:0; font-size: 12px; font-weight: 700;}
+  .tool-window .body { padding: 12px; max-height: 280px; overflow:auto; font-size: 12px; color: var(--au-text-soft);}
+
+  .dmg-float { position:absolute; font-family: var(--au-font-heading); font-weight:900;
+    background: var(--au-grad-aurora); -webkit-background-clip: text; background-clip: text; color: transparent;
+    text-shadow: 0 0 10px rgba(255,90,212,0.6);
+    animation: dmgRise 1.6s ease-out forwards;
+  }
+  @keyframes dmgRise { 0%{transform:translateY(0); opacity:0;} 15%{opacity:1;} 100%{transform:translateY(-50px); opacity:0;}}
+
+  .label {
+    font-family: var(--au-font-heading); font-size: 10px; letter-spacing:.22em; text-transform: uppercase;
+    color: var(--au-text-mute); padding: 8px 12px;
+  }
+</style>
+</head>
+<body>
+<div class="world-grid">
+  <!-- TOP -->
+  <div class="area-top">
+    <div class="top-bar">
+      <div class="flex items-center gap-3">
+        <div class="fate-clock"><span class="dot"></span><span>FATE 23:14</span></div>
+        <span class="au-chip">CH 03</span>
+        <span class="au-chip au-chip--magenta">ONLINE 4</span>
+      </div>
+      <div style="font-family:var(--au-font-heading); font-weight:900; font-size:18px; letter-spacing:.32em; background: var(--au-grad-aurora); -webkit-background-clip:text; background-clip:text; color: transparent;">
+        AURORA CRUSADE · 翡翠群岛
+      </div>
+      <div class="flex gap-2">
+        <button class="au-btn"><i data-lucide="settings" class="w-3 h-3"></i>SETUP</button>
+        <button class="au-btn"><i data-lucide="keyboard" class="w-3 h-3"></i>KEYS</button>
+        <button class="au-btn au-btn--ghost"><i data-lucide="log-out" class="w-3 h-3"></i>EXIT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEFT -->
+  <div class="area-left au-glass overflow-hidden flex flex-col">
+    <div class="label">▮ PARTY</div>
+    <div class="overflow-auto" style="flex:1;">
+      <div class="party-card">
+        <div class="party-avatar">莉</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between" style="font-family:var(--au-font-heading); font-weight:700;"><span style="color:var(--au-cyan);">LIA</span><span class="text-[10px]" style="color:var(--au-text-mute);">LV.12</span></div>
+          <div class="au-bar hp mt-1"><i style="width:78%"></i></div>
+          <div class="au-bar mp mt-1"><i style="width:54%"></i></div>
+        </div>
+      </div>
+      <div class="party-card" style="border-left-color: var(--au-amber);">
+        <div class="party-avatar" style="background: linear-gradient(180deg,#ffc14d,#c97400); box-shadow: 0 0 12px rgba(255,193,77,0.5);">拉</div>
+        <div class="flex-1">
+          <div class="flex justify-between" style="font-family:var(--au-font-heading); font-weight:700;"><span style="color:var(--au-amber);">RALPH</span><span class="text-[10px]" style="color:var(--au-text-mute);">LV.11</span></div>
+          <div class="au-bar hp mt-1"><i style="width:62%"></i></div>
+          <div class="au-bar mp mt-1"><i style="width:30%"></i></div>
+        </div>
+      </div>
+      <div class="party-card" style="border-left-color: var(--au-violet);">
+        <div class="party-avatar" style="background: linear-gradient(180deg,#8a5bff,#5b2fd1); box-shadow: 0 0 12px rgba(138,91,255,0.5);">龙</div>
+        <div class="flex-1">
+          <div class="flex justify-between" style="font-family:var(--au-font-heading); font-weight:700;"><span style="color:var(--au-violet);">DRAGOON</span><span class="text-[10px]" style="color:var(--au-text-mute);">LV.13</span></div>
+          <div class="au-bar hp mt-1"><i style="width:90%"></i></div>
+          <div class="au-bar mp mt-1"><i style="width:75%"></i></div>
+        </div>
+      </div>
+      <div class="text-center text-xs mx-3 my-2 p-2 cursor-pointer" style="border:1px dashed rgba(56,225,255,0.3); color:var(--au-text-mute);">＋ RECRUIT</div>
+    </div>
+    <div class="label" style="border-top: 1px solid rgba(56,225,255,0.15);">▮ ONLINE</div>
+    <div class="px-3 pb-3 text-xs space-y-1">
+      <div class="flex items-center gap-2"><span class="au-chip">GM</span> Nubes</div>
+      <div class="flex items-center gap-2"><span class="au-chip au-chip--magenta">PC</span> Aria</div>
+      <div class="flex items-center gap-2"><span class="au-chip au-chip--magenta">PC</span> Ralph</div>
+      <div class="flex items-center gap-2"><span class="au-chip au-chip--amber">OB</span> Visitor</div>
+    </div>
+  </div>
+
+  <!-- STAGE -->
+  <div class="area-stage stage-canvas">
+    <div class="battle-seq-bar au-anim-rise">
+      <span style="font-family:var(--au-font-heading); font-weight:900; color:var(--au-cyan); font-size:11px; letter-spacing:.18em;">⚡ INIT</span>
+      <span class="seq-pill active">1 LIA</span>
+      <span class="seq-pill">2 RALPH</span>
+      <span class="seq-pill">3 DRAGOON</span>
+      <span class="seq-pill">4 SHADE</span>
+      <span class="seq-pill">5 MAGE</span>
+      <span class="seq-pill" style="opacity:.5;">6 GOBLIN.K</span>
+      <button class="au-btn au-btn--primary ml-2" style="padding:5px 14px;"><i data-lucide="skip-forward" class="w-3 h-3"></i>END</button>
+    </div>
+
+    <div class="aoe au-anim-glow"></div>
+    <div class="token t1">莉</div>
+    <div class="token t2">拉</div>
+    <div class="token t3">龙</div>
+    <div class="token enemy">敌</div>
+
+    <div class="dmg-float" style="top:22%; left:72%; font-size:36px;">−128</div>
+    <div class="dmg-float" style="top:32%; left:74%; font-size:14px; animation-delay:.2s;">CRITICAL</div>
+
+    <div class="tool-window au-anim-rise" style="top:80px; right:24px;">
+      <header><h4>LIBRARY · ABILITIES</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body space-y-2">
+        <div class="flex justify-between p-2" style="background:rgba(56,225,255,0.06); border-left: 2px solid var(--au-cyan);"><span>🔥 FIRE BOLT</span><span class="au-chip">L3</span></div>
+        <div class="flex justify-between p-2" style="background:rgba(255,90,212,0.06); border-left: 2px solid var(--au-magenta);"><span>✨ SACRED HEAL</span><span class="au-chip au-chip--magenta">L2</span></div>
+        <div class="flex justify-between p-2" style="background:rgba(255,193,77,0.06); border-left: 2px solid var(--au-amber);"><span>⚔ SUNDER</span><span class="au-chip au-chip--amber">L1</span></div>
+      </div>
+    </div>
+
+    <div class="tool-window au-anim-rise" style="bottom:24px; left:24px; width:320px;">
+      <header><h4>RESOLVE · CAST</h4><i data-lucide="x" class="w-4 h-4 cursor-pointer"></i></header>
+      <div class="body">
+        <div class="mb-2">CASTER: <b style="color:var(--au-cyan);">LIA</b> → <b style="color:var(--au-magenta);">GOBLIN KING</b></div>
+        <div class="p-2 mb-2" style="background:rgba(56,225,255,0.06); border-left: 2px solid var(--au-emerald);">HIT 1d20+5 = <b style="color:var(--au-emerald);">17 ✓</b></div>
+        <div class="p-2 mb-2" style="background:rgba(255,90,212,0.06); border-left: 2px solid var(--au-magenta);">DMG 2d8+3 fire = <b style="color:var(--au-magenta);">128</b></div>
+        <div class="flex gap-2"><button class="au-btn au-btn--primary flex-1">APPLY</button><button class="au-btn flex-1">CANCEL</button></div>
+      </div>
+    </div>
+
+    <div class="tool-window" style="top:55%; left:38%; width:230px;">
+      <header style="background: linear-gradient(135deg, var(--au-magenta), var(--au-violet));"><h4>STATUS · DAZED</h4></header>
+      <div class="body">
+        <p>失去稳定行动节奏，下回合先攻 −5。</p>
+        <div class="flex gap-1 mt-2"><span class="au-chip au-chip--magenta">CTRL</span><span class="au-chip au-chip--amber">2 TURN</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM -->
+  <div class="area-right au-glass overflow-hidden flex flex-col">
+    <div class="sys-tabs">
+      <div class="au-tab" title="聊">聊<span class="badge">3</span></div>
+      <div class="au-tab">战</div>
+      <div class="au-tab active">景</div>
+      <div class="au-tab">角</div>
+      <div class="au-tab">包</div>
+      <div class="au-tab">系</div>
+    </div>
+    <div class="sys-content text-xs space-y-2">
+      <div style="font-family:var(--au-font-heading); font-weight:700; letter-spacing:.18em; color:var(--au-cyan);">SCENE · 风之回廊</div>
+
+      <div class="au-glass p-2">
+        <div class="flex justify-between"><span><b>CURRENT:</b> 风之回廊</span><button class="au-btn">SWAP</button></div>
+      </div>
+      <div class="au-glass p-2">
+        <div class="font-bold mb-1" style="color:var(--au-magenta); letter-spacing:.16em;">VISUAL</div>
+        <div class="grid grid-cols-3 gap-1">
+          <button class="au-btn">DAY</button><button class="au-btn au-btn--primary">DUSK</button><button class="au-btn">NIGHT</button>
+        </div>
+      </div>
+      <div class="au-glass p-2">
+        <div class="font-bold mb-1" style="color:var(--au-magenta); letter-spacing:.16em;">TOKENS</div>
+        <div class="grid grid-cols-2 gap-1">
+          <button class="au-btn">＋ ADD</button>
+          <button class="au-btn">IMPORT</button>
+          <button class="au-btn">CLONE</button>
+          <button class="au-btn au-btn--danger">REMOVE</button>
+        </div>
+      </div>
+      <div class="au-glass p-2">
+        <div class="font-bold mb-1" style="color:var(--au-magenta); letter-spacing:.16em;">MEASURE</div>
+        <div class="flex gap-1"><button class="au-btn">LINE</button><button class="au-btn">CIRC</button><button class="au-btn">CONE</button></div>
+      </div>
+      <div class="au-glass p-2">
+        <div class="font-bold mb-1" style="color:var(--au-magenta); letter-spacing:.16em;">SCENES</div>
+        <ul class="space-y-1">
+          <li class="flex justify-between"><span>· 风之回廊</span><span class="au-chip">ON</span></li>
+          <li class="flex justify-between"><span>· 旧城广场</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+          <li class="flex justify-between"><span>· 殿之奥</span><i data-lucide="more-horizontal" class="w-3 h-3"></i></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div class="area-bottom hud">
+    <div class="flex flex-col items-start">
+      <span class="text-[10px]" style="color:var(--au-text-mute); letter-spacing:.22em;">ACTIVE</span>
+      <span style="font-family:var(--au-font-heading); font-weight:900; letter-spacing:.18em; background: var(--au-grad-aurora); -webkit-background-clip:text; background-clip:text; color:transparent;">LIA · TURN 1</span>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex gap-2">
+      <div class="hud-slot filled">🔥<span class="key">1</span></div>
+      <div class="hud-slot filled">✨<span class="key">2</span></div>
+      <div class="hud-slot filled">⚔<span class="key">3</span></div>
+      <div class="hud-slot">＋<span class="key">4</span></div>
+      <div class="hud-slot">＋<span class="key">5</span></div>
+      <div class="hud-slot">＋<span class="key">6</span></div>
+      <div class="hud-slot">＋<span class="key">7</span></div>
+      <div class="hud-slot">＋<span class="key">8</span></div>
+      <div class="hud-slot">＋<span class="key">9</span></div>
+      <div class="hud-slot">＋<span class="key">0</span></div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex flex-col gap-1 text-[10px]">
+      <div class="flex items-center gap-2"><span style="width:24px; color:var(--au-text-mute); font-family:var(--au-font-heading); letter-spacing:.16em;">HP</span><div class="au-bar hp" style="width:120px;"><i style="width:78%"></i></div></div>
+      <div class="flex items-center gap-2"><span style="width:24px; color:var(--au-text-mute); font-family:var(--au-font-heading); letter-spacing:.16em;">MP</span><div class="au-bar mp" style="width:120px;"><i style="width:54%"></i></div></div>
+      <div class="flex items-center gap-2"><span style="width:24px; color:var(--au-text-mute); font-family:var(--au-font-heading); letter-spacing:.16em;">TP</span><div class="au-bar tp" style="width:120px;"><i style="width:62%"></i></div></div>
+    </div>
+    <div class="hud-divider"></div>
+    <div class="flex gap-1">
+      <button class="au-tab active" style="padding:8px 14px; font-size:10px;">CHAR</button>
+      <button class="au-tab" style="padding:8px 14px; font-size:10px;">BAG</button>
+      <button class="au-tab" style="padding:8px 14px; font-size:10px;">SKILL</button>
+      <button class="au-tab" style="padding:8px 14px; font-size:10px;">LOG</button>
+    </div>
+    <div class="flex-1"></div>
+    <div class="flex gap-2">
+      <button class="au-btn au-btn--primary"><i data-lucide="sword" class="w-4 h-4"></i>END TURN</button>
+      <button class="au-btn"><i data-lucide="shield" class="w-4 h-4"></i>GUARD</button>
+      <button class="au-btn"><i data-lucide="footprints" class="w-4 h-4"></i>FLEE</button>
+    </div>
+  </div>
+</div>
+<script>lucide.createIcons();</script>
+</body>
+</html>
