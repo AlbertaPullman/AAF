@@ -4169,17 +4169,20 @@ export default function WorldPage() {
             })}
           </div>
           <div className="sys-body">
-            <div className="sys-body__head">
-              <div className="sys-body__copy">
-                <strong>{activeTabMeta.title}</strong>
-                <span>{activeTabMeta.description}</span>
+            {/* 聊天和战斗 tab 不显示标题栏，直接显示内容 */}
+            {activeTabMeta.key !== "chat" && activeTabMeta.key !== "battle" && (
+              <div className="sys-body__head">
+                <div className="sys-body__copy">
+                  <strong>{activeTabMeta.title}</strong>
+                  <span>{activeTabMeta.description}</span>
+                </div>
+                <div className="sys-body__actions">
+                  <button type="button" className="sc-btn sc-btn--ghost" onClick={() => setError(null)}>
+                    清空提示
+                  </button>
+                </div>
               </div>
-              <div className="sys-body__actions">
-                <button type="button" className="sc-btn sc-btn--ghost" onClick={() => setError(null)}>
-                  清空提示
-                </button>
-              </div>
-            </div>
+            )}
             <div className={`sys-body__view sys-body__view--${activeTabMeta.view}`.trim()}>
               {renderActiveSystemTab()}
             </div>
