@@ -19,6 +19,51 @@ type AbilityItem = {
   tags?: unknown;
   resourceCosts?: unknown;
   effects?: unknown;
+  automation?: unknown;
+};
+
+type AbilityAutomationMode = "manual" | "assisted" | "full";
+type WorkflowPhaseStatus = "pending" | "waiting" | "skipped" | "resolved" | "failed";
+
+const AUTOMATION_MODE_LABELS: Record<AbilityAutomationMode, string> = {
+  manual: "手动预览",
+  assisted: "半自动",
+  full: "全自动"
+};
+
+const WORKFLOW_STATUS_LABELS: Record<"running" | "waiting" | "completed" | "failed", string> = {
+  running: "进行中",
+  waiting: "等待确认",
+  completed: "已完成",
+  failed: "失败"
+};
+
+const WORKFLOW_PHASE_LABELS: Record<string, string> = {
+  declare: "声明能力",
+  "target-confirmation": "确认目标",
+  "cost-check": "资源检查",
+  "reaction-window": "反应窗口",
+  "attack-roll": "攻击检定",
+  "save-roll": "豁免/对抗",
+  "damage-roll": "伤害掷骰",
+  "damage-application": "应用伤害",
+  "effect-application": "应用效果",
+  "post-apply": "后处理",
+  settle: "完成结算"
+};
+
+const WORKFLOW_PHASE_STATUS_LABELS: Record<WorkflowPhaseStatus, string> = {
+  pending: "未开始",
+  waiting: "等待",
+  skipped: "跳过",
+  resolved: "完成",
+  failed: "失败"
+};
+
+const WORKFLOW_STEP_AUTOMATION_LABELS: Record<string, string> = {
+  manual: "手动",
+  prompt: "询问",
+  auto: "自动"
 };
 
 type AbilityExecutionResult = {
@@ -63,6 +108,38 @@ type AbilityExecutionResult = {
     value: string | number | boolean | null;
     label?: string;
   }>;
+  workflow?: {
+    mode: AbilityAutomationMode;
+    status: "running" | "waiting" | "completed" | "failed";
+    phases?: Array<{
+      key: string;
+      label?: string;
+      automation?: "manual" | "prompt" | "auto" | string;
+      status: WorkflowPhaseStatus;
+      message?: string;
+      requiresConfirmation?: boolean;
+      editableFields?: string[];
+    }>;
+    damageApplications?: Array<{
+      targetName: string;
+      damageType?: string;
+      rawDamage: number;
+      effectiveDamage?: number;
+      appliedDamage: number;
+      tempHpDamage?: number;
+      hpDamage?: number;
+      oldHp?: number;
+      newHp?: number;
+      oldTempHp?: number;
+      newTempHp?: number;
+      resistanceApplied?: boolean;
+      vulnerabilityApplied?: boolean;
+      immunityApplied?: boolean;
+      flatReduction?: number;
+      applied: boolean;
+      notes?: string[];
+    }>;
+  };
 };
 
 type AbilityExecutionPanelProps = {
@@ -72,6 +149,7 @@ type AbilityExecutionPanelProps = {
   selectedAbilityId: string;
   actorCharacterId: string;
   targetCharacterId: string;
+  automationMode: AbilityAutomationMode;
   executing: boolean;
   latestResult: AbilityExecutionResult | null;
   canExecuteAction: boolean;
@@ -79,6 +157,7 @@ type AbilityExecutionPanelProps = {
   onAbilityChange: (value: string) => void;
   onActorChange: (value: string) => void;
   onTargetChange: (value: string) => void;
+  onAutomationModeChange: (value: AbilityAutomationMode) => void;
   onExecute: () => void;
 };
 
@@ -103,6 +182,28 @@ function summarizeJsonArray(value: unknown, fallback: string) {
     return fallback;
   }
   return `${value.length} 项`;
+}
+
+function readAutomationMode(value: unknown): AbilityAutomationMode | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const mode = (value as Record<string, unknown>).mode;
+  return mode === "manual" || mode === "assisted" || mode === "full" ? mode : null;
+}
+
+function formatDamageApplication(item: NonNullable<NonNullable<AbilityExecutionResult["workflow"]>["damageApplications"]>[number]) {
+  const effectiveDamage = item.effectiveDamage ?? item.rawDamage;
+  const modifiers = [
+    item.immunityApplied ? "免疫" : null,
+    item.resistanceApplied ? "抗性" : null,
+    item.vulnerabilityApplied ? "易伤" : null,
+    item.flatReduction ? `减伤 ${item.flatReduction}` : null,
+  ].filter(Boolean);
+  const hpLine = `临时HP ${item.oldTempHp ?? "-"}→${item.newTempHp ?? "-"}，HP ${item.oldHp ?? "-"}→${item.newHp ?? "-"}`;
+  return `${item.targetName}：${item.applied ? "已应用" : "待应用"} ${effectiveDamage}/${item.rawDamage}${
+    item.damageType ? ` ${item.damageType}` : ""
+  }${modifiers.length ? `（${modifiers.join("、")}）` : ""}；${hpLine}`;
 }
 
 function describeExecutionResult(result: AbilityExecutionResult | null) {
@@ -137,6 +238,7 @@ export function AbilityExecutionPanel({
   selectedAbilityId,
   actorCharacterId,
   targetCharacterId,
+  automationMode,
   executing,
   latestResult,
   canExecuteAction,
@@ -144,6 +246,7 @@ export function AbilityExecutionPanel({
   onAbilityChange,
   onActorChange,
   onTargetChange,
+  onAutomationModeChange,
   onExecute,
 }: AbilityExecutionPanelProps) {
   const selectedAbility = useMemo(
@@ -177,6 +280,10 @@ export function AbilityExecutionPanel({
         { label: "资源消耗", value: summarizeJsonArray(selectedAbility.resourceCosts, "无") },
         { label: "效果数量", value: summarizeJsonArray(selectedAbility.effects, "0") },
         {
+          label: "默认自动化",
+          value: AUTOMATION_MODE_LABELS[readAutomationMode(selectedAbility.automation) ?? "assisted"],
+        },
+        {
           label: "当前施放者",
           value: actorCharacter
             ? `${actorCharacter.name} · HP ${getRecordNumber(actorCharacter.stats, "hp", 0)} / ${getRecordNumber(
@@ -198,7 +305,7 @@ export function AbilityExecutionPanel({
         </div>
         {canExecuteAction ? (
           <button type="button" className="world-stage-header-btn" onClick={onExecute} disabled={!canSubmitExecution}>
-            {executing ? "执行中..." : "执行能力"}
+            {executing ? "执行中..." : automationMode === "manual" ? "生成预览" : "执行能力"}
           </button>
         ) : (
           <span className="world-tool-status">只读观战</span>
@@ -214,7 +321,18 @@ export function AbilityExecutionPanel({
       <div className="world-ability-exec__grid">
         <label className="world-ability-exec__field">
           <span>能力</span>
-          <select value={selectedAbilityId} onChange={(event) => onAbilityChange(event.target.value)}>
+          <select
+            value={selectedAbilityId}
+            onChange={(event) => {
+              const nextAbilityId = event.target.value;
+              onAbilityChange(nextAbilityId);
+              const nextAbility = abilities.find((item) => item.id === nextAbilityId);
+              const nextMode = readAutomationMode(nextAbility?.automation);
+              if (nextMode) {
+                onAutomationModeChange(nextMode);
+              }
+            }}
+          >
             <option value="">选择能力</option>
             {abilities.map((ability) => (
               <option value={ability.id} key={ability.id}>
@@ -247,6 +365,21 @@ export function AbilityExecutionPanel({
             {targetOptions.map((character) => (
               <option value={character.id} key={character.id}>
                 {character.name} ({character.type})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="world-ability-exec__field">
+          <span>自动化</span>
+          <select
+            value={automationMode}
+            onChange={(event) => onAutomationModeChange(event.target.value as AbilityAutomationMode)}
+            disabled={!canExecuteAction}
+          >
+            {Object.entries(AUTOMATION_MODE_LABELS).map(([value, label]) => (
+              <option value={value} key={value}>
+                {label}
               </option>
             ))}
           </select>
@@ -323,7 +456,57 @@ export function AbilityExecutionPanel({
           <div className="world-ability-exec__result-lines">
             <p>资源：{latestResult.costs.map((item) => `${item.label || item.type} -${item.amount}`).join("，") || "无"}</p>
             <p>效果：{latestResult.effects.map((item) => item.label || item.type).join("，") || "无"}</p>
+            <p>
+              流程：
+              {latestResult.workflow
+                ? `${AUTOMATION_MODE_LABELS[latestResult.workflow.mode]} · ${WORKFLOW_STATUS_LABELS[latestResult.workflow.status]}`
+                : "旧式结算"}
+            </p>
+            {latestResult.workflow?.damageApplications?.length ? (
+              <p>
+                伤害应用：
+                {latestResult.workflow.damageApplications.map((item) => formatDamageApplication(item)).join("；")}
+              </p>
+            ) : null}
           </div>
+          {latestResult.workflow ? (
+            <div className="world-ability-exec__workflow" aria-label="Workflow 阶段列表">
+              <div className="world-ability-exec__workflow-head">
+                <strong>Workflow 阶段</strong>
+                {latestResult.workflow.mode === "manual" ? <span>手动模式：等待 GM 应用伤害/效果</span> : null}
+              </div>
+              <div className="world-ability-exec__phase-list">
+                {(latestResult.workflow.phases ?? []).map((phase) => (
+                  <article className={`world-ability-exec__phase is-${phase.status}`} key={phase.key}>
+                    <div>
+                      <strong>{WORKFLOW_PHASE_LABELS[phase.key] ?? phase.label ?? phase.key}</strong>
+                      <span>
+                        {WORKFLOW_PHASE_STATUS_LABELS[phase.status]} · {WORKFLOW_STEP_AUTOMATION_LABELS[phase.automation ?? ""] ?? phase.automation ?? "未知"}
+                      </span>
+                    </div>
+                    {phase.message ? <p>{phase.message}</p> : null}
+                    {phase.status === "waiting" && phase.key === "damage-application" ? (
+                      <em>等待手动应用伤害</em>
+                    ) : null}
+                    {phase.status === "waiting" && phase.key === "effect-application" ? (
+                      <em>等待手动应用效果</em>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+              <div className="world-ability-exec__workflow-actions" aria-label="Workflow 操作入口">
+                <button type="button" disabled>
+                  应用本次伤害
+                </button>
+                <button type="button" disabled>
+                  应用本次效果
+                </button>
+                <button type="button" disabled>
+                  撤销本次执行
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

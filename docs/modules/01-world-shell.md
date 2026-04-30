@@ -12,6 +12,7 @@
 - `client/src/world/components/BattleSequenceBar.tsx`
 - `client/src/world/components/HUDPanel.tsx`
 - `client/src/world/components/CharacterPanel.tsx`
+- `client/src/pages/system/AbilityLabPage.tsx`
 - `client/src/styles/index.css`
 
 ## 当前约定
@@ -23,6 +24,7 @@
 - 底部 HUD 承担玩家行动入口和快捷栏，不替代角色详细编辑器。
 - 右侧系统板只放高频入口，详情进入弹窗。
 - 世界页容器间距应优先保证可用空间：系统页、弹窗、资源编辑器和战斗列表使用紧凑矩形工具面板，不为装饰留过大的空隙。
+- 能力系统实验页走 `/system/ability-lab/:worldId?`，在 `App.tsx` 中按世界页一样隐藏全局 header 并使用 `app-main--world` 全屏布局；它可以复用世界壳视觉和系统板，但不应反向把实验逻辑堆进 `WorldPage.tsx`。
 - **舞台组件 Phase 1 已落地（2026-04-26）**：`FateClockWidget` / `HUDPanel` / `BattleSequenceBar` / `HoverInsightCards` / `ContextMenu` 五件已迁到 `_contract.css` 语义 token + 5 态交互 + 玻璃面板/金边美学。新增舞台组件参照其中任一为模板，禁止裸 hex 与 `var(--jrpg-*)` legacy。
 - 全局 scrollbar 浅蓝化在 `_contract.css` 末尾，新组件不必再单独写 scrollbar CSS。
 - `border-radius: 999px` 已统一到 `var(--radius-pill)` token；视觉去胶囊化（短矩形替代）属于待办，需 per-selector 审视。

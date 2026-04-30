@@ -336,6 +336,7 @@ model AbilityDefinition {
   damageRolls   Json?
   trigger       Json?
   effects       Json     @default("[]")
+  automation    Json?
   reactionStrat String?  // always-ask | smart-ask | auto
   spellLevel    Int?
   spellSchool   String?

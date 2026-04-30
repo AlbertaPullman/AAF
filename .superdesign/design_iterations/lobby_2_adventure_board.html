@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AAF 大厅方案 2 - 冒险公告板</title>
+  <link rel="stylesheet" href="./lobby_theme_2_adventure_board.css" />
+  <link rel="stylesheet" href="./lobby_design_common.css" />
+</head>
+<body>
+  <main class="sd-lobby variant-adventure-board">
+    <section class="sd-shell">
+      <header class="sd-topbar">
+        <div class="sd-brand">
+          <span class="sd-brand-mark"><i data-lucide="map"></i></span>
+          <div><h1>冒险公告板</h1><p>会前委托 · 世界招募</p></div>
+        </div>
+        <p class="sd-top-note">公开团、邀请团、规则试炼桌统一张贴在这里。挑一张委托，准备进场。</p>
+        <div class="sd-user-zone"><span class="sd-chip"><i data-lucide="bell"></i>2 条未读</span><button class="sd-avatar" type="button">云</button></div>
+      </header>
+
+      <section class="sd-main-grid">
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>小酒馆频道</h2><span class="sd-status"><span class="sd-status-dot"></span>连接中</span></header>
+          <div class="sd-panel-body sd-panel-body--chat" data-chat-panel data-active-channel="recruit">
+            <div class="sd-channel-switch" role="tablist" aria-label="聊天频道"><button class="sd-channel-btn is-active" type="button" data-channel-button="recruit">招募</button><button class="sd-channel-btn" type="button" data-channel-button="talk">闲聊</button><button class="sd-channel-btn" type="button" data-channel-button="system">系统</button></div>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="recruit">
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">招募</span><span>团长</span><span>13:58</span></div><p>公告板新贴：失落群岛缺一名熟悉探索的玩家。</p></article>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">招募</span><span>莉雅</span><span>14:05</span></div><p>翠野怪谈短团还可以申请旁听位。</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="talk" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">闲聊</span><span>白露</span><span>14:01</span></div><p>有没有新手可进的轻量世界？想先看规则书。</p></article>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">闲聊</span><span>墨鸦</span><span>14:04</span></div><p>先从工具箱的角色卡预创建开始会舒服很多。</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="system" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">系统</span><span>系统</span><span>14:03</span></div><p>角色卡预创建入口已加入工具箱。</p></article>
+            </section>
+            <form class="sd-chat-input" data-chat-form><textarea class="sd-control" placeholder="在小酒馆留言"></textarea><button class="sd-action primary" type="submit"><i data-lucide="send"></i>张贴</button></form>
+          </div>
+        </aside>
+
+        <section class="sd-panel">
+          <header class="sd-panel-header"><h2>委托板</h2><span class="sd-chip">按活跃度排序</span></header>
+          <div class="sd-panel-body sd-scroll">
+            <section class="sd-board-hero sd-sweep">
+              <h3 class="sd-hero-title">今日推荐：碧空圣典</h3>
+              <p class="sd-muted">云海城邦、星屑追踪、三小时试跑。适合已经完成角色预创建的玩家。</p>
+              <div class="sd-meta-row" style="margin-top: 12px;"><span class="sd-badge is-hot">活跃 5</span><span class="sd-badge">邀请制</span><span class="sd-badge">角色等级 1</span></div>
+            </section>
+            <form class="sd-toolbar">
+              <input class="sd-control" placeholder="搜索委托、GM、关键词" />
+              <select class="sd-control"><option>全部委托</option><option>公开招募</option><option>仅好友</option></select>
+              <select class="sd-control"><option>按活跃人数</option><option>按创建时间</option></select>
+              <select class="sd-control"><option>降序</option><option>升序</option></select>
+              <button class="sd-action primary" type="button"><i data-lucide="stamp"></i>发布世界</button>
+            </form>
+            <section class="sd-world-list">
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/800x450/eaf8ff/15559b?text=Island+Quest');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">浮岛航路招募令</h3><span class="sd-badge is-hot">推荐</span></div><p class="sd-world-desc">探索、交涉、短战斗。今晚 20:00 开局。</p><div class="sd-meta-row"><span class="sd-chip">成员 8</span><span class="sd-chip">活跃 5</span><span class="sd-chip">GM Nubes</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏委托。">收藏</button><button class="sd-action primary" type="button" data-action-toast="已接取委托预览。">接取</button><button class="sd-action" type="button" data-action-toast="委托详情面板已准备打开。">详情</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/800x450/fff1de/9b4a00?text=Guild+Trial');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">新手公会试炼</h3><span class="sd-badge">公开</span></div><p class="sd-world-desc">低压教学，重点熟悉角色卡和规则书。</p><div class="sd-meta-row"><span class="sd-chip">成员 12</span><span class="sd-chip">活跃 4</span><span class="sd-chip">GM 白露</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏委托。">收藏</button><button class="sd-action primary" type="button" data-action-toast="加入动作已触发。">加入</button><button class="sd-action" type="button" data-action-toast="委托详情面板已准备打开。">详情</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/800x450/e7fff5/087c63?text=Forest+Table');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">翠野怪谈短团</h3><span class="sd-badge">好友</span></div><p class="sd-world-desc">调查型短团，偏剧情和线索整理。</p><div class="sd-meta-row"><span class="sd-chip">成员 5</span><span class="sd-chip">活跃 2</span><span class="sd-chip">GM 莉雅</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏委托。">收藏</button><button class="sd-action primary" type="button" data-action-toast="申请动作已触发。">申请</button><button class="sd-action" type="button" data-action-toast="委托详情面板已准备打开。">详情</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/800x450/f0f5ff/274f98?text=Rules+Lab');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">规则结算实验室</h3><span class="sd-badge">私密</span></div><p class="sd-world-desc">自动结算、天赋节点、规则书条目联动测试。</p><div class="sd-meta-row"><span class="sd-chip">成员 3</span><span class="sd-chip">活跃 1</span><span class="sd-chip">GM 墨鸦</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏委托。">收藏</button><button class="sd-action primary" type="button" data-action-toast="进入世界动作已触发。">进入</button><button class="sd-action" type="button" data-action-toast="委托详情面板已准备打开。">详情</button></div></article>
+            </section>
+          </div>
+        </section>
+
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>会前工具</h2><i data-lucide="briefcase"></i></header>
+          <div class="sd-panel-body sd-scroll" data-tab-group>
+            <section class="sd-tool-list">
+              <button class="sd-tool-card is-active" type="button" data-tab-button="sheet"><strong>角色卡预创建</strong><span>先车卡，再接委托。支持已有角色草稿。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="rulebook"><strong>规则书速查</strong><span>按目录阅读，管理员可进入编辑器维护。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="talent"><strong>天赋树预览</strong><span>职业树和通用树以只读画布呈现。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="bestiary"><strong>怪物图鉴</strong><span>会前查看怪物条目索引和基础标签。</span></button>
+              <article class="sd-tool-preview" data-tab-panel="sheet"><h3>角色卡预创建</h3><p>工具箱内完成角色草稿，不占用聊天栏位。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="rulebook" hidden><h3>规则书速查</h3><p>按目录查看规则条目，管理员从这里进入编辑器。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="talent" hidden><h3>天赋树预览</h3><p>只读查看职业树和通用树，避免会前误提交。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="bestiary" hidden><h3>怪物图鉴</h3><p>浏览公开图鉴索引和基础标签，隐藏 GM 私密字段。</p></article>
+            </section>
+          </div>
+        </aside>
+      </section>
+    </section>
+  </main>
+  <div class="sd-toast" data-toast></div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="./lobby_design_interactions.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

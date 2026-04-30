@@ -36,6 +36,7 @@ import {
   type RaceEditorState,
   type RandomTableEditorState,
 } from "./EntityVisualEditors";
+import { DC_TARGET_OPTIONS } from "../../../../../shared/rules/ability-registry";
 
 type EntityManagerProps = {
   worldId: string;
@@ -121,6 +122,8 @@ const ATTACK_DEFENSE_OPTIONS = [
   { label: "目标防御值", value: "defense" },
   { label: "自定义结算", value: "custom" },
 ];
+
+const SAVE_DC_SOURCE_OPTIONS = DC_TARGET_OPTIONS.map((option) => ({ label: option.label, value: option.value }));
 
 const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
   abilities: {
@@ -221,6 +224,17 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
         transient: true,
         visibleWhen: (state) => state.checkType === CHECK_TYPE_ATTACK,
         options: ATTACK_DEFENSE_OPTIONS,
+      },
+      {
+        key: "saveDCMode",
+        label: "豁免 DC 来源",
+        type: "select",
+        defaultValue: "actorAbilityDc",
+        transient: true,
+        span: 2,
+        visibleWhen: (state) => state.checkType === CHECK_TYPE_SAVE,
+        helperText: "固定 DC、法术 DC、职业 DC、属性 DC 等都从这里选择，避免手写公式。",
+        options: SAVE_DC_SOURCE_OPTIONS,
       },
       {
         key: "saveDCAttribute",
@@ -597,8 +611,12 @@ function getInitialFieldValue(field: EntityFieldSchema, source?: EntityRecord | 
   if (field.key === "actionType") return normalizeActionTypeValue(source?.actionType ?? field.defaultValue ?? "");
   if (field.key === "folderPath") return normalizeFolderPath(source?.folderPath ?? field.defaultValue ?? "");
   if (field.key === "attackTargetDefense") return String(saveDC?.targetDefense ?? field.defaultValue ?? "ac");
+  if (field.key === "saveDCMode") {
+    const savedMode = String(saveDC?.dcMode ?? saveDC?.mode ?? "");
+    return savedMode && savedMode !== "savingThrow" ? savedMode : String(field.defaultValue ?? "actorAbilityDc");
+  }
   if (field.key === "saveDCAttribute") return String(saveDC?.attribute ?? field.defaultValue ?? "intelligence");
-  if (field.key === "saveDCBase") return saveDC?.base != null ? String(saveDC.base) : String(field.defaultValue ?? "");
+  if (field.key === "saveDCBase") return saveDC?.base != null || saveDC?.fixed != null ? String(saveDC.base ?? saveDC.fixed) : String(field.defaultValue ?? "");
   if (field.key === "contestActorAttribute") return String(asObject(saveDC?.actor)?.attribute ?? saveDC?.actorAttribute ?? field.defaultValue ?? "strength");
   if (field.key === "contestActorSkill") return String(asObject(saveDC?.actor)?.skill ?? saveDC?.actorSkill ?? field.defaultValue ?? "");
   if (field.key === "contestTargetAttribute") return String(asObject(saveDC?.target)?.attribute ?? saveDC?.targetAttribute ?? field.defaultValue ?? "dexterity");
@@ -688,6 +706,7 @@ function applyCheckTypeDefaults(prev: FormState, nextType: string): FormState {
     next.attackTargetDefense = String(next.attackTargetDefense || "ac");
   }
   if (nextType === CHECK_TYPE_SAVE) {
+    next.saveDCMode = String(next.saveDCMode || "actorAbilityDc");
     next.saveDCAttribute = String(next.saveDCAttribute || "intelligence");
   }
   if (nextType === CHECK_TYPE_CONTEST) {
@@ -715,8 +734,9 @@ function buildAbilityCheckPayload(state: FormState) {
       attackAttr: null,
       saveDC: {
         mode: "savingThrow",
+        dcMode: String(state.saveDCMode || "actorAbilityDc"),
         attribute: String(state.saveDCAttribute || "intelligence"),
-        ...(baseText ? { base: Number(baseText) } : {}),
+        ...(baseText ? { base: Number(baseText), fixed: Number(baseText) } : {}),
       },
     };
   }

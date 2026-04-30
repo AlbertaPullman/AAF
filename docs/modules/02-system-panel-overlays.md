@@ -12,6 +12,7 @@
 - `client/src/world/components/StoryEventPanel.tsx`
 - `client/src/world/components/HotkeySettingsPanel.tsx`
 - `client/src/world/components/system/*`
+- `client/src/pages/system/AbilityLabPage.tsx`
 - `client/src/styles/index.css`
 
 ## 当前约定
@@ -22,6 +23,7 @@
 - 世界内工具窗不是传统 modal：不渲染灰色遮罩，不允许点击外部自动关闭，必须支持多个工具窗并列打开和拖动调整位置，方便 GM 在职业、种族、能力、物品之间拖拽赋予资源。
 - 所有身份都能看到系统页中的规则查询、快捷键设置和返回大厅入口。
 - GM 控制台只对 GM 展示；玩家助手、玩家、旁观者不看到底层模板管理按钮。
+- `/system/ability-lab/:worldId?` 是能力系统内部测试入口：复用世界页系统板和资源模板库交互，但不承载场景、聊天、战斗和正式世界同步逻辑。实验页的角色栏是本地测试数据，能力/物品/种族/职业/背景等资源仍写入所选世界模板库。
 
 ## 常见任务定位
 

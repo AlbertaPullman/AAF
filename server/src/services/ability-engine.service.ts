@@ -9,7 +9,26 @@ import {
   type ResolvedAbilityCost,
   type ResolvedAbilityEffect
 } from "../../../shared/rules/ability-engine";
-import type { AbilityDefinition, ConditionExpression, EffectExpression, ResourceCost } from "../../../shared/types/world-entities";
+import {
+  attachAbilityWorkflowAfterSnapshots,
+  createAbilityWorkflowCharacterSnapshot,
+  createAbilityWorkflowRun,
+  finalizeAbilityWorkflow,
+  normalizeAbilityAutomationMode,
+  resolveAbilityAutomationConfig,
+  setAbilityWorkflowPhase
+} from "../../../shared/rules/ability-workflow";
+import { getStatusDefinition, isStatusInCategory } from "../../../shared/rules/ability-registry";
+import type {
+  AbilityAutomationConfig,
+  AbilityAutomationMode,
+  AbilityDefinition,
+  AbilityWorkflowDamageApplication,
+  AbilityWorkflowRun,
+  ConditionExpression,
+  EffectExpression,
+  ResourceCost
+} from "../../../shared/types/world-entities";
 import { prisma } from "../lib/prisma";
 import { resolveSettlementAction, type SettlementResolveInput, type SettlementResolveResult } from "./settlement.service";
 import { resolveScene } from "./scene.service";
@@ -28,6 +47,7 @@ type CharacterStatusEffect = {
   key: string;
   label: string;
   type: string;
+  category?: string;
   stat?: string;
   value?: string | number | boolean | null;
   duration?: string;
@@ -42,6 +62,9 @@ export type ExecuteWorldAbilityInput = {
   actorTokenId?: string;
   targetCharacterIds?: string[];
   targetTokenIds?: string[];
+  automationMode?: AbilityAutomationMode;
+  automation?: Partial<AbilityAutomationConfig>;
+  manualOverrides?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   fixedRolls?: SettlementResolveInput["fixedRolls"];
 };
@@ -60,6 +83,7 @@ export type AbilityExecutionLogEntry = {
   costs: ResolvedAbilityCost[];
   effects: ResolvedAbilityEffect[];
   settlement: SettlementResolveResult | null;
+  workflow: AbilityWorkflowRun;
   metadata: Record<string, unknown>;
   createdAt: string;
 };
@@ -86,10 +110,12 @@ export type ExecuteWorldAbilityResult = {
   settlement: SettlementResolveResult | null;
   costs: ResolvedAbilityCost[];
   effects: ResolvedAbilityEffect[];
+  workflow: AbilityWorkflowRun;
   logEntry: AbilityExecutionLogEntry;
 };
 
 const MAX_ABILITY_LOGS = 100;
+const ATTRIBUTE_KEYS = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] as const;
 
 function createAbilityLogId() {
   return `abl_${Math.random().toString(36).slice(2, 10)}`;
@@ -102,6 +128,13 @@ function toIsoNow() {
 function toPlainRecord(value: Prisma.JsonValue | null | undefined): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
+  }
+  return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+}
+
+function toOptionalPlainRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
   }
   return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
 }
@@ -158,6 +191,42 @@ function getAttributeModifier(snapshot: Record<string, unknown>, attributeKey: s
   return Math.floor((attributeValue - 10) / 2);
 }
 
+function getAbilityDcFromSnapshot(snapshot: Record<string, unknown>, key: string, attribute: string) {
+  const explicit = Number(snapshot[key]);
+  if (Number.isFinite(explicit)) {
+    return explicit;
+  }
+  return 8 + getNumericRecordValue(snapshot, "proficiencyBonus", 2) + getAttributeModifier(snapshot, attribute);
+}
+
+function resolveAbilitySaveTargetValue(saveDC: Prisma.JsonValue | null | undefined, actorSnapshot: Record<string, unknown>) {
+  const record =
+    saveDC && typeof saveDC === "object" && !Array.isArray(saveDC)
+      ? (saveDC as Record<string, unknown>)
+      : {};
+  const mode = String(record.dcMode ?? record.mode ?? "actorAbilityDc");
+  const attribute = String(record.attribute ?? actorSnapshot.spellcastingAttribute ?? "intelligence");
+  const fixed = Number(record.fixed ?? record.base);
+
+  if (mode === "fixed" && Number.isFinite(fixed)) {
+    return Math.max(1, fixed);
+  }
+  if (mode === "actorSpellDc") {
+    return Math.max(1, getAbilityDcFromSnapshot(actorSnapshot, "spellDc", attribute));
+  }
+  if (mode === "actorProfessionDc") {
+    return Math.max(1, getAbilityDcFromSnapshot(actorSnapshot, "professionDc", attribute));
+  }
+  if (Number.isFinite(fixed)) {
+    return Math.max(1, fixed);
+  }
+
+  return Math.max(
+    1,
+    8 + getNumericRecordValue(actorSnapshot, "proficiencyBonus", 2) + getAttributeModifier(actorSnapshot, attribute)
+  );
+}
+
 function getStatusEffects(snapshot: Record<string, unknown>): CharacterStatusEffect[] {
   const raw = snapshot.statusEffects;
   if (!Array.isArray(raw)) {
@@ -171,6 +240,7 @@ function getStatusEffects(snapshot: Record<string, unknown>): CharacterStatusEff
       key: String((item as Record<string, unknown>).key ?? ""),
       label: String((item as Record<string, unknown>).label ?? ""),
       type: String((item as Record<string, unknown>).type ?? ""),
+      category: typeof (item as Record<string, unknown>).category === "string" ? String((item as Record<string, unknown>).category) : undefined,
       stat: typeof (item as Record<string, unknown>).stat === "string" ? String((item as Record<string, unknown>).stat) : undefined,
       value: (item as Record<string, unknown>).value as string | number | boolean | null | undefined,
       duration: typeof (item as Record<string, unknown>).duration === "string" ? String((item as Record<string, unknown>).duration) : undefined,
@@ -192,6 +262,62 @@ function getStatusEffects(snapshot: Record<string, unknown>): CharacterStatusEff
 
 function setStatusEffects(snapshot: Record<string, unknown>, nextEffects: CharacterStatusEffect[]) {
   snapshot.statusEffects = nextEffects;
+}
+
+function getStatusImmunityRecord(snapshot: Record<string, unknown>) {
+  const raw = snapshot.statusImmunities;
+  const record = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+  return {
+    statuses: Array.isArray(record.statuses) ? record.statuses.map((item) => String(item)).filter(Boolean) : [],
+    categories: Array.isArray(record.categories) ? record.categories.map((item) => String(item)).filter(Boolean) : []
+  };
+}
+
+function setStatusImmunityRecord(
+  snapshot: Record<string, unknown>,
+  next: { statuses: string[]; categories: string[] }
+) {
+  snapshot.statusImmunities = {
+    statuses: [...new Set(next.statuses)],
+    categories: [...new Set(next.categories)]
+  };
+}
+
+function isStatusBlockedByImmunity(snapshot: Record<string, unknown>, statusKeyOrLabel: unknown) {
+  const immunities = getStatusImmunityRecord(snapshot);
+  const normalized = String(statusKeyOrLabel ?? "").trim();
+  if (!normalized) {
+    return false;
+  }
+  if (immunities.statuses.includes(normalized)) {
+    return true;
+  }
+  const definition = getStatusDefinition(normalized);
+  if (definition && immunities.statuses.includes(definition.key)) {
+    return true;
+  }
+  return immunities.categories.some((category) => isStatusInCategory(normalized, category));
+}
+
+function appendStatusImmunity(snapshot: Record<string, unknown>, effect: ResolvedAbilityEffect, categoryMode: boolean) {
+  const value = String(effect.value ?? "").trim();
+  if (!value) {
+    return;
+  }
+  const immunities = getStatusImmunityRecord(snapshot);
+  if (categoryMode) {
+    setStatusImmunityRecord(snapshot, {
+      ...immunities,
+      categories: [...immunities.categories, value]
+    });
+    return;
+  }
+
+  const definition = getStatusDefinition(value);
+  setStatusImmunityRecord(snapshot, {
+    ...immunities,
+    statuses: [...immunities.statuses, definition?.key ?? value]
+  });
 }
 
 function getDerivedArmorClass(snapshot: Record<string, unknown>) {
@@ -225,6 +351,12 @@ function getDerivedPenaltyDiceCount(snapshot: Record<string, unknown>) {
 }
 
 function createCharacterFormulaScope(character: CharacterLike, stats: Record<string, unknown>, snapshot: Record<string, unknown>) {
+  const attributeMods = Object.fromEntries(
+    ATTRIBUTE_KEYS.map((attribute) => [attribute, getAttributeModifier(snapshot, attribute)])
+  );
+  const spellcastingAttribute =
+    typeof snapshot.spellcastingAttribute === "string" ? String(snapshot.spellcastingAttribute) : "intelligence";
+
   return {
     id: character.id,
     name: character.name,
@@ -232,7 +364,14 @@ function createCharacterFormulaScope(character: CharacterLike, stats: Record<str
     stats,
     snapshot,
     level: getNumericRecordValue(snapshot, "level", 1),
+    professionLevel: getNumericRecordValue(snapshot, "professionLevel", getNumericRecordValue(snapshot, "level", 1)),
     proficiencyBonus: getNumericRecordValue(snapshot, "proficiencyBonus", 2),
+    spellDc: getNumericRecordValue(
+      snapshot,
+      "spellDc",
+      8 + getNumericRecordValue(snapshot, "proficiencyBonus", 2) + getAttributeModifier(snapshot, spellcastingAttribute)
+    ),
+    professionDc: getNumericRecordValue(snapshot, "professionDc", 8 + getNumericRecordValue(snapshot, "proficiencyBonus", 2) + getAttributeModifier(snapshot, spellcastingAttribute)),
     ac: getDerivedArmorClass(snapshot),
     hp: getNumericRecordValue(stats, "hp", 0),
     mp: getNumericRecordValue(stats, "mp", 0),
@@ -240,6 +379,8 @@ function createCharacterFormulaScope(character: CharacterLike, stats: Record<str
     fury: getNumericRecordValue(stats, "fury", 0),
     tags: Array.isArray(snapshot.tags) ? snapshot.tags : [],
     statusEffects: getStatusEffects(snapshot),
+    statusImmunities: getStatusImmunityRecord(snapshot),
+    attributeMods,
     attributes: snapshot.attributes && typeof snapshot.attributes === "object" && !Array.isArray(snapshot.attributes)
       ? snapshot.attributes
       : {}
@@ -268,24 +409,229 @@ function applyResourceCost(stats: Record<string, unknown>, cost: ResolvedAbility
   stats[field] = Math.max(0, current - amount);
 }
 
+function normalizeDamageKey(value: unknown) {
+  return toTextValue(value).trim().toLowerCase();
+}
+
+function toTextValue(value: unknown) {
+  return value == null ? "" : String(value);
+}
+
+function isUniversalDamageKey(value: string) {
+  return ["*", "all", "any", "所有", "全部", "任意"].includes(value);
+}
+
+function matchesDamageType(candidate: unknown, damageType: string) {
+  const normalized = normalizeDamageKey(candidate);
+  return Boolean(normalized) && (isUniversalDamageKey(normalized) || normalized === damageType);
+}
+
+function collectDamageModifierLabels(
+  sources: Array<Record<string, unknown>>,
+  keys: string[],
+  damageType: string,
+  fallbackLabel: string
+) {
+  const labels = new Set<string>();
+
+  for (const source of sources) {
+    for (const key of keys) {
+      const value = source[key];
+      if (typeof value === "string" && matchesDamageType(value, damageType)) {
+        labels.add(fallbackLabel);
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (typeof item === "string" && matchesDamageType(item, damageType)) {
+            labels.add(item);
+          }
+          const record = asPlainObject(item);
+          if (record && matchesDamageType(record.damageType ?? record.type ?? record.key ?? record.id ?? record.value ?? record.name, damageType)) {
+            labels.add(toTextValue(record.label ?? record.name ?? record.source ?? fallbackLabel));
+          }
+        }
+      }
+      const record = asPlainObject(value);
+      if (record) {
+        for (const [entryKey, entryValue] of Object.entries(record)) {
+          if (entryValue && matchesDamageType(entryKey, damageType)) {
+            const nested = asPlainObject(entryValue);
+            labels.add(toTextValue(nested?.label ?? nested?.name ?? nested?.source ?? entryKey));
+          }
+        }
+      }
+    }
+  }
+
+  return [...labels].filter(Boolean);
+}
+
+function collectDamageReductions(sources: Array<Record<string, unknown>>, keys: string[], damageType: string) {
+  const reductions: Array<{ amount: number; label: string }> = [];
+
+  for (const source of sources) {
+    for (const key of keys) {
+      const value = source[key];
+      const directAmount = Number(value);
+      if (Number.isFinite(directAmount)) {
+        reductions.push({ amount: Math.max(0, Math.floor(directAmount)), label: key });
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          const record = asPlainObject(item);
+          if (!record) {
+            continue;
+          }
+          const itemType = record.damageType ?? record.type ?? record.key ?? record.id ?? record.value ?? "all";
+          if (!matchesDamageType(itemType, damageType)) {
+            continue;
+          }
+          const amount = Number(record.amount ?? record.value ?? record.reduction);
+          if (Number.isFinite(amount)) {
+            reductions.push({ amount: Math.max(0, Math.floor(amount)), label: toTextValue(record.label ?? record.name ?? key) });
+          }
+        }
+      }
+      const record = asPlainObject(value);
+      if (record) {
+        const directRecordAmount = Number(record.amount ?? record.value ?? record.reduction);
+        if (Number.isFinite(directRecordAmount) && matchesDamageType(record.damageType ?? record.type ?? "all", damageType)) {
+          reductions.push({ amount: Math.max(0, Math.floor(directRecordAmount)), label: toTextValue(record.label ?? key) });
+        }
+        for (const [entryKey, entryValue] of Object.entries(record)) {
+          if (!matchesDamageType(entryKey, damageType)) {
+            continue;
+          }
+          const nested = asPlainObject(entryValue);
+          const amount = Number(nested?.amount ?? nested?.value ?? nested?.reduction ?? entryValue);
+          if (Number.isFinite(amount)) {
+            reductions.push({ amount: Math.max(0, Math.floor(amount)), label: toTextValue(nested?.label ?? nested?.name ?? entryKey) });
+          }
+        }
+      }
+    }
+  }
+
+  return reductions.filter((item) => item.amount > 0);
+}
+
+function asPlainObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function resolveDamageApplication(input: {
+  target: Pick<CharacterLike, "id" | "name">;
+  stats: Record<string, unknown>;
+  snapshot: Record<string, unknown>;
+  rawDamage: number;
+  damageType?: string;
+  applied: boolean;
+  canUndo: boolean;
+  notes?: string[];
+}): AbilityWorkflowDamageApplication {
+  const rawDamage = Math.max(0, Math.floor(input.rawDamage));
+  const normalizedDamageType = normalizeDamageKey(input.damageType || "all");
+  const modifierSources = [input.snapshot, input.stats];
+  const immunityLabels = collectDamageModifierLabels(
+    modifierSources,
+    ["damageImmunities", "damageImmunity", "immunities", "immunity"],
+    normalizedDamageType,
+    "免疫"
+  );
+  const resistanceLabels = collectDamageModifierLabels(
+    modifierSources,
+    ["damageResistances", "damageResistance", "resistances", "resistance"],
+    normalizedDamageType,
+    "抗性"
+  );
+  const vulnerabilityLabels = collectDamageModifierLabels(
+    modifierSources,
+    ["damageVulnerabilities", "damageVulnerability", "vulnerabilities", "vulnerability"],
+    normalizedDamageType,
+    "易伤"
+  );
+  const reductions = collectDamageReductions(
+    modifierSources,
+    ["damageReductions", "damageReduction", "flatDamageReduction", "damageReduce", "reduction"],
+    normalizedDamageType
+  );
+
+  const immunityApplied = immunityLabels.length > 0;
+  const resistanceApplied = !immunityApplied && resistanceLabels.length > 0;
+  const vulnerabilityApplied = !immunityApplied && vulnerabilityLabels.length > 0;
+  const typeMultiplier = (resistanceApplied ? 0.5 : 1) * (vulnerabilityApplied ? 2 : 1);
+  const multipliedDamage = immunityApplied ? 0 : Math.floor(rawDamage * typeMultiplier);
+  const typedDamage = !immunityApplied && rawDamage > 0 && typeMultiplier > 0 ? Math.max(1, multipliedDamage) : multipliedDamage;
+  const flatReduction = immunityApplied ? 0 : reductions.reduce((sum, item) => sum + item.amount, 0);
+  const effectiveDamage = Math.max(0, typedDamage - flatReduction);
+  const oldHp = getNumericRecordValue(input.stats, "hp", 0);
+  const oldTempHp = getNumericRecordValue(input.stats, "tempHp", 0);
+  const tempHpDamage = Math.min(oldTempHp, effectiveDamage);
+  const hpDamage = Math.min(oldHp, Math.max(0, effectiveDamage - tempHpDamage));
+  const newTempHp = Math.max(0, oldTempHp - tempHpDamage);
+  const newHp = Math.max(0, oldHp - hpDamage);
+
+  if (input.applied) {
+    input.stats.tempHp = newTempHp;
+    input.stats.hp = newHp;
+  }
+
+  const notes = [...(input.notes ?? [])];
+  if (immunityApplied) {
+    notes.push(`目标具有 ${immunityLabels.join("、")} 免疫，本次伤害归零。`);
+  } else {
+    if (resistanceApplied) {
+      notes.push(`目标具有 ${resistanceLabels.join("、")} 抗性，本次伤害减半。`);
+    }
+    if (vulnerabilityApplied) {
+      notes.push(`目标具有 ${vulnerabilityLabels.join("、")} 易伤，本次伤害翻倍。`);
+    }
+    if (flatReduction > 0) {
+      notes.push(`固定减伤 ${flatReduction}（${reductions.map((item) => item.label).join("、")}）。`);
+    }
+  }
+
+  return {
+    targetCharacterId: input.target.id,
+    targetName: input.target.name,
+    damageType: input.damageType,
+    rawDamage,
+    effectiveDamage,
+    appliedDamage: input.applied ? tempHpDamage + hpDamage : 0,
+    tempHpDamage,
+    hpDamage,
+    oldHp,
+    newHp,
+    oldTempHp,
+    newTempHp,
+    resistanceApplied,
+    vulnerabilityApplied,
+    immunityApplied,
+    flatReduction,
+    damageTypeModifiers: [
+      ...immunityLabels.map((label) => `免疫:${label}`),
+      ...resistanceLabels.map((label) => `抗性:${label}`),
+      ...vulnerabilityLabels.map((label) => `易伤:${label}`),
+      ...reductions.map((item) => `减伤:${item.label} ${item.amount}`),
+    ],
+    applied: input.applied,
+    canUndo: input.applied && input.canUndo,
+    notes
+  };
+}
+
 function applyDamage(stats: Record<string, unknown>, damage: number) {
   const totalDamage = Math.max(0, Math.floor(damage));
   if (totalDamage <= 0) {
     return;
   }
 
+  const currentHp = getNumericRecordValue(stats, "hp", 0);
   const currentTempHp = getNumericRecordValue(stats, "tempHp", 0);
-  if (currentTempHp > 0) {
-    const nextTempHp = Math.max(0, currentTempHp - totalDamage);
-    stats.tempHp = nextTempHp;
-    const remainingDamage = Math.max(0, totalDamage - currentTempHp);
-    if (remainingDamage > 0) {
-      stats.hp = Math.max(0, getNumericRecordValue(stats, "hp", 0) - remainingDamage);
-    }
-    return;
-  }
-
-  stats.hp = Math.max(0, getNumericRecordValue(stats, "hp", 0) - totalDamage);
+  const tempHpDamage = Math.min(currentTempHp, totalDamage);
+  const hpDamage = Math.min(currentHp, Math.max(0, totalDamage - tempHpDamage));
+  stats.tempHp = Math.max(0, currentTempHp - tempHpDamage);
+  stats.hp = Math.max(0, currentHp - hpDamage);
 }
 
 function applyHeal(stats: Record<string, unknown>, snapshot: Record<string, unknown>, amount: number) {
@@ -313,12 +659,18 @@ function appendStatusEffect(
   sourceAbility: Pick<AbilityDefinition, "id" | "name">,
   effect: ResolvedAbilityEffect
 ) {
+  if (isStatusBlockedByImmunity(snapshot, effect.value || effect.label)) {
+    return;
+  }
+
+  const statusDefinition = getStatusDefinition(effect.value || effect.label);
   const nextEffects = getStatusEffects(snapshot);
   nextEffects.push({
     id: `${sourceAbility.id}:${effect.index}:${Date.now()}`,
-    key: typeof effect.value === "string" && effect.value ? effect.value : `${sourceAbility.id}:${effect.type}:${effect.index}`,
-    label: effect.label ?? sourceAbility.name,
+    key: statusDefinition?.key ?? (typeof effect.value === "string" && effect.value ? effect.value : `${sourceAbility.id}:${effect.type}:${effect.index}`),
+    label: effect.label ?? statusDefinition?.label ?? sourceAbility.name,
     type: effect.type,
+    category: statusDefinition?.category,
     stat: effect.stat,
     value: effect.value,
     duration: effect.duration,
@@ -340,6 +692,20 @@ function removeStatusEffect(snapshot: Record<string, unknown>, effect: ResolvedA
       return false;
     }
     return true;
+  });
+  setStatusEffects(snapshot, nextEffects);
+}
+
+function removeStatusEffectsByCategory(snapshot: Record<string, unknown>, effect: ResolvedAbilityEffect) {
+  const category = String(effect.value ?? "").trim();
+  if (!category) {
+    return;
+  }
+  const nextEffects = getStatusEffects(snapshot).filter((item) => {
+    if (item.category === category) {
+      return false;
+    }
+    return !isStatusInCategory(item.key || item.label || item.value, category);
   });
   setStatusEffects(snapshot, nextEffects);
 }
@@ -381,6 +747,15 @@ function applyResolvedEffectToCharacter(
       break;
     case "removeState":
       removeStatusEffect(snapshot, effect);
+      break;
+    case "removeStatusCategory":
+      removeStatusEffectsByCategory(snapshot, effect);
+      break;
+    case "grantStatusImmunity":
+      appendStatusImmunity(snapshot, effect, false);
+      break;
+    case "grantStatusCategoryImmunity":
+      appendStatusImmunity(snapshot, effect, true);
       break;
     case "addTag": {
       const tags = Array.isArray(snapshot.tags) ? [...snapshot.tags] : [];
@@ -553,6 +928,51 @@ export async function executeWorldAbility(
   const targetScope = primaryTargetCharacter
     ? createCharacterFormulaScope(primaryTargetCharacter, primaryTargetStats, primaryTargetSnapshot)
     : {};
+  const metadata = { ...(input.metadata ?? {}) };
+  const automationInput = toOptionalPlainRecord(input.automation);
+  const abilityAutomationDefaults = toOptionalPlainRecord(ability.automation) as Partial<AbilityAutomationConfig> | undefined;
+  const requestedAutomationMode = automationInput?.mode ?? input.automationMode ?? metadata.automationMode;
+  const automationConfig = resolveAbilityAutomationConfig(
+    automationInput
+      ? ({
+          ...automationInput,
+          ...(requestedAutomationMode != null ? { mode: normalizeAbilityAutomationMode(requestedAutomationMode) } : {}),
+        } as Partial<AbilityAutomationConfig>)
+      : requestedAutomationMode != null
+        ? normalizeAbilityAutomationMode(requestedAutomationMode)
+        : undefined,
+    abilityAutomationDefaults
+  );
+  const manualOverrides = toOptionalPlainRecord(input.manualOverrides);
+  const workflow = createAbilityWorkflowRun({
+    abilityId: ability.id,
+    abilityName: ability.name,
+    actor: createAbilityWorkflowCharacterSnapshot({
+      characterId: actorCharacter.id,
+      name: actorCharacter.name,
+      stats: actorStats,
+      snapshot: actorSnapshot
+    }),
+    targets: targetCharacters.map((character) =>
+      createAbilityWorkflowCharacterSnapshot({
+        characterId: character.id,
+        name: character.name,
+        stats: character.id === primaryTargetCharacter?.id ? primaryTargetStats : toPlainRecord(character.stats),
+        snapshot: character.id === primaryTargetCharacter?.id ? primaryTargetSnapshot : toPlainRecord(character.snapshot)
+      })
+    ),
+    config: automationConfig,
+    manualOverrides
+  });
+  setAbilityWorkflowPhase(workflow, "declare", "resolved", `${ability.name} declared by ${actorCharacter.name}.`);
+  setAbilityWorkflowPhase(
+    workflow,
+    "target-confirmation",
+    targetCharacters.length > 0 ? "resolved" : "skipped",
+    targetCharacters.length > 0
+      ? `${targetCharacters.length} target(s) selected.`
+      : "No explicit target was selected."
+  );
 
   const context: AbilityFormulaContext = buildDefaultAbilityFormulaContext({
     actor: actorScope,
@@ -560,7 +980,7 @@ export async function executeWorldAbility(
     scene: { id: sceneId },
     combat: {},
     world: { id: worldId },
-    metadata: { ...(input.metadata ?? {}) }
+    metadata: { ...metadata, automationMode: automationConfig.mode }
   });
 
   const triggerCondition = toAbilityTriggerCondition(ability.trigger);
@@ -570,6 +990,20 @@ export async function executeWorldAbility(
 
   const costs = resolveAbilityCosts(toResourceCosts(ability.resourceCosts), context);
   const effects = resolveAbilityEffects(toEffectExpressions(ability.effects), context);
+  const shouldConsumeResources = automationConfig.mode !== "manual" && automationConfig.autoConsumeResources;
+  const shouldApplyDamage = automationConfig.mode !== "manual" && automationConfig.autoApplyDamage;
+  const shouldApplyEffects = automationConfig.mode !== "manual" && automationConfig.autoApplyEffects;
+  setAbilityWorkflowPhase(
+    workflow,
+    "cost-check",
+    costs.length === 0 ? "skipped" : shouldConsumeResources ? "resolved" : "waiting",
+    costs.length === 0
+      ? "No resource cost."
+      : shouldConsumeResources
+        ? `${costs.length} cost item(s) will be consumed.`
+        : "Resource cost is waiting for manual application."
+  );
+  setAbilityWorkflowPhase(workflow, "reaction-window", "skipped", "Reaction prompts are not wired yet.");
 
   let settlement: SettlementResolveResult | null = null;
   let executionSucceeded = true;
@@ -587,12 +1021,7 @@ export async function executeWorldAbility(
         targetValue: ability.checkType === "attack"
           ? getDerivedArmorClass(primaryTargetSnapshot)
           : ability.checkType === "savingThrow"
-            ? Math.max(
-              1,
-              8 +
-              getNumericRecordValue(actorSnapshot, "proficiencyBonus", 2) +
-              getAttributeModifier(actorSnapshot, ability.attackAttr)
-            )
+            ? resolveAbilitySaveTargetValue(ability.saveDC, actorSnapshot)
             : undefined,
         attributeMod: getAttributeModifier(actorSnapshot, ability.attackAttr),
         proficiency: getNumericRecordValue(actorSnapshot, "proficiencyBonus", 2),
@@ -610,12 +1039,61 @@ export async function executeWorldAbility(
     });
 
     executionSucceeded = settlement.success && settlement.check.success;
+    setAbilityWorkflowPhase(
+      workflow,
+      ability.checkType === "savingThrow" ? "save-roll" : "attack-roll",
+      "resolved",
+      `Check total ${settlement.check.total} vs ${settlement.check.targetValue ?? "-"} (${settlement.check.success ? "success" : "failed"}).`
+    );
+    setAbilityWorkflowPhase(
+      workflow,
+      ability.checkType === "savingThrow" ? "attack-roll" : "save-roll",
+      "skipped",
+      ability.checkType === "savingThrow" ? "No attack roll for saving throw ability." : "No saving throw for attack ability."
+    );
+    setAbilityWorkflowPhase(
+      workflow,
+      "damage-roll",
+      damageRoll ? "resolved" : "skipped",
+      damageRoll ? `Damage total ${settlement.damage.total}.` : "No direct damage roll."
+    );
     if (settlement.damage.total > 0 && executionSucceeded) {
-      applyDamage(primaryTargetStats, settlement.damage.total);
+      workflow.damageApplications.push(
+        resolveDamageApplication({
+          target: primaryTargetCharacter,
+          stats: primaryTargetStats,
+          snapshot: primaryTargetSnapshot,
+          rawDamage: settlement.damage.total,
+          damageType: settlement.damage.damageType ?? undefined,
+          applied: shouldApplyDamage,
+          canUndo: automationConfig.createUndoSnapshot,
+          notes: shouldApplyDamage ? undefined : ["Damage is waiting for manual application."]
+        })
+      );
+      setAbilityWorkflowPhase(
+        workflow,
+        "damage-application",
+        shouldApplyDamage ? "resolved" : "waiting",
+        shouldApplyDamage ? "Damage was applied to the primary target." : "Damage is waiting for manual application."
+      );
+    } else {
+      setAbilityWorkflowPhase(
+        workflow,
+        "damage-application",
+        "skipped",
+        settlement.damage.total > 0 ? "Check failed, so damage was not applied." : "No direct damage to apply."
+      );
     }
+  } else {
+    setAbilityWorkflowPhase(workflow, "attack-roll", "skipped", "No attack roll.");
+    setAbilityWorkflowPhase(workflow, "save-roll", "skipped", "No saving throw.");
+    setAbilityWorkflowPhase(workflow, "damage-roll", "skipped", "No damage roll.");
+    setAbilityWorkflowPhase(workflow, "damage-application", "skipped", "No direct damage to apply.");
   }
 
-  costs.forEach((cost) => applyResourceCost(actorStats, cost));
+  if (shouldConsumeResources) {
+    costs.forEach((cost) => applyResourceCost(actorStats, cost));
+  }
 
   const updatedTargets = targetCharacters.map((character) => {
     const stats = character.id === primaryTargetCharacter?.id ? primaryTargetStats : toPlainRecord(character.stats);
@@ -623,7 +1101,13 @@ export async function executeWorldAbility(
     return { character, stats, snapshot };
   });
 
-  if (executionSucceeded) {
+  if (effects.length === 0) {
+    setAbilityWorkflowPhase(workflow, "effect-application", "skipped", "No effect expression.");
+  } else if (!executionSucceeded) {
+    setAbilityWorkflowPhase(workflow, "effect-application", "skipped", "Check failed, so effects were not applied.");
+  } else if (!shouldApplyEffects) {
+    setAbilityWorkflowPhase(workflow, "effect-application", "waiting", "Effects are waiting for manual application.");
+  } else {
     for (const effect of effects) {
       const effectTargets =
         effect.target === "self"
@@ -636,7 +1120,10 @@ export async function executeWorldAbility(
         applyResolvedEffectToCharacter(target.character, target.stats, target.snapshot, ability, effect);
       }
     }
+    setAbilityWorkflowPhase(workflow, "effect-application", "resolved", `${effects.length} effect(s) applied.`);
   }
+
+  setAbilityWorkflowPhase(workflow, "post-apply", "skipped", "Post-apply hooks are not wired yet.");
 
   await prisma.character.update({
     where: { id: actorCharacter.id },
@@ -656,6 +1143,29 @@ export async function executeWorldAbility(
     });
   }
 
+  attachAbilityWorkflowAfterSnapshots(workflow, {
+    actor: { stats: actorStats, snapshot: actorSnapshot },
+    targets: updatedTargets.map((target) => ({
+      characterId: target.character.id,
+      stats: target.stats,
+      snapshot: target.snapshot
+    }))
+  });
+  setAbilityWorkflowPhase(
+    workflow,
+    "settle",
+    executionSucceeded ? "resolved" : "failed",
+    executionSucceeded ? "Workflow settled." : "Workflow failed before application completed."
+  );
+  finalizeAbilityWorkflow(
+    workflow,
+    executionSucceeded
+      ? workflow.phases.some((phase) => phase.status === "waiting")
+        ? "waiting"
+        : "completed"
+      : "failed"
+  );
+
   const logEntry: AbilityExecutionLogEntry = {
     id: createAbilityLogId(),
     worldId,
@@ -670,7 +1180,8 @@ export async function executeWorldAbility(
     costs,
     effects,
     settlement,
-    metadata: { ...(input.metadata ?? {}) },
+    workflow,
+    metadata: { ...metadata, automationMode: automationConfig.mode },
     createdAt: toIsoNow()
   };
 
@@ -698,6 +1209,7 @@ export async function executeWorldAbility(
     settlement,
     costs,
     effects,
+    workflow,
     logEntry
   };
 }

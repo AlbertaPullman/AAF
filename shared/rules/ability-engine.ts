@@ -2,8 +2,10 @@ import type {
   AbilityDefinition,
   ConditionExpression,
   EffectExpression,
+  FormulaComparableValue,
   ResourceCost,
 } from "../types/world-entities";
+import { isStatusInCategory } from "./ability-registry";
 
 export type FormulaPrimitive = string | number | boolean | null | undefined;
 
@@ -171,6 +173,9 @@ export function evaluateFormulaExpression(expression: FormulaPrimitive, context:
   const prepared = normalizeFormulaExpression(normalized);
   const compact = prepared.replace(/\s+/g, "");
   if (!SAFE_FORMULA_PATTERN.test(prepared)) {
+    if (!FORMULA_HINT_PATTERN.test(normalized)) {
+      return normalized;
+    }
     throw new Error(`formula contains unsupported characters: ${expression}`);
   }
   if (UNSAFE_FORMULA_TOKENS.some((token) => compact.includes(token.replace(/\s+/g, "")))) {
@@ -254,6 +259,84 @@ function compareValues(left: unknown, operator: ConditionExpression["operator"],
   }
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function getScopedNumber(context: AbilityFormulaContext, path: string, fallback = 0) {
+  return toFormulaNumber(getFormulaContextValue(context, path), fallback);
+}
+
+function resolveDcReference(value: Record<string, unknown>, context: AbilityFormulaContext) {
+  const mode = String(value.mode ?? "fixed");
+  const attribute = String(value.attribute ?? "intelligence");
+  const fixed = value.fixed ?? value.base;
+  if (mode === "fixed") {
+    return toFormulaNumber(fixed, 10);
+  }
+  if (mode === "targetAc") {
+    return getScopedNumber(context, "target.ac", 10);
+  }
+
+  const source = mode.startsWith("target") ? "target" : "actor";
+  const proficiency = getScopedNumber(context, `${source}.proficiencyBonus`, 2);
+  const attributeMod = getScopedNumber(context, `${source}.attributeMods.${attribute}`, 0);
+
+  if (mode === "actorSpellDc") {
+    const explicit = getScopedNumber(context, "actor.spellDc", Number.NaN);
+    if (Number.isFinite(explicit)) {
+      return explicit;
+    }
+  }
+  if (mode === "targetSpellDc") {
+    const explicit = getScopedNumber(context, "target.spellDc", Number.NaN);
+    if (Number.isFinite(explicit)) {
+      return explicit;
+    }
+  }
+  if (mode === "actorProfessionDc") {
+    const explicit = getScopedNumber(context, "actor.professionDc", Number.NaN);
+    if (Number.isFinite(explicit)) {
+      return explicit;
+    }
+  }
+  if (mode === "targetPassivePerception") {
+    return 10 + getScopedNumber(context, "target.attributeMods.wisdom", 0);
+  }
+
+  return 8 + proficiency + attributeMod;
+}
+
+function resolveComparableValue(value: FormulaComparableValue | undefined, context: AbilityFormulaContext): unknown {
+  if (!isPlainRecord(value)) {
+    return value;
+  }
+
+  if (value.kind === "valueRef") {
+    return getFormulaContextValue(context, String(value.path ?? ""));
+  }
+
+  if (value.kind === "dc") {
+    return resolveDcReference(value, context);
+  }
+
+  return value;
+}
+
+function resolveConditionFieldValue(field: string | undefined, context: AbilityFormulaContext) {
+  const normalized = String(field ?? "").trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  const direct = getFormulaContextValue(context, normalized);
+  if (typeof direct !== "undefined") {
+    return direct;
+  }
+
+  return evaluateFormulaExpression(normalized, context);
+}
+
 export function evaluateConditionExpression(
   expression: ConditionExpression | undefined,
   context: AbilityFormulaContext
@@ -290,26 +373,47 @@ export function evaluateConditionExpression(
         return key === expression.value || label === expression.value;
       });
     }
+    case "hasStatusCategory": {
+      const list = getFormulaContextValue(context, expression.field ?? "target.statusEffects");
+      if (!Array.isArray(list)) {
+        return false;
+      }
+      return list.some((item) => {
+        if (typeof item === "string") {
+          return isStatusInCategory(item, expression.value);
+        }
+        if (!item || typeof item !== "object") {
+          return false;
+        }
+        const record = item as Record<string, unknown>;
+        return (
+          record.category === expression.value ||
+          isStatusInCategory(record.key, expression.value) ||
+          isStatusInCategory(record.label, expression.value) ||
+          isStatusInCategory(record.value, expression.value)
+        );
+      });
+    }
     case "levelCheck":
       return compareValues(
-        getFormulaContextValue(context, expression.field ?? "actor.level"),
+        resolveConditionFieldValue(expression.field ?? "actor.level", context),
         expression.operator ?? ">=",
-        expression.value ?? 0
+        resolveComparableValue(expression.value ?? 0, context)
       );
     case "resourceCheck":
       return compareValues(
-        getFormulaContextValue(context, expression.field ?? "actor.mp"),
+        resolveConditionFieldValue(expression.field ?? "actor.mp", context),
         expression.operator ?? ">=",
-        expression.value ?? 0
+        resolveComparableValue(expression.value ?? 0, context)
       );
     case "custom":
       return toFormulaBoolean(evaluateFormulaExpression(expression.customExpr ?? "", context));
     case "compare":
     default:
       return compareValues(
-        getFormulaContextValue(context, expression.field ?? ""),
+        resolveConditionFieldValue(expression.field ?? "", context),
         expression.operator ?? "==",
-        expression.value
+        resolveComparableValue(expression.value, context)
       );
   }
 }

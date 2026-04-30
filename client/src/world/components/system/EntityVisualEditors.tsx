@@ -1,5 +1,18 @@
 import type { ReactNode } from "react";
 import type { EntityRecord, EntityType } from "../../stores/worldEntityStore";
+import {
+  ABILITY_AUTOMATION_MODE_OPTIONS,
+  ABILITY_EFFECT_TYPE_OPTIONS,
+  ABILITY_TRIGGER_TIMING_OPTIONS,
+  COMPARE_OPERATOR_OPTIONS as SHARED_COMPARE_OPERATOR_OPTIONS,
+  CONDITION_RIGHT_VALUE_MODE_OPTIONS,
+  DC_TARGET_OPTIONS,
+  FORMULA_VALUE_OPTIONS,
+  STATUS_CATEGORY_OPTIONS,
+  STATUS_OPTIONS,
+} from "../../../../../shared/rules/ability-registry";
+import { ABILITY_AUTOMATION_PRESETS, normalizeAbilityAutomationMode } from "../../../../../shared/rules/ability-workflow";
+import type { AbilityAutomationConfig, AbilityAutomationMode } from "../../../../../shared/types/world-entities";
 
 type SelectOption = {
   label: string;
@@ -13,9 +26,18 @@ type ConditionNodeType =
   | "compare"
   | "hasTag"
   | "hasState"
+  | "hasStatusCategory"
   | "levelCheck"
   | "resourceCheck"
   | "custom";
+
+type FormulaTermForm = {
+  id: string;
+  operator: "+" | "-";
+  mode: "valueRef" | "fixed";
+  valueRef: string;
+  fixedValue: string;
+};
 
 type ResourceCostForm = {
   id: string;
@@ -47,8 +69,14 @@ type ConditionNodeForm = {
   id: string;
   type: ConditionNodeType;
   field: string;
+  formulaTerms: FormulaTermForm[];
   operator: string;
   value: string;
+  rightMode: "fixed" | "valueRef" | "dc";
+  rightRef: string;
+  rightDcMode: string;
+  rightDcAttribute: string;
+  rightDcBase: string;
   customExpr: string;
   children: ConditionNodeForm[];
 };
@@ -63,11 +91,15 @@ type TriggerForm = {
   condition: ConditionNodeForm;
 };
 
+type AbilityAutomationForm = AbilityAutomationConfig;
+type AbilityAutomationBooleanKey = Exclude<keyof AbilityAutomationForm, "mode">;
+
 export type AbilityEditorState = {
   resourceCosts: ResourceCostForm[];
   damageRolls: DamageRollForm[];
   trigger: TriggerForm;
   effects: EffectForm[];
+  automation: AbilityAutomationForm;
 };
 
 type SkillChoicesForm = {
@@ -262,54 +294,12 @@ const DAMAGE_TYPE_OPTIONS: SelectOption[] = [
   { label: "心灵", value: "psychic" },
 ];
 
-const TRIGGER_TIMING_OPTIONS: SelectOption[] = [
-  { label: "攻击命中时", value: "onAttackHit" },
-  { label: "攻击未命中时", value: "onAttackMiss" },
-  { label: "攻击暴击时", value: "onAttackCritical" },
-  { label: "造成伤害后", value: "onDealDamage" },
-  { label: "受到伤害后", value: "onTakeDamage" },
-  { label: "击杀目标后", value: "onKill" },
-  { label: "回合开始", value: "onTurnStart" },
-  { label: "回合结束", value: "onTurnEnd" },
-  { label: "轮开始", value: "onRoundStart" },
-  { label: "轮结束", value: "onRoundEnd" },
-  { label: "施法时", value: "onCastSpell" },
-  { label: "专注检定时", value: "onConcentrationCheck" },
-  { label: "豁免检定时", value: "onSavingThrow" },
-  { label: "豁免失败时", value: "onSavingThrowFail" },
-  { label: "豁免成功时", value: "onSavingThrowSuccess" },
-  { label: "移动时", value: "onMove" },
-  { label: "进入区域时", value: "onEnterArea" },
-  { label: "离开区域时", value: "onLeaveArea" },
-  { label: "生命半血以下", value: "onHpBelowHalf" },
-  { label: "生命归零", value: "onHpZero" },
-  { label: "受到治疗后", value: "onHeal" },
-  { label: "短休后", value: "onShortRest" },
-  { label: "长休后", value: "onLongRest" },
-  { label: "战斗开始", value: "onCombatStart" },
-  { label: "战斗结束", value: "onCombatEnd" },
-  { label: "自定义", value: "custom" },
-];
+const toSelectOptions = (options: readonly { label: string; value: string }[]): SelectOption[] =>
+  options.map((option) => ({ label: option.label, value: option.value }));
 
-const EFFECT_TYPE_OPTIONS: SelectOption[] = [
-  { label: "修改数值", value: "modifyStat" },
-  { label: "附加标签", value: "addTag" },
-  { label: "移除标签", value: "removeTag" },
-  { label: "施加状态", value: "applyState" },
-  { label: "移除状态", value: "removeState" },
-  { label: "造成伤害", value: "dealDamage" },
-  { label: "恢复生命", value: "heal" },
-  { label: "获得临时生命", value: "grantTempHp" },
-  { label: "获得优势", value: "grantAdvantage" },
-  { label: "获得劣势", value: "grantDisadvantage" },
-  { label: "追加奖励骰", value: "grantBonusDice" },
-  { label: "追加惩罚骰", value: "grantPenaltyDice" },
-  { label: "修改 AC", value: "modifyAC" },
-  { label: "修改速度", value: "modifySpeed" },
-  { label: "返还反应", value: "grantReaction" },
-  { label: "追加攻击次数", value: "grantExtraAttack" },
-  { label: "自定义效果", value: "custom" },
-];
+const TRIGGER_TIMING_OPTIONS: SelectOption[] = toSelectOptions(ABILITY_TRIGGER_TIMING_OPTIONS);
+
+const EFFECT_TYPE_OPTIONS: SelectOption[] = toSelectOptions(ABILITY_EFFECT_TYPE_OPTIONS);
 
 const EFFECT_TARGET_OPTIONS: SelectOption[] = [
   { label: "自身", value: "self" },
@@ -332,9 +322,10 @@ const DURATION_OPTIONS: SelectOption[] = [
 ];
 
 const CONDITION_TYPE_OPTIONS: SelectOption[] = [
-  { label: "比较", value: "compare" },
+  { label: "数值比较", value: "compare" },
   { label: "标签包含", value: "hasTag" },
   { label: "状态包含", value: "hasState" },
+  { label: "状态分类包含", value: "hasStatusCategory" },
   { label: "等级检查", value: "levelCheck" },
   { label: "资源检查", value: "resourceCheck" },
   { label: "且 And", value: "and" },
@@ -343,15 +334,12 @@ const CONDITION_TYPE_OPTIONS: SelectOption[] = [
   { label: "自定义表达式", value: "custom" },
 ];
 
-const COMPARE_OPERATOR_OPTIONS: SelectOption[] = [
-  { label: "等于 ==", value: "==" },
-  { label: "不等于 !=", value: "!=" },
-  { label: "大于 >=", value: ">=" },
-  { label: "小于 <=", value: "<=" },
-  { label: "大于 >", value: ">" },
-  { label: "小于 <", value: "<" },
-  { label: "包含 includes", value: "includes" },
-];
+const COMPARE_OPERATOR_OPTIONS: SelectOption[] = toSelectOptions(SHARED_COMPARE_OPERATOR_OPTIONS);
+const CONDITION_RIGHT_MODE_OPTIONS: SelectOption[] = toSelectOptions(CONDITION_RIGHT_VALUE_MODE_OPTIONS);
+const CONDITION_FORMULA_VALUE_OPTIONS: SelectOption[] = toSelectOptions(FORMULA_VALUE_OPTIONS);
+const CONDITION_DC_TARGET_OPTIONS: SelectOption[] = toSelectOptions(DC_TARGET_OPTIONS);
+const CONDITION_STATUS_CATEGORY_OPTIONS: SelectOption[] = toSelectOptions(STATUS_CATEGORY_OPTIONS);
+const CONDITION_STATUS_OPTIONS: SelectOption[] = toSelectOptions(STATUS_OPTIONS);
 
 const ATTRIBUTE_OPTIONS: SelectOption[] = [
   { label: "力量", value: "strength" },
@@ -381,7 +369,7 @@ const ARMOR_TYPE_OPTIONS: SelectOption[] = [
 ];
 
 export const SPECIAL_ENTITY_FIELDS: Partial<Record<EntityType, Set<string>>> = {
-  abilities: new Set(["resourceCosts", "damageRolls", "trigger", "effects"]),
+  abilities: new Set(["resourceCosts", "damageRolls", "trigger", "effects", "automation"]),
   professions: new Set([
     "saveProficiencies",
     "armorProficiencies",
@@ -468,6 +456,92 @@ function ensureCurrentOption(options: SelectOption[], currentValue: string) {
     return options;
   }
   return [{ label: `${currentValue}（当前值）`, value: currentValue }, ...options];
+}
+
+function createFormulaTerm(valueRef = "actor.attributeMods.strength", operator: "+" | "-" = "+"): FormulaTermForm {
+  return {
+    id: createDraftId("term"),
+    operator,
+    mode: "valueRef",
+    valueRef,
+    fixedValue: "",
+  };
+}
+
+function buildFormulaTermForm(value: unknown): FormulaTermForm {
+  const record = asObject(value);
+  return {
+    id: createDraftId("term"),
+    operator: record?.operator === "-" ? "-" : "+",
+    mode: record?.mode === "fixed" ? "fixed" : "valueRef",
+    valueRef: toText(record?.valueRef || "actor.attributeMods.strength"),
+    fixedValue: toText(record?.fixedValue),
+  };
+}
+
+function buildFormulaExpression(terms: FormulaTermForm[]) {
+  return terms
+    .filter((term) => (term.mode === "fixed" ? term.fixedValue.trim() : term.valueRef.trim()))
+    .map((term, index) => {
+      const raw = term.mode === "fixed" ? term.fixedValue.trim() : term.valueRef.trim();
+      const normalized = raw || "0";
+      if (index === 0) {
+        return term.operator === "-" ? `-${normalized}` : normalized;
+      }
+      return `${term.operator} ${normalized}`;
+    })
+    .join(" ");
+}
+
+function buildConditionValueObject(node: ConditionNodeForm) {
+  if (node.rightMode === "valueRef") {
+    const path = node.rightRef.trim();
+    return path
+      ? {
+          kind: "valueRef",
+          path,
+          label: CONDITION_FORMULA_VALUE_OPTIONS.find((option) => option.value === path)?.label,
+        }
+      : 0;
+  }
+
+  if (node.rightMode === "dc") {
+    const baseValue = toOptionalNumber(node.rightDcBase);
+    return {
+      kind: "dc",
+      mode: node.rightDcMode || "fixed",
+      attribute: node.rightDcAttribute || "intelligence",
+      ...(typeof baseValue === "number" ? { fixed: baseValue, base: baseValue } : {}),
+      label: CONDITION_DC_TARGET_OPTIONS.find((option) => option.value === node.rightDcMode)?.label,
+    };
+  }
+
+  return toPrimitiveValue(node.value);
+}
+
+const STATUS_VALUE_EFFECT_TYPES = new Set(["applyState", "removeState", "grantStatusImmunity"]);
+const STATUS_CATEGORY_EFFECT_TYPES = new Set(["removeStatusCategory", "grantStatusCategoryImmunity"]);
+
+function normalizeEffectForType(row: EffectForm, nextType: string): EffectForm {
+  if (STATUS_VALUE_EFFECT_TYPES.has(nextType)) {
+    return {
+      ...row,
+      type: nextType,
+      value: row.value && CONDITION_STATUS_OPTIONS.some((option) => option.value === row.value) ? row.value : "prone",
+      label: row.label,
+    };
+  }
+  if (STATUS_CATEGORY_EFFECT_TYPES.has(nextType)) {
+    return {
+      ...row,
+      type: nextType,
+      value: row.value && CONDITION_STATUS_CATEGORY_OPTIONS.some((option) => option.value === row.value)
+        ? row.value
+        : "immobilizing",
+      label: row.label,
+    };
+  }
+  return { ...row, type: nextType };
 }
 
 function buildEffectForm(value: unknown): EffectForm {
@@ -563,99 +637,103 @@ function buildSpellSlotForms(value: unknown) {
 }
 
 function createDefaultConditionNode(type: ConditionNodeType = "compare"): ConditionNodeForm {
+  const base = {
+    id: createDraftId("cond"),
+    type,
+    field: "actor.level",
+    formulaTerms: [createFormulaTerm("actor.level")],
+    operator: ">=",
+    value: "1",
+    rightMode: "fixed" as const,
+    rightRef: "target.ac",
+    rightDcMode: "fixed",
+    rightDcAttribute: "intelligence",
+    rightDcBase: "15",
+    customExpr: "",
+    children: [] as ConditionNodeForm[],
+  };
+
   if (type === "hasTag") {
     return {
-      id: createDraftId("cond"),
-      type,
+      ...base,
       field: "target.tags",
       operator: "includes",
       value: "",
-      customExpr: "",
-      children: [],
+      formulaTerms: [createFormulaTerm("target.tags")],
     };
   }
 
   if (type === "hasState") {
     return {
-      id: createDraftId("cond"),
-      type,
+      ...base,
       field: "target.statusEffects",
       operator: "includes",
-      value: "",
-      customExpr: "",
-      children: [],
+      value: "prone",
+      formulaTerms: [createFormulaTerm("target.statusEffects")],
+    };
+  }
+
+  if (type === "hasStatusCategory") {
+    return {
+      ...base,
+      field: "target.statusEffects",
+      operator: "includes",
+      value: "immobilizing",
+      formulaTerms: [createFormulaTerm("target.statusEffects")],
     };
   }
 
   if (type === "levelCheck") {
     return {
-      id: createDraftId("cond"),
-      type,
+      ...base,
       field: "actor.level",
-      operator: ">=",
       value: "1",
-      customExpr: "",
-      children: [],
+      formulaTerms: [createFormulaTerm("actor.level")],
     };
   }
 
   if (type === "resourceCheck") {
     return {
-      id: createDraftId("cond"),
-      type,
+      ...base,
       field: "actor.mp",
-      operator: ">=",
       value: "1",
-      customExpr: "",
-      children: [],
+      formulaTerms: [createFormulaTerm("actor.mp")],
     };
   }
 
   if (type === "custom") {
     return {
-      id: createDraftId("cond"),
-      type,
+      ...base,
       field: "",
       operator: "==",
       value: "",
-      customExpr: "",
-      children: [],
+      formulaTerms: [createFormulaTerm()],
     };
   }
 
   if (type === "not") {
     return {
-      id: createDraftId("cond"),
-      type,
+      ...base,
       field: "",
       operator: "==",
       value: "",
-      customExpr: "",
+      formulaTerms: [createFormulaTerm()],
       children: [createDefaultConditionNode("compare")],
     };
   }
 
   if (type === "and" || type === "or") {
     return {
-      id: createDraftId("cond"),
-      type,
+      ...base,
       field: "",
       operator: "==",
       value: "",
-      customExpr: "",
+      formulaTerms: [createFormulaTerm()],
       children: [createDefaultConditionNode("compare")],
     };
   }
 
-  return {
-    id: createDraftId("cond"),
-    type: "compare",
-    field: "metadata.eventName",
-    operator: "==",
-    value: "",
-    customExpr: "",
-    children: [],
-  };
+  return base;
 }
 
 function normalizeConditionType(type: string): ConditionNodeType {
@@ -672,13 +750,31 @@ function buildConditionNodeForm(value: unknown): ConditionNodeForm {
   const type = normalizeConditionType(toText(record.type));
   const base = createDefaultConditionNode(type);
   const children = asArray(record.children).map((item) => buildConditionNodeForm(item));
+  const uiRecord = asObject(record.ui);
+  const valueRecord = asObject(record.value);
+  const formulaTerms = asArray(uiRecord?.formulaTerms).map((item) => buildFormulaTermForm(item));
+  const fieldValue = toText(record.field || base.field);
+  const rightMode =
+    uiRecord?.rightMode === "valueRef" || uiRecord?.rightMode === "dc" || uiRecord?.rightMode === "fixed"
+      ? (uiRecord.rightMode as ConditionNodeForm["rightMode"])
+      : valueRecord?.kind === "valueRef"
+        ? "valueRef"
+        : valueRecord?.kind === "dc"
+          ? "dc"
+          : "fixed";
 
   return {
     ...base,
     type,
-    field: toText(record.field || base.field),
+    field: fieldValue,
+    formulaTerms: formulaTerms.length > 0 ? formulaTerms : [createFormulaTerm(fieldValue || base.field)],
     operator: toText(record.operator || base.operator),
-    value: toText(record.value),
+    value: valueRecord ? toText(valueRecord.fixed ?? valueRecord.base ?? base.value) : toText(record.value ?? base.value),
+    rightMode,
+    rightRef: toText(uiRecord?.rightRef || valueRecord?.path || base.rightRef),
+    rightDcMode: toText(uiRecord?.rightDcMode || valueRecord?.mode || base.rightDcMode),
+    rightDcAttribute: toText(uiRecord?.rightDcAttribute || valueRecord?.attribute || base.rightDcAttribute),
+    rightDcBase: toText(uiRecord?.rightDcBase || valueRecord?.fixed || valueRecord?.base || base.rightDcBase),
     customExpr: toText(record.customExpr),
     children:
       type === "and" || type === "or"
@@ -703,8 +799,11 @@ function isConditionEmpty(node: ConditionNodeForm): boolean {
   if (node.type === "custom") {
     return !node.customExpr.trim();
   }
-  if (node.type === "hasTag" || node.type === "hasState") {
+  if (node.type === "hasTag" || node.type === "hasState" || node.type === "hasStatusCategory") {
     return !node.value.trim();
+  }
+  if (node.type === "compare" || node.type === "levelCheck" || node.type === "resourceCheck") {
+    return !buildFormulaExpression(node.formulaTerms).trim() && !node.value.trim() && !node.rightRef.trim();
   }
   return !node.field.trim() && !node.value.trim();
 }
@@ -742,6 +841,29 @@ function buildConditionPayload(node: ConditionNodeForm): Record<string, unknown>
     return {
       type: node.type,
       customExpr: node.customExpr.trim(),
+    };
+  }
+
+  if (node.type === "compare" || node.type === "levelCheck" || node.type === "resourceCheck") {
+    const fieldExpression = buildFormulaExpression(node.formulaTerms).trim() || node.field.trim();
+    return {
+      type: node.type,
+      field: fieldExpression,
+      operator: node.operator,
+      value: buildConditionValueObject(node),
+      ui: {
+        formulaTerms: node.formulaTerms.map((term) => ({
+          operator: term.operator,
+          mode: term.mode,
+          valueRef: term.valueRef,
+          fixedValue: term.fixedValue,
+        })),
+        rightMode: node.rightMode,
+        rightRef: node.rightRef,
+        rightDcMode: node.rightDcMode,
+        rightDcAttribute: node.rightDcAttribute,
+        rightDcBase: node.rightDcBase,
+      },
     };
   }
 
@@ -783,6 +905,20 @@ function createEmptyEffect(): EffectForm {
     label: "",
     customExpr: "",
   };
+}
+
+function buildAutomationForm(value: unknown): AbilityAutomationForm {
+  const record = asObject(value);
+  const mode = normalizeAbilityAutomationMode(record?.mode, "assisted");
+  return {
+    ...ABILITY_AUTOMATION_PRESETS[mode],
+    ...(record ?? {}),
+    mode,
+  };
+}
+
+function createAutomationPresetForm(mode: AbilityAutomationMode): AbilityAutomationForm {
+  return { ...ABILITY_AUTOMATION_PRESETS[mode], mode };
 }
 
 function createEmptyLevelFeature(): ProfessionLevelFeatureForm {
@@ -965,6 +1101,7 @@ export function buildAbilityEditorState(source?: EntityRecord | null): AbilityEd
         customExpr: toText(record?.customExpr),
       };
     }),
+    automation: buildAutomationForm(source?.automation),
   };
 }
 
@@ -1032,6 +1169,7 @@ export function buildAbilityEditorPayload(state: AbilityEditorState) {
     damageRolls: damageRolls.length > 0 ? damageRolls : null,
     effects,
     trigger,
+    automation: { ...state.automation },
   };
 }
 
@@ -1554,6 +1692,99 @@ type ConditionBuilderProps = {
   onRemove?: () => void;
 };
 
+type FormulaTermsEditorProps = {
+  terms: FormulaTermForm[];
+  disabled: boolean;
+  onChange: (terms: FormulaTermForm[]) => void;
+};
+
+function FormulaTermsEditor({ terms, disabled, onChange }: FormulaTermsEditorProps) {
+  const rows = terms.length > 0 ? terms : [createFormulaTerm()];
+
+  return (
+    <div className="entity-builder-list">
+      {rows.map((term, index) => (
+        <div className="entity-form__inline-grid" key={term.id}>
+          <select
+            className="entity-form__input"
+            value={term.operator}
+            disabled={disabled || index === 0}
+            onChange={(event) => {
+              const nextRows = [...rows];
+              nextRows[index] = { ...term, operator: event.target.value === "-" ? "-" : "+" };
+              onChange(nextRows);
+            }}
+          >
+            <option value="+">{index === 0 ? "起始值" : "加 +"}</option>
+            <option value="-">减 -</option>
+          </select>
+          <select
+            className="entity-form__input"
+            value={term.mode}
+            disabled={disabled}
+            onChange={(event) => {
+              const nextRows = [...rows];
+              nextRows[index] = { ...term, mode: event.target.value === "fixed" ? "fixed" : "valueRef" };
+              onChange(nextRows);
+            }}
+          >
+            <option value="valueRef">选择数值</option>
+            <option value="fixed">固定数值</option>
+          </select>
+          {term.mode === "fixed" ? (
+            <input
+              className="entity-form__input"
+              value={term.fixedValue}
+              disabled={disabled}
+              placeholder="例如 2"
+              onChange={(event) => {
+                const nextRows = [...rows];
+                nextRows[index] = { ...term, fixedValue: event.target.value };
+                onChange(nextRows);
+              }}
+            />
+          ) : (
+            <select
+              className="entity-form__input"
+              value={term.valueRef}
+              disabled={disabled}
+              onChange={(event) => {
+                const nextRows = [...rows];
+                nextRows[index] = { ...term, valueRef: event.target.value };
+                onChange(nextRows);
+              }}
+            >
+              {ensureCurrentOption(CONDITION_FORMULA_VALUE_OPTIONS, term.valueRef).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          )}
+          {index > 0 ? (
+            <button
+              type="button"
+              className="entity-builder-list__remove-btn"
+              disabled={disabled}
+              onClick={() => onChange(rows.filter((_, rowIndex) => rowIndex !== index))}
+            >
+              删除项
+            </button>
+          ) : null}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="entity-builder-list__add-btn"
+        disabled={disabled}
+        onClick={() => onChange([...rows, createFormulaTerm("actor.proficiencyBonus")])}
+      >
+        追加数值
+      </button>
+    </div>
+  );
+}
+
 function ConditionBuilder({ value, onChange, disabled, depth = 0, onRemove }: ConditionBuilderProps) {
   const onTypeChange = (nextType: ConditionNodeType) => {
     const nextNode = createDefaultConditionNode(nextType);
@@ -1652,37 +1883,106 @@ function ConditionBuilder({ value, onChange, disabled, depth = 0, onRemove }: Co
       ) : null}
 
       {value.type === "compare" || value.type === "levelCheck" || value.type === "resourceCheck" ? (
-        <div className="entity-form__inline-grid">
-          <input
-            className="entity-form__input"
-            value={value.field}
-            disabled={disabled}
-            placeholder="字段路径，例如 actor.level / metadata.eventName"
-            onChange={(event) => onChange({ ...value, field: event.target.value })}
-          />
-          <select
-            className="entity-form__input"
-            value={value.operator}
-            disabled={disabled}
-            onChange={(event) => onChange({ ...value, operator: event.target.value })}
-          >
-            {COMPARE_OPERATOR_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <input
-            className="entity-form__input"
-            value={value.value}
-            disabled={disabled}
-            placeholder="比较值，例如 attack:incoming / 10 / true"
-            onChange={(event) => onChange({ ...value, value: event.target.value })}
-          />
+        <div className="entity-builder-card entity-builder-card--compact">
+          <div className="entity-builder-card__grid entity-builder-card__grid--quad">
+            <div className="entity-builder-card__wide">
+              <FormulaTermsEditor
+                terms={value.formulaTerms}
+                disabled={disabled}
+                onChange={(formulaTerms) => onChange({ ...value, formulaTerms })}
+              />
+            </div>
+            <select
+              className="entity-form__input"
+              value={value.operator}
+              disabled={disabled}
+              onChange={(event) => onChange({ ...value, operator: event.target.value })}
+            >
+              {COMPARE_OPERATOR_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className="entity-form__input"
+              value={value.rightMode}
+              disabled={disabled}
+              onChange={(event) => {
+                const nextMode =
+                  event.target.value === "valueRef" || event.target.value === "dc" ? event.target.value : "fixed";
+                onChange({ ...value, rightMode: nextMode });
+              }}
+            >
+              {CONDITION_RIGHT_MODE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {value.rightMode === "fixed" ? (
+              <input
+                className="entity-form__input"
+                value={value.value}
+                disabled={disabled}
+                placeholder="例如 15"
+                onChange={(event) => onChange({ ...value, value: event.target.value })}
+              />
+            ) : null}
+            {value.rightMode === "valueRef" ? (
+              <select
+                className="entity-form__input"
+                value={value.rightRef}
+                disabled={disabled}
+                onChange={(event) => onChange({ ...value, rightRef: event.target.value })}
+              >
+                {ensureCurrentOption(CONDITION_FORMULA_VALUE_OPTIONS, value.rightRef).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {value.rightMode === "dc" ? (
+              <>
+                <select
+                  className="entity-form__input"
+                  value={value.rightDcMode}
+                  disabled={disabled}
+                  onChange={(event) => onChange({ ...value, rightDcMode: event.target.value })}
+                >
+                  {CONDITION_DC_TARGET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="entity-form__input"
+                  value={value.rightDcAttribute}
+                  disabled={disabled}
+                  onChange={(event) => onChange({ ...value, rightDcAttribute: event.target.value })}
+                >
+                  {ATTRIBUTE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  className="entity-form__input"
+                  value={value.rightDcBase}
+                  disabled={disabled}
+                  placeholder="固定 DC 时填数值"
+                  onChange={(event) => onChange({ ...value, rightDcBase: event.target.value })}
+                />
+              </>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
-      {value.type === "hasTag" || value.type === "hasState" ? (
+      {value.type === "hasTag" || value.type === "hasState" || value.type === "hasStatusCategory" ? (
         <div className="entity-form__inline-grid">
           <input
             className="entity-form__input"
@@ -1691,13 +1991,43 @@ function ConditionBuilder({ value, onChange, disabled, depth = 0, onRemove }: Co
             placeholder={value.type === "hasTag" ? "字段路径，默认 target.tags" : "字段路径，默认 target.statusEffects"}
             onChange={(event) => onChange({ ...value, field: event.target.value })}
           />
-          <input
-            className="entity-form__input entity-form__inline-grid-span-2"
-            value={value.value}
-            disabled={disabled}
-            placeholder={value.type === "hasTag" ? "标签名" : "状态 key / label"}
-            onChange={(event) => onChange({ ...value, value: event.target.value })}
-          />
+          {value.type === "hasTag" ? (
+            <input
+              className="entity-form__input entity-form__inline-grid-span-2"
+              value={value.value}
+              disabled={disabled}
+              placeholder="标签名"
+              onChange={(event) => onChange({ ...value, value: event.target.value })}
+            />
+          ) : null}
+          {value.type === "hasState" ? (
+            <select
+              className="entity-form__input entity-form__inline-grid-span-2"
+              value={value.value}
+              disabled={disabled}
+              onChange={(event) => onChange({ ...value, value: event.target.value })}
+            >
+              {ensureCurrentOption(CONDITION_STATUS_OPTIONS, value.value).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          {value.type === "hasStatusCategory" ? (
+            <select
+              className="entity-form__input entity-form__inline-grid-span-2"
+              value={value.value}
+              disabled={disabled}
+              onChange={(event) => onChange({ ...value, value: event.target.value })}
+            >
+              {CONDITION_STATUS_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -1718,7 +2048,7 @@ function SingleEffectEditor({ value, disabled, onChange }: SingleEffectEditorPro
           className="entity-form__input"
           value={value.type}
           disabled={disabled}
-          onChange={(event) => onChange({ ...value, type: event.target.value })}
+          onChange={(event) => onChange(normalizeEffectForType(value, event.target.value))}
         >
           {EFFECT_TYPE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -1752,13 +2082,41 @@ function SingleEffectEditor({ value, disabled, onChange }: SingleEffectEditorPro
           placeholder="标签/状态名"
           onChange={(event) => onChange({ ...value, label: event.target.value })}
         />
-        <input
-          className="entity-form__input"
-          value={value.value}
-          disabled={disabled}
-          placeholder="值或公式"
-          onChange={(event) => onChange({ ...value, value: event.target.value })}
-        />
+        {STATUS_VALUE_EFFECT_TYPES.has(value.type) ? (
+          <select
+            className="entity-form__input"
+            value={value.value}
+            disabled={disabled}
+            onChange={(event) => onChange({ ...value, value: event.target.value })}
+          >
+            {ensureCurrentOption(CONDITION_STATUS_OPTIONS, value.value).map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : STATUS_CATEGORY_EFFECT_TYPES.has(value.type) ? (
+          <select
+            className="entity-form__input"
+            value={value.value}
+            disabled={disabled}
+            onChange={(event) => onChange({ ...value, value: event.target.value })}
+          >
+            {CONDITION_STATUS_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="entity-form__input"
+            value={value.value}
+            disabled={disabled}
+            placeholder="值或公式"
+            onChange={(event) => onChange({ ...value, value: event.target.value })}
+          />
+        )}
         <select
           className="entity-form__input"
           value={value.duration}
@@ -1905,8 +2263,61 @@ type AbilityVisualEditorProps = {
 };
 
 export function AbilityVisualEditor({ value, disabled, onChange }: AbilityVisualEditorProps) {
+  const automationSwitches: Array<{ key: AbilityAutomationBooleanKey; label: string; helper: string }> = [
+    { key: "autoConfirmTargets", label: "自动确认目标", helper: "full 模式通常开启；manual 模式建议关闭。" },
+    { key: "autoConsumeResources", label: "自动消耗资源", helper: "关闭后 workflow 会停在资源应用等待确认。" },
+    { key: "autoRollAttack", label: "自动掷攻击", helper: "用于攻击检定能力。" },
+    { key: "autoCheckHits", label: "自动判定命中", helper: "根据攻击总值、AC 或 DC 自动判定成败。" },
+    { key: "autoRollSaves", label: "自动掷豁免", helper: "用于豁免或对抗检定能力。" },
+    { key: "autoRollDamage", label: "自动掷伤害", helper: "自动生成伤害结果，仍会记录到 workflow。" },
+    { key: "autoApplyDamage", label: "自动应用伤害", helper: "关闭后只记录等待手动应用的伤害。" },
+    { key: "autoApplyEffects", label: "自动应用效果", helper: "关闭后状态、标签和治疗效果等待手动确认。" },
+    { key: "allowManualOverride", label: "允许人工修正", helper: "GM 可在 workflow 中覆盖掷骰、伤害或 DC。" },
+    { key: "createUndoSnapshot", label: "创建撤销快照", helper: "为撤销本次执行保留前后状态。" },
+  ];
+
+  const updateAutomation = (next: Partial<AbilityAutomationForm>) => {
+    onChange({ ...value, automation: { ...value.automation, ...next } });
+  };
+
   return (
     <div className="entity-form__special-layout">
+      <SectionCard title="结算自动化" description="定义这条能力进入 AbilityWorkflowRun 时的默认自动化配置；执行面板仍可按本次结算临时覆盖。">
+        <div className="entity-form__section-grid">
+          <FieldShell label="默认自动化模式" span={2} helperText="手动预览不真实扣资源/扣血；半自动适合内部测试；全自动预留给一条龙结算。">
+            <select
+              className="entity-form__input"
+              value={value.automation.mode}
+              disabled={disabled}
+              onChange={(event) => {
+                const nextMode = normalizeAbilityAutomationMode(event.target.value, "assisted");
+                onChange({ ...value, automation: createAutomationPresetForm(nextMode) });
+              }}
+            >
+              {ABILITY_AUTOMATION_MODE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </FieldShell>
+
+          {automationSwitches.map((item) => (
+            <FieldShell key={item.key} label={item.label} helperText={item.helper}>
+              <label className="entity-form__toggle-box">
+                <input
+                  type="checkbox"
+                  checked={Boolean(value.automation[item.key])}
+                  disabled={disabled}
+                  onChange={(event) => updateAutomation({ [item.key]: event.target.checked } as Partial<AbilityAutomationForm>)}
+                />
+                <span>{value.automation[item.key] ? "开启" : "关闭"}</span>
+              </label>
+            </FieldShell>
+          ))}
+        </div>
+      </SectionCard>
+
       <SectionCard title="释放代价" description="把消耗和伤害段拆成多条记录，便于复合动作、咏唱法术和多段打击编排。">
         <div className="entity-form__section-grid">
           <FieldShell
@@ -2180,7 +2591,7 @@ export function AbilityVisualEditor({ value, disabled, onChange }: AbilityVisual
                     disabled={disabled}
                     onChange={(event) => {
                       const nextRows = [...value.effects];
-                      nextRows[index] = { ...row, type: event.target.value };
+                      nextRows[index] = normalizeEffectForType(row, event.target.value);
                       onChange({ ...value, effects: nextRows });
                     }}
                   >
@@ -2228,17 +2639,53 @@ export function AbilityVisualEditor({ value, disabled, onChange }: AbilityVisual
                       onChange({ ...value, effects: nextRows });
                     }}
                   />
-                  <input
-                    className="entity-form__input"
-                    value={row.value}
-                    disabled={disabled}
-                    placeholder="数值 / 标签 / 状态 key / 公式"
-                    onChange={(event) => {
-                      const nextRows = [...value.effects];
-                      nextRows[index] = { ...row, value: event.target.value };
-                      onChange({ ...value, effects: nextRows });
-                    }}
-                  />
+                  {STATUS_VALUE_EFFECT_TYPES.has(row.type) ? (
+                    <select
+                      className="entity-form__input"
+                      value={row.value}
+                      disabled={disabled}
+                      onChange={(event) => {
+                        const nextRows = [...value.effects];
+                        nextRows[index] = { ...row, value: event.target.value };
+                        onChange({ ...value, effects: nextRows });
+                      }}
+                    >
+                      {ensureCurrentOption(CONDITION_STATUS_OPTIONS, row.value).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : STATUS_CATEGORY_EFFECT_TYPES.has(row.type) ? (
+                    <select
+                      className="entity-form__input"
+                      value={row.value}
+                      disabled={disabled}
+                      onChange={(event) => {
+                        const nextRows = [...value.effects];
+                        nextRows[index] = { ...row, value: event.target.value };
+                        onChange({ ...value, effects: nextRows });
+                      }}
+                    >
+                      {CONDITION_STATUS_CATEGORY_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="entity-form__input"
+                      value={row.value}
+                      disabled={disabled}
+                      placeholder="数值 / 标签 / 状态 key / 公式"
+                      onChange={(event) => {
+                        const nextRows = [...value.effects];
+                        nextRows[index] = { ...row, value: event.target.value };
+                        onChange({ ...value, effects: nextRows });
+                      }}
+                    />
+                  )}
                   <select
                     className="entity-form__input"
                     value={row.duration}

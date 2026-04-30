@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AAF 大厅方案 5 - 碧空图书馆</title>
+  <link rel="stylesheet" href="./lobby_theme_5_sky_library.css" />
+  <link rel="stylesheet" href="./lobby_design_common.css" />
+</head>
+<body>
+  <main class="sd-lobby variant-sky-library">
+    <section class="sd-shell">
+      <header class="sd-topbar">
+        <div class="sd-brand"><span class="sd-brand-mark"><i data-lucide="library-big"></i></span><div><h1>碧空图书馆</h1><p>世界索引 · 资料准备</p></div></div>
+        <p class="sd-top-note">左侧保留完整聊天栏，资料目录与角色卡等会前动作统一放入工具箱。</p>
+        <div class="sd-user-zone"><span class="sd-chip"><i data-lucide="book-open"></i>规则已同步</span><button class="sd-avatar" type="button">云</button></div>
+      </header>
+
+      <section class="sd-main-grid">
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>星语聊天</h2><span class="sd-badge is-hot sd-pulse">NEW</span></header>
+          <div class="sd-panel-body sd-panel-body--chat" data-chat-panel data-active-channel="lobby">
+            <div class="sd-channel-switch" role="tablist" aria-label="聊天频道"><button class="sd-channel-btn is-active" type="button" data-channel-button="lobby">LOBBY</button><button class="sd-channel-btn" type="button" data-channel-button="forum">论坛</button><button class="sd-channel-btn" type="button" data-channel-button="system">SYSTEM</button></div>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="lobby">
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">LOBBY</span><span>白露</span><span>14:11</span></div><p>我正在看规则书，等会再进世界。</p></article>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">LOBBY</span><span>苍羽</span><span>14:13</span></div><p>角色草稿放在工具箱里更容易找。</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="forum" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">论坛</span><span>公告</span><span>14:12</span></div><p>本周公开团报名帖已归档到资料工具箱。</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="system" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">SYSTEM</span><span>系统</span><span>14:14</span></div><p>天赋树模板已有 6 个可预览。</p></article>
+            </section>
+            <form class="sd-chat-input" data-chat-form><textarea class="sd-control" placeholder="输入大厅消息"></textarea><button class="sd-action primary" type="submit"><i data-lucide="send"></i>发送</button></form>
+          </div>
+        </aside>
+
+        <section class="sd-panel">
+          <header class="sd-panel-header"><h2>世界索引</h2><span class="sd-chip">当前条目：3</span></header>
+          <div class="sd-panel-body sd-scroll">
+            <section class="sd-board-hero">
+              <h3 class="sd-hero-title">选中：碧空圣典：失落群岛</h3>
+              <p class="sd-muted">邀请世界 · GM Nubes · 活跃 5。规则书、天赋树、角色草稿均收纳在右侧工具箱。</p>
+              <div class="sd-meta-row" style="margin-top: 12px;"><span class="sd-badge is-hot">推荐进入</span><span class="sd-badge">邀请码 AAF-778</span><span class="sd-badge">成员 8</span></div>
+            </section>
+            <form class="sd-toolbar">
+              <input class="sd-control" placeholder="搜索世界索引" />
+              <select class="sd-control"><option>全部世界</option><option>收藏世界</option><option>我的世界</option></select>
+              <select class="sd-control"><option>活跃优先</option><option>创建时间</option></select>
+              <select class="sd-control"><option>降序</option><option>升序</option></select>
+              <button class="sd-action primary" type="button"><i data-lucide="plus"></i>创建世界</button>
+            </form>
+            <section class="sd-world-list">
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/700x420/e8f7ff/155aa2?text=Codex');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">碧空圣典：失落群岛</h3><span class="sd-badge is-hot">邀请</span></div><p class="sd-world-desc">云海航线重新开启，玩家将在浮岛城邦之间追踪命运星屑。</p><div class="sd-meta-row"><span class="sd-chip">成员 8</span><span class="sd-chip">活跃 5</span><span class="sd-chip">GM Nubes</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏该世界。">收藏</button><button class="sd-action primary" type="button" data-action-toast="进入世界动作已触发。">进入</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/700x420/f2fbff/2164a6?text=Harbor');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">星港边境调查团</h3><span class="sd-badge">公开</span></div><p class="sd-world-desc">轻量试跑世界，适合新玩家熟悉角色卡、聊天和场景切换。</p><div class="sd-meta-row"><span class="sd-chip">成员 12</span><span class="sd-chip">活跃 4</span><span class="sd-chip">GM Leia</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏该世界。">收藏</button><button class="sd-action primary" type="button" data-action-toast="加入动作已触发。">加入</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/700x420/fff2df/9b4d00?text=Lab');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">规则试炼桌</h3><span class="sd-badge">私密</span></div><p class="sd-world-desc">用于测试自动结算、天赋树和规则书条目联动。</p><div class="sd-meta-row"><span class="sd-chip">成员 3</span><span class="sd-chip">活跃 1</span><span class="sd-chip">GM 墨鸦</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏该世界。">收藏</button><button class="sd-action primary" type="button" data-action-toast="进入世界动作已触发。">进入</button></div></article>
+            </section>
+          </div>
+        </section>
+
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>工具箱</h2><i data-lucide="book-marked"></i></header>
+          <div class="sd-panel-body sd-scroll" data-tab-group>
+            <section class="sd-directory-list">
+              <button class="sd-directory-item is-active" type="button" data-tab-button="world"><strong>世界索引</strong><span>世界列表、收藏、加入状态</span></button>
+              <button class="sd-directory-item" type="button" data-tab-button="sheet"><strong>角色卡预创建</strong><span>草稿、token、导入预留</span></button>
+              <button class="sd-directory-item" type="button" data-tab-button="rulebook"><strong>规则书</strong><span>目录树与富文本阅读</span></button>
+              <button class="sd-directory-item" type="button" data-tab-button="talent"><strong>天赋树预览</strong><span>职业树、通用树、节点详情</span></button>
+              <button class="sd-directory-item" type="button" data-tab-button="bestiary"><strong>怪物图鉴</strong><span>条目索引与基础标签</span></button>
+              <button class="sd-directory-item" type="button" data-tab-button="lore"><strong>世界设定</strong><span>会前背景阅读</span></button>
+            </section>
+            <section class="sd-panel-view" style="margin-top: 12px;">
+              <article class="sd-tool-preview" data-tab-panel="world"><h3>世界索引</h3><p>当前选中碧空圣典，可收藏、进入或查看世界说明。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="sheet" hidden><h3>角色卡预创建</h3><p>已有草稿：苍羽 · Lv.1。支持 token 与导入预留。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="rulebook" hidden><h3>规则书</h3><p>最近规则：战斗与造物系统 v1。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="talent" hidden><h3>天赋树预览</h3><p>最近天赋树：剑士 / 通用冒险。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="bestiary" hidden><h3>怪物图鉴</h3><p>公开怪物条目只展示基础标签，隐藏 GM 私密字段。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="lore" hidden><h3>世界设定</h3><p>会前阅读世界背景、阵营、地名和当前任务摘要。</p></article>
+            </section>
+          </div>
+        </aside>
+      </section>
+    </section>
+  </main>
+  <div class="sd-toast" data-toast></div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="./lobby_design_interactions.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

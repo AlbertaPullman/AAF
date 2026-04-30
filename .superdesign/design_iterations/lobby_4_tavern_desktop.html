@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AAF 大厅方案 4 - 蔚蓝酒馆桌面</title>
+  <link rel="stylesheet" href="./lobby_theme_4_tavern_desktop.css" />
+  <link rel="stylesheet" href="./lobby_design_common.css" />
+</head>
+<body>
+  <main class="sd-lobby variant-tavern-desktop">
+    <section class="sd-shell">
+      <header class="sd-topbar">
+        <div class="sd-brand"><span class="sd-brand-mark"><i data-lucide="coffee"></i></span><div><h1>蔚蓝酒馆桌面</h1><p>会前准备 · 队友集结</p></div></div>
+        <p class="sd-top-note">聊天独占左侧边栏，角色草稿和规则资料统一收进右侧工具箱。</p>
+        <div class="sd-user-zone"><span class="sd-chip"><i data-lucide="users"></i>好友 6</span><button class="sd-avatar" type="button">云</button></div>
+      </header>
+
+      <section class="sd-main-grid">
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>桌边星语</h2><span class="sd-badge is-hot sd-pulse">NEW</span></header>
+          <div class="sd-panel-body sd-panel-body--chat" data-chat-panel data-active-channel="lobby">
+            <div class="sd-channel-switch" role="tablist" aria-label="聊天频道"><button class="sd-channel-btn is-active" type="button" data-channel-button="lobby">LOBBY</button><button class="sd-channel-btn" type="button" data-channel-button="table">桌边</button><button class="sd-channel-btn" type="button" data-channel-button="system">SYSTEM</button></div>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="lobby">
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">LOBBY</span><span>莉雅</span><span>14:20</span></div><p>我坐主桌，角色草稿已经准备好了。</p></article>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">LOBBY</span><span>白露</span><span>14:22</span></div><p>新手公会试炼还有空位吗？</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="table" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">桌边</span><span>GM</span><span>14:23</span></div><p>主桌 20:00 开，先在工具箱检查角色卡和天赋树。</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="system" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">SYSTEM</span><span>系统</span><span>14:22</span></div><p>规则书更新已同步到大厅阅读器。</p></article>
+            </section>
+            <form class="sd-chat-input" data-chat-form><textarea class="sd-control" placeholder="写一张桌边便签"></textarea><button class="sd-action primary" type="submit"><i data-lucide="send"></i>发送</button></form>
+          </div>
+        </aside>
+
+        <section class="sd-panel">
+          <header class="sd-panel-header"><h2>世界桌面</h2><button class="sd-action primary" type="button"><i data-lucide="plus"></i>摆一张新桌</button></header>
+          <div class="sd-panel-body sd-scroll">
+            <section class="sd-board-hero sd-sweep">
+              <h3 class="sd-hero-title">今晚的主桌：失落群岛</h3>
+              <p class="sd-muted">已有 5 名玩家在线，GM 正在检查规则书和天赋树。角色卡草稿可从右侧快速打开。</p>
+              <div class="sd-meta-row" style="margin-top: 12px;"><span class="sd-badge is-hot">活跃 5</span><span class="sd-badge">邀请 AAF-778</span><span class="sd-badge">准备中</span></div>
+            </section>
+            <form class="sd-toolbar">
+              <input class="sd-control" placeholder="搜索桌名、团长、描述" />
+              <select class="sd-control"><option>全部桌</option><option>我的桌</option><option>已加入</option></select>
+              <select class="sd-control"><option>活跃优先</option><option>创建时间</option></select>
+              <select class="sd-control"><option>降序</option><option>升序</option></select>
+              <button class="sd-action" type="button"><i data-lucide="filter"></i>筛选</button>
+            </form>
+            <section class="sd-world-list">
+              <article class="sd-world-card featured"><div class="sd-world-cover" style="background-image:url('https://placehold.co/900x520/e8f7ff/165da5?text=Main+Table');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">碧空圣典：失落群岛</h3><span class="sd-badge is-hot">主桌</span></div><p class="sd-world-desc">云海航线重新开启，玩家将在浮岛城邦之间追踪命运星屑。</p><div class="sd-meta-row"><span class="sd-chip">成员 8</span><span class="sd-chip">活跃 5</span><span class="sd-chip">GM Nubes</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏这张桌。">收藏</button><button class="sd-action primary" type="button" data-action-toast="进入主桌动作已触发。">进入</button><button class="sd-action" type="button" data-action-toast="删除桌面会进入二段确认。">删除</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/700x420/f3fbff/2268aa?text=Side+Table');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">新手公会试炼</h3><span class="sd-badge">公开</span></div><p class="sd-world-desc">轻量教学桌，适合先熟悉 AAF 角色卡。</p><div class="sd-meta-row"><span class="sd-chip">成员 12</span><span class="sd-chip">活跃 4</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏这张桌。">收藏</button><button class="sd-action primary" type="button" data-action-toast="加入动作已触发。">加入</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/700x420/fff1df/a05200?text=Rules+Table');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">规则试炼桌</h3><span class="sd-badge">私密</span></div><p class="sd-world-desc">自动结算和天赋效果测试用桌。</p><div class="sd-meta-row"><span class="sd-chip">成员 3</span><span class="sd-chip">活跃 1</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏这张桌。">收藏</button><button class="sd-action primary" type="button" data-action-toast="进入世界动作已触发。">进入</button></div></article>
+            </section>
+          </div>
+        </section>
+
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>工具箱</h2><i data-lucide="sparkles"></i></header>
+          <div class="sd-panel-body sd-scroll" data-tab-group>
+            <section class="sd-tool-list">
+              <button class="sd-tool-card is-active" type="button" data-tab-button="sheet"><strong>角色卡预创建</strong><span>打开已有角色或快速车卡。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="rulebook"><strong>规则书</strong><span>会前速查与目录阅读。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="talent"><strong>天赋树预览</strong><span>查看职业树节点。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="table"><strong>桌面准备</strong><span>查看主桌准备状态和缺口。</span></button>
+              <article class="sd-tool-preview" data-tab-panel="sheet"><h3>角色卡预创建</h3><p>酒馆桌面只展示入口，实际角色草稿保存在工具箱。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="rulebook" hidden><h3>规则书</h3><p>阅读目录、最近更新和管理员维护入口。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="talent" hidden><h3>天赋树预览</h3><p>打开只读天赋树，确认职业成长路线。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="table" hidden><h3>桌面准备</h3><p>主桌缺前排和治疗，公开桌适合新玩家入门。</p></article>
+            </section>
+          </div>
+        </aside>
+      </section>
+    </section>
+  </main>
+  <div class="sd-toast" data-toast></div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="./lobby_design_interactions.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

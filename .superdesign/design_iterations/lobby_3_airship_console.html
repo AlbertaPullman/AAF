@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AAF 大厅方案 3 - 飞空艇控制台</title>
+  <link rel="stylesheet" href="./lobby_theme_3_airship_console.css" />
+  <link rel="stylesheet" href="./lobby_design_common.css" />
+</head>
+<body>
+  <main class="sd-lobby variant-airship-console">
+    <section class="sd-shell">
+      <header class="sd-topbar">
+        <div class="sd-brand"><span class="sd-brand-mark"><i data-lucide="radar"></i></span><div><h1>飞空艇控制台</h1><p>高密度大厅 · 快速派遣</p></div></div>
+        <div class="sd-stat-row">
+          <div class="sd-stat"><b>18</b><span>世界总数</span></div>
+          <div class="sd-stat"><b>7</b><span>当前在线</span></div>
+          <div class="sd-stat"><b>4</b><span>未读频道</span></div>
+          <div class="sd-stat"><b>3</b><span>我的世界</span></div>
+        </div>
+        <div class="sd-user-zone"><span class="sd-chip"><span class="sd-status-dot"></span>ONLINE</span><button class="sd-avatar" type="button">云</button></div>
+      </header>
+
+      <section class="sd-main-grid">
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>频道轨道</h2><button class="sd-icon-button" type="button" aria-label="频道设置"><i data-lucide="sliders-horizontal"></i></button></header>
+          <div class="sd-panel-body sd-panel-body--chat" data-chat-panel data-active-channel="lobby">
+            <div class="sd-channel-switch" role="tablist" aria-label="频道轨道">
+              <button class="sd-channel-btn is-active" type="button" data-channel-button="lobby">LOBBY</button>
+              <button class="sd-channel-btn" type="button" data-channel-button="system">SYSTEM</button>
+              <button class="sd-channel-btn" type="button" data-channel-button="private">PRIVATE</button>
+            </div>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="lobby">
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">LOBBY</span><span>指挥台</span><span>14:12</span></div><p>星港边境调查团活跃人数升至 4。</p></article>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">LOBBY</span><span>调度员</span><span>14:13</span></div><p>世界索引按活跃度刷新完成。</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="system" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">SYSTEM</span><span>系统</span><span>14:16</span></div><p>断线重连已恢复，Socket 状态正常。</p></article>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">SYSTEM</span><span>系统</span><span>14:18</span></div><p>规则书索引已完成同步。</p></article>
+            </section>
+            <section class="sd-channel-stream sd-scroll" data-channel-panel="private" hidden>
+              <article class="sd-message"><div class="sd-message-meta"><span class="sd-badge">PRIVATE</span><span>Leia</span><span>14:21</span></div><p>我把今晚用的角色草稿放在本地了。</p></article>
+            </section>
+            <form class="sd-chat-input" data-chat-form><textarea class="sd-control" placeholder="发送频道消息"></textarea><button class="sd-action primary" type="submit"><i data-lucide="send"></i>发送</button></form>
+          </div>
+        </aside>
+
+        <section class="sd-panel">
+          <header class="sd-panel-header"><h2>世界索引</h2><span class="sd-chip">SCAN MODE</span></header>
+          <div class="sd-panel-body sd-scroll">
+            <form class="sd-toolbar">
+              <input class="sd-control" placeholder="搜索世界 / GM / 描述" />
+              <select class="sd-control"><option>全部</option><option>我的</option><option>已加入</option></select>
+              <select class="sd-control"><option>活跃优先</option><option>创建时间</option></select>
+              <select class="sd-control"><option>降序</option><option>升序</option></select>
+              <button class="sd-action primary" type="button"><i data-lucide="plus"></i>新建</button>
+            </form>
+            <section class="sd-world-list">
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/400x400/e8f7ff/125aa3?text=A1');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">碧空圣典：失落群岛</h3><span class="sd-badge is-hot">邀请</span></div><div class="sd-meta-row"><span class="sd-chip">成员 8</span><span class="sd-chip">活跃 5</span><span class="sd-chip">GM Nubes</span><span class="sd-chip">场景 6</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏该世界。">收藏</button><button class="sd-action primary" type="button" data-action-toast="进入世界动作已触发。">进入</button><button class="sd-action" type="button" data-action-toast="删除世界会进入二段确认。">删除</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/400x400/f2fbff/1e65a8?text=B2');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">星港边境调查团</h3><span class="sd-badge">公开</span></div><div class="sd-meta-row"><span class="sd-chip">成员 12</span><span class="sd-chip">活跃 4</span><span class="sd-chip">GM Leia</span><span class="sd-chip">场景 3</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="该世界已在收藏夹中。">已收藏</button><button class="sd-action primary" type="button" data-action-toast="加入动作已触发。">加入</button><button class="sd-action" type="button" data-action-toast="详情面板已准备打开。">详情</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/400x400/fff4df/a05700?text=C3');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">规则试炼桌</h3><span class="sd-badge">私密</span></div><div class="sd-meta-row"><span class="sd-chip">成员 3</span><span class="sd-chip">活跃 1</span><span class="sd-chip">GM 墨鸦</span><span class="sd-chip">场景 2</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏该世界。">收藏</button><button class="sd-action primary" type="button" data-action-toast="进入世界动作已触发。">进入</button><button class="sd-action" type="button" data-action-toast="详情面板已准备打开。">详情</button></div></article>
+              <article class="sd-world-card"><div class="sd-world-cover" style="background-image:url('https://placehold.co/400x400/e9fff7/087c63?text=D4');"></div><div class="sd-world-content"><div class="sd-world-title-row"><h3 class="sd-world-title">翠野怪谈短团</h3><span class="sd-badge">好友</span></div><div class="sd-meta-row"><span class="sd-chip">成员 5</span><span class="sd-chip">活跃 2</span><span class="sd-chip">GM 莉雅</span><span class="sd-chip">场景 4</span></div></div><div class="sd-world-actions"><button class="sd-action" type="button" data-action-toast="已收藏该世界。">收藏</button><button class="sd-action primary" type="button" data-action-toast="申请动作已触发。">申请</button><button class="sd-action" type="button" data-action-toast="详情面板已准备打开。">详情</button></div></article>
+            </section>
+          </div>
+        </section>
+
+        <aside class="sd-panel">
+          <header class="sd-panel-header"><h2>快捷模块</h2><i data-lucide="grid-3x3"></i></header>
+          <div class="sd-panel-body sd-scroll" data-tab-group>
+            <section class="sd-tool-list">
+              <button class="sd-tool-card is-active" type="button" data-tab-button="sheet"><strong>角色预创建</strong><span>本地草稿 / token 上传 / 进入角色卡。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="rulebook"><strong>规则书</strong><span>目录树 + 富文本阅读。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="talent"><strong>天赋树</strong><span>只读画布 / 节点详情 / 编辑器跳转。</span></button>
+              <button class="sd-tool-card" type="button" data-tab-button="system"><strong>系统编辑器</strong><span>管理员入口集中放置。</span></button>
+              <article class="sd-tool-preview" data-tab-panel="sheet"><h3>角色预创建</h3><p>作为工具箱模块打开，避免压缩聊天频道空间。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="rulebook" hidden><h3>规则书</h3><p>目录树、富文本阅读和管理员编辑器跳转集中在此。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="talent" hidden><h3>天赋树</h3><p>快速查看职业树、节点详情和只读画布。</p></article>
+              <article class="sd-tool-preview" data-tab-panel="system" hidden><h3>系统编辑器</h3><p>管理员高频入口集中，普通玩家只看到可用工具。</p></article>
+            </section>
+          </div>
+        </aside>
+      </section>
+    </section>
+  </main>
+  <div class="sd-toast" data-toast></div>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="./lobby_design_interactions.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

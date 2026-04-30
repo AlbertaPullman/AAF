@@ -8,6 +8,14 @@ This file is the low-token entry point for future work. Do not scan the whole re
 2. Open only the module note matching the user's request.
 3. Open `docs/世界模板实现蓝图.md` only when touching world UX, permissions, rules automation, resource editors, or crafting.
 
+## Parallel AI Workflow
+
+- Treat each task as one primary module plus at most one dependency module unless the user explicitly asks for a cross-module refactor.
+- Before editing, identify the module-owned files from `docs/modules/README.md` and keep writes inside that scope. If shared data, API contracts, Prisma schema, permissions, or theme tokens must change, open the matching shared module note first.
+- `WorldPage.tsx` is an integration shell. New feature logic should live in module components, hooks, stores, services, or shared contracts, then be wired into the shell through a small adapter.
+- Prefer typed registries/config maps for tabs, entity types, overlays, actions, and rule nodes. Do not scatter repeated string literals or switch branches across client, server, and shared code without documenting the registry/update path.
+- For concurrent AI work, use separate branches or worktrees. Never delete a branch or worktree that has uncommitted changes, untracked files, or commits not safely present on `main`.
+
 ## Module Boundaries
 
 - World shell and layout: `client/src/pages/world/WorldPage.tsx`, `client/src/world/components/*`, `client/src/styles/index.css`.

@@ -141,6 +141,29 @@
       "owner": "settlement"
     },
     {
+      "name": "worldSceneAbilityExecute",
+      "method": "POST",
+      "path": "/api/worlds/:worldId/scenes/:sceneId/abilities/:abilityId/execute",
+      "owner": "rules",
+      "request": {
+        "actorCharacterId": "string?",
+        "actorTokenId": "string?",
+        "targetCharacterIds": "string[]?",
+        "targetTokenIds": "string[]?",
+        "automationMode": "manual | assisted | full",
+        "automation": "Partial<AbilityAutomationConfig>?",
+        "manualOverrides": "Record<string, unknown>?",
+        "metadata": "Record<string, unknown>?"
+      },
+      "response": {
+        "workflow": "AbilityWorkflowRun",
+        "workflow.damageApplications": "AbilityWorkflowDamageApplication[] with effectiveDamage/tempHpDamage/hpDamage/modifier details",
+        "settlement": "SettlementResolveResult | null",
+        "costs": "ResolvedAbilityCost[]",
+        "effects": "ResolvedAbilityEffect[]"
+      }
+    },
+    {
       "name": "worldRuntimeGet",
       "method": "GET",
       "path": "/api/worlds/:worldId/runtime",

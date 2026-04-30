@@ -131,25 +131,77 @@ export interface ResourceCost {
 /** 骰子表达式 (如 "2d6+3") */
 export type DiceExpression = string;
 
+/** 可视化公式右值。UI 使用中文选项生成该结构，结算层再解析为数值。 */
+export type FormulaValueReference =
+  | {
+      kind: "valueRef";
+      path: string;
+      label?: string;
+    }
+  | {
+      kind: "dc";
+      mode:
+        | "fixed"
+        | "actorAbilityDc"
+        | "actorSpellDc"
+        | "actorProfessionDc"
+        | "actorAttributeDc"
+        | "targetAc"
+        | "targetSpellDc"
+        | "targetAttributeDc"
+        | "targetPassivePerception";
+      attribute?: AttributeKey;
+      base?: number;
+      fixed?: number;
+      label?: string;
+    };
+
+export type FormulaComparableValue = string | number | boolean | FormulaValueReference;
+
+/** 能力主检定 DC/对抗配置。旧数据可能只有 attribute/base，新数据会记录 dcMode。 */
+export interface AbilitySaveDCConfig {
+  mode?: "attack" | "savingThrow" | "contest" | "custom";
+  dcMode?: Extract<FormulaValueReference, { kind: "dc" }>["mode"];
+  attribute?: AttributeKey;
+  base?: number;
+  fixed?: number;
+  targetDefense?: "ac" | "defense" | "custom" | string;
+  actor?: { attribute?: AttributeKey; skill?: string };
+  target?: { attribute?: AttributeKey; skill?: string };
+}
+
 /** 条件表达式 */
 export interface ConditionExpression {
-  type: "and" | "or" | "not" | "compare" | "hasTag" | "hasState" | "levelCheck" | "resourceCheck" | "custom";
+  type:
+    | "and"
+    | "or"
+    | "not"
+    | "compare"
+    | "hasTag"
+    | "hasState"
+    | "hasStatusCategory"
+    | "levelCheck"
+    | "resourceCheck"
+    | "custom";
   field?: string;
   operator?: "==" | "!=" | ">=" | "<=" | ">" | "<" | "includes";
-  value?: string | number | boolean;
+  value?: FormulaComparableValue;
   children?: ConditionExpression[];
   customExpr?: string;
+  /** UI 构建器元数据，不参与运行时判断；用于再次打开时恢复中文选项。 */
+  ui?: Record<string, unknown>;
 }
 
 /** 效果表达式 */
 export interface EffectExpression {
   type: "modifyStat" | "addTag" | "removeTag" | "applyState" | "removeState" |
+    "removeStatusCategory" | "grantStatusImmunity" | "grantStatusCategoryImmunity" |
     "dealDamage" | "heal" | "grantTempHp" | "grantAdvantage" | "grantDisadvantage" |
     "grantBonusDice" | "grantPenaltyDice" | "modifyAC" | "modifySpeed" |
     "grantReaction" | "grantExtraAttack" | "custom";
   target: "self" | "target" | "allAllies" | "allEnemies" | "aoe";
   stat?: string;
-  value?: string | number;
+  value?: string | number | boolean;
   duration?: DurationType;
   durationValue?: number;
   customExpr?: string;
@@ -158,16 +210,117 @@ export interface EffectExpression {
 
 /** 触发时机 */
 export type TriggerTiming =
+  | "onAbilityUse" | "onBeforeAttack"
   | "onAttackHit" | "onAttackMiss" | "onAttackCritical"
   | "onDealDamage" | "onTakeDamage" | "onKill"
   | "onTurnStart" | "onTurnEnd" | "onRoundStart" | "onRoundEnd"
   | "onCastSpell" | "onConcentrationCheck"
   | "onSavingThrow" | "onSavingThrowFail" | "onSavingThrowSuccess"
   | "onMove" | "onEnterArea" | "onLeaveArea"
+  | "onStatusApply" | "onStatusRemove"
   | "onHpBelowHalf" | "onHpZero" | "onHeal"
   | "onShortRest" | "onLongRest"
   | "onCombatStart" | "onCombatEnd"
   | "custom";
+
+export type AbilityAutomationMode = "manual" | "assisted" | "full";
+
+export type AbilityWorkflowPhaseKey =
+  | "declare"
+  | "target-confirmation"
+  | "cost-check"
+  | "reaction-window"
+  | "attack-roll"
+  | "save-roll"
+  | "damage-roll"
+  | "damage-application"
+  | "effect-application"
+  | "post-apply"
+  | "settle";
+
+export type AbilityWorkflowPhaseStatus = "pending" | "waiting" | "skipped" | "resolved" | "failed";
+
+export type AbilityWorkflowStepAutomation = "manual" | "prompt" | "auto";
+
+export interface AbilityAutomationConfig {
+  mode: AbilityAutomationMode;
+  autoConfirmTargets: boolean;
+  autoConsumeResources: boolean;
+  autoRollAttack: boolean;
+  autoCheckHits: boolean;
+  autoRollSaves: boolean;
+  autoRollDamage: boolean;
+  autoApplyDamage: boolean;
+  autoApplyEffects: boolean;
+  autoConcentration: boolean;
+  autoReactions: boolean;
+  allowManualOverride: boolean;
+  createUndoSnapshot: boolean;
+}
+
+export interface AbilityWorkflowPhaseLog {
+  key: AbilityWorkflowPhaseKey;
+  label: string;
+  automation: AbilityWorkflowStepAutomation;
+  status: AbilityWorkflowPhaseStatus;
+  message?: string;
+  requiresConfirmation?: boolean;
+  editableFields?: string[];
+  resolvedAt?: string;
+}
+
+export interface AbilityWorkflowCharacterSnapshot {
+  characterId: string;
+  name: string;
+  statsBefore: Record<string, unknown>;
+  snapshotBefore: Record<string, unknown>;
+  statsAfter?: Record<string, unknown>;
+  snapshotAfter?: Record<string, unknown>;
+}
+
+export interface AbilityWorkflowDamageApplication {
+  targetCharacterId: string;
+  targetName: string;
+  damageType?: string;
+  rawDamage: number;
+  effectiveDamage?: number;
+  appliedDamage: number;
+  tempHpDamage?: number;
+  hpDamage?: number;
+  oldHp: number;
+  newHp: number;
+  oldTempHp: number;
+  newTempHp: number;
+  resistanceApplied?: boolean;
+  vulnerabilityApplied?: boolean;
+  immunityApplied?: boolean;
+  flatReduction?: number;
+  damageTypeModifiers?: string[];
+  applied: boolean;
+  canUndo: boolean;
+  notes?: string[];
+}
+
+export interface AbilityWorkflowRun {
+  id: string;
+  abilityId: string;
+  abilityName: string;
+  mode: AbilityAutomationMode;
+  config: AbilityAutomationConfig;
+  status: "running" | "waiting" | "completed" | "failed";
+  currentPhase: AbilityWorkflowPhaseKey;
+  phases: AbilityWorkflowPhaseLog[];
+  actor: AbilityWorkflowCharacterSnapshot;
+  targets: AbilityWorkflowCharacterSnapshot[];
+  damageApplications: AbilityWorkflowDamageApplication[];
+  manualOverrides?: Record<string, unknown>;
+  undoSnapshot?: {
+    actor: AbilityWorkflowCharacterSnapshot;
+    targets: AbilityWorkflowCharacterSnapshot[];
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 /* ──────────── 能力定义(Ability) ──────────── */
 
@@ -235,7 +388,7 @@ export interface AbilityDefinition {
   /** 攻击检定属性 */
   attackAttribute?: AttributeKey;
   /** 豁免DC属性 */
-  saveDC?: { attribute: AttributeKey; base?: number };
+  saveDC?: AbilitySaveDCConfig;
   /** 伤害表达式 */
   damageRolls?: {
     dice: DiceExpression;
@@ -253,6 +406,8 @@ export interface AbilityDefinition {
   effects: EffectExpression[];
   /** 反应触发策略 */
   reactionStrategy?: "always-ask" | "smart-ask" | "auto";
+  /** Per-ability automation defaults. World/user execution mode may still override these values. */
+  automation?: Partial<AbilityAutomationConfig>;
   /** 法术等级序列：0 戏法，1 初级，2 中级，3 高级，4 史诗，5 传说，6 禁咒 */
   spellLevel?: number;
   /** 法术学派(仅法术) */

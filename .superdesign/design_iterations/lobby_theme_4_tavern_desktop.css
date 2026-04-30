@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800;900&family=Lora:wght@600;700&display=swap');
+
+:root {
+  --sd-bg: radial-gradient(circle at 20% 10%, rgba(255, 207, 120, 0.2), transparent 28%), radial-gradient(circle at 78% 18%, rgba(82, 190, 255, 0.24), transparent 34%), linear-gradient(145deg, #f8fcff 0%, #eef9ff 50%, #fff4f0 100%);
+  --sd-panel: rgba(255, 255, 255, 0.9);
+  --sd-panel-strong: rgba(255, 255, 255, 0.98);
+  --sd-panel-soft: rgba(250, 248, 244, 0.9);
+  --sd-border: rgba(92, 153, 213, 0.32);
+  --sd-border-strong: rgba(235, 139, 92, 0.5);
+  --sd-text: #142a49;
+  --sd-muted: #4d6688;
+  --sd-faint: #788fae;
+  --sd-blue: #116ed4;
+  --sd-blue-soft: #3dc4ef;
+  --sd-orange: #ee8f37;
+  --sd-orange-soft: rgba(238, 143, 55, 0.16);
+  --sd-success: #0a9b78;
+  --sd-danger: #d7473e;
+  --sd-shadow: 0 20px 42px rgba(57, 88, 134, 0.16);
+  --sd-shadow-soft: 0 10px 22px rgba(58, 101, 152, 0.11);
+  --sd-radius: 8px;
+  --sd-radius-lg: 12px;
+  --sd-font: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --sd-display: 'Lora', 'Noto Sans SC', serif;
+}

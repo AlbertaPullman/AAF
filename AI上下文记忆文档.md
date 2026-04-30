@@ -92,6 +92,14 @@
 - 历史流水日志不再堆积到本文件。
 - 每次迭代只新增一段“当前主线变化 + 影响规则 + 下一步”。
 
+## 13. 能力自动化与 Workflow 结算基线（2026-04-30）
+
+**当前主线变化**：能力编辑器已支持中文配置 `manual / assisted / full` 自动化模式和目标确认、资源消耗、攻击/豁免/伤害掷骰、伤害/效果应用、人工修正、撤销快照开关；`AbilityDefinition.automation` 已进入 Prisma JSON 字段、service create/update、资源包导入导出和执行默认读取链路。`AbilityExecutionPanel` 结果卡显示 workflow 阶段、等待手动应用提示和“应用本次伤害/效果/撤销本次执行”占位按钮。
+
+**影响规则 / 接口**：能力执行默认读取顺序为“本次请求 automation/automationMode → 能力模板 automation → assisted 预设”。`workflow.damageApplications[]` 现在记录 raw/effective damage、tempHpDamage、hpDamage、抗性、易伤、免疫、固定减伤和 damageTypeModifiers；manual 模式只写预览不改 HP。
+
+**下一步**：实装 workflow 卡片的真实手动应用/撤销接口，多目标 AOE 的逐目标 damage-application，以及 manualOverrides 对掷骰/DC/伤害节点的实际覆盖。
+
 ## 7. 角色卡新约定（2026-04-08）
 
 - 角色卡 JSON 导入导出已启用，命名规则固定为：`角色名_人物等级_玩家名_年月日_时分秒.json`。
@@ -322,7 +330,8 @@ pm run build -w client\ ͨ����4.01s��CSS 342.66 kB����
 
 ## ��15.3 A3 ��� �� HUDPanel/ActionBar
 
-- world-components.css HUD �Σ�868-1217 �� ~350 �У�ȫ��Ӳ������ɫ���㣺��������char-level ���¡�������Դ����䡢slot Ĭ��/hover/empty��tab-btn hover/active��tab-content��mode-toggle ȫ��ת ar(--mod-hud-accent) / ar(--mod-fate-accent) / ar(--accent-action) / ar(--accent-danger) / ar(--accent-warn) / ar(--surface-card) + color-mix(in srgb, ..., transparent)��#b91c1c #b88708 #ffffff gba(...) ȫ����ʧ��
+- world-components.css HUD �Σ�868-1217 �� ~350 �У�ȫ��Ӳ������ɫ���㣺��������char-level ���¡�������Դ����䡢slot Ĭ��/hover/empty��tab-btn hover/active��tab-content��mode-toggle ȫ��ת ar(--mod-hud-accent) / ar(--mod-fate-accent) / ar(--accent-action) / ar(--accent-danger) / ar(--accent-warn) / ar(--surface-card) + color-mix(in srgb, ..., transparent)��#b91c1c #b88708 #ffffff 
+gba(...) ȫ����ʧ��
 - ɾ�� index.css ���� .world-stage-shell .hud-panel* ����Ӳ���븲�ǣ�ԭ��ɫ����� 11638-11685��dark-arcane �����+ ��ɫ�� 12173-12208��jrpg-bright �����ʵ�֣���HUD ����ȫ��������������ٱ� stage-shell ǿ�Ƹ��ǡ�
 - --hud-panel-h ��̨������line 7465 + media queries 12219/12267������ �� �����Ƹ߶ȣ����ƻ����⡣
 - ����ͨ�� 4.22s��CSS 341.92 kB��A2 �� 342.66 kB �� -0.74 kB����
@@ -377,7 +386,6 @@ pm run build -w client\ ͨ����4.01s��CSS 342.66 kB����
 - 健壮性：indexedDB 不存在或 open 失败时返回 null，所有 cache* API 静默降级，不影响主流程。
 - 构建通过 4.05s；JS +1.78 kB；CSS 不变。
 - 进度：A1-A6+A-final-1 OK；B2 OK；A-final-2 单行 rgba 渐变 待办（可选）；5 套替代主题同步 FROZEN（gated on 用户口令 "同步五套"）。
-
 
 ## ��15.8 B2 IndexedDB ��Դ�����
 
@@ -516,3 +524,23 @@ User switched from Copilot to Kiro for final mockup alignment polish. Completed 
 Build verified 5.50s OK. Updated `docs/modules/12-mockup-gap.md` §3 to mark these items complete. All visual components now match mockup design at CSS layer; remaining work is functional integration (HUD drag, 4×10 grid slots, res-tree interactions, FX triggers).
 
 Files: [client/src/world/styles/world-shell.css](client/src/world/styles/world-shell.css), [client/src/pages/world/WorldPage.tsx](client/src/pages/world/WorldPage.tsx), [client/src/styles/index.css](client/src/styles/index.css).
+
+## 16. 大厅五版设计稿（2026-04-30）
+
+**当前主线变化**：
+
+- 已按 superdesign 流程为大厅生成并修正 5 个单屏静态 HTML 方案，落点在 `.superdesign/design_iterations/`：`lobby_1_sky_rally.html`、`lobby_2_adventure_board.html`、`lobby_3_airship_console.html`、`lobby_4_tavern_desktop.html`、`lobby_5_sky_library.html`。
+- 同目录新增 `lobby_design_common.css`、`lobby_design_interactions.js` 与 5 个 `lobby_theme_*.css`，仅作为设计迭代稿；当前线上 React 大厅 `client/src/pages/lobby/LobbyPage.tsx` 未改。
+- 五版分别覆盖：晴空集结三栏、冒险公告板、飞空艇高密控制台、蔚蓝酒馆桌面、碧空图书馆资料索引；最新修正统一为左侧独立聊天栏 + 中央世界列表/索引 + 右侧工具箱。
+
+**影响规则 / 接口**：
+
+- 大厅 UX 硬约定：聊天频道必须独占一个边栏和独立容器，不得与工具箱、角色卡、规则书、天赋树等功能共享被压缩的侧栏高度。
+- 角色卡预创建、规则书、天赋树预览、token 绘制/图鉴等都属于工具箱范畴；设计稿已把它们收进右侧工具箱，并实装静态切换预览。
+- 设计稿保留现有大厅核心功能词：聊天、世界列表、搜索筛选排序、创建/进入/加入/删除、论坛占位、工具箱外部入口。
+- `lobby_design_interactions.js` 实装了静态稿的频道切换、工具箱 tab/目录切换、按钮 toast 和本地聊天消息追加预览。
+- 后续若落 React，应从 5 个静态稿中选定或合并方向，再回写 `LobbyPage.tsx` 与大厅 CSS；静态稿不代表接口或权限变化。
+
+**下一步**：
+
+→ 用户 review 五版 HTML，选一版或指定混合方向后，再进入真实大厅组件实现；落 React 时先复刻独立聊天栏和工具箱切换模型。

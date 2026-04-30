@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800;900&family=Space+Grotesk:wght@500;700&display=swap');
+
+:root {
+  --sd-bg: linear-gradient(135deg, #f6fbff 0%, #edf7ff 44%, #fff8ed 100%);
+  --sd-panel: rgba(255, 255, 255, 0.92);
+  --sd-panel-strong: rgba(255, 255, 255, 0.99);
+  --sd-panel-soft: rgba(238, 247, 255, 0.92);
+  --sd-border: rgba(73, 133, 205, 0.34);
+  --sd-border-strong: rgba(39, 116, 210, 0.55);
+  --sd-text: #10233f;
+  --sd-muted: #415b7d;
+  --sd-faint: #70869f;
+  --sd-blue: #0d68d8;
+  --sd-blue-soft: #28b7e9;
+  --sd-orange: #f49b18;
+  --sd-orange-soft: rgba(244, 155, 24, 0.14);
+  --sd-success: #08987c;
+  --sd-danger: #c93535;
+  --sd-shadow: 0 16px 34px rgba(25, 73, 130, 0.14);
+  --sd-shadow-soft: 0 8px 18px rgba(34, 88, 142, 0.1);
+  --sd-radius: 4px;
+  --sd-radius-lg: 8px;
+  --sd-font: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --sd-display: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+}

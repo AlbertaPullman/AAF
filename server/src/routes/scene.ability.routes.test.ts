@@ -132,9 +132,17 @@ test("world ability route executes cloned template feature and persists actor st
       costs: Array<{ type: string; amount: number }>;
       effects: Array<{ type: string }>;
       settlement: unknown;
+      workflow: {
+        mode: string;
+        status: string;
+        phases: Array<{ key: string; status: string }>;
+      };
     };
 
     assert.equal(result.settlement, null);
+    assert.equal(result.workflow.mode, "assisted");
+    assert.equal(result.workflow.status, "completed");
+    assert.equal(result.workflow.phases.some((phase) => phase.key === "effect-application" && phase.status === "resolved"), true);
     assert.equal(result.costs[0]?.type, "fury");
     assert.equal(result.actor.stats.fury, 2);
     assert.equal(Array.isArray(result.actor.snapshot.statusEffects), true);

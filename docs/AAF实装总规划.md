@@ -77,7 +77,8 @@
 | AAF 概念 | FVTT 等价 | 备注 |
 |---|---|---|
 | AbilityDefinition | Item + Activity | 一个能力一个文档 |
-| AbilityActivity | Activity (Attack/Save/Damage/Utility/Heal) | Phase F 引入活动子类型 |
+| AbilityActivity | Activity (Attack/Save/Damage/Utility/Heal) | 后续引入活动子类型；当前先以单活动能力执行 |
+| AbilityWorkflowRun | Midi-QOL Workflow | 每次能力执行的阶段记录、自动化模式、伤害应用和撤销快照 |
 | EffectInstance | ActiveEffect | 持续效果挂在角色/token上 |
 | 触发器 trigger | MidiQOL Workflow Hook | preItemRoll → preAttackRoll → onAttackRollComplete → preDamageRoll → preApplyDamage → postActiveEffects |
 | 反应触发 | MidiQOL TPR (Third-Party Reaction) | 例：受攻击前/被命中后 |
@@ -87,27 +88,31 @@
 
 ### 4.2 Workflow 钩子（服务端）
 
-战斗能力一次执行的标准流水（Phase F 落地）：
+战斗能力一次执行的标准流水（已作为 `AbilityWorkflowRun.phases` 落地）：
 
 ```
-1. ability:declare        — 玩家点能力 → 生成 workflow id
-2. ability:targets:select — 等待目标选择
-3. ability:cost:check     — 资源/动作经济校验
-4. ability:pre-roll       — 触发"出手前"被动（如祝福术）
-5. ability:attack-roll    — 命中检定（独立段）
-6. ability:save-roll      — 豁免（被动方各自）
-7. ability:damage-roll    — 伤害掷骰
-8. ability:pre-apply      — 触发"伤害应用前"被动（如护盾术）
-9. ability:apply          — HP/资源写回 + ActiveEffect 挂载
-10. ability:post-apply    — 触发"伤害应用后"被动 + 自动击破检测
-11. ability:settle        — 写战斗日志 + 推送 Socket
+1. declare              — 玩家点能力 → 生成 workflow id
+2. target-confirmation  — 选择/确认目标
+3. cost-check           — 资源/动作经济校验与消耗
+4. reaction-window      — 反应、打断、第三方反应窗口
+5. attack-roll          — 命中检定
+6. save-roll            — 豁免/对抗检定
+7. damage-roll          — 伤害掷骰
+8. damage-application   — 抗性/免疫/临时 HP/实际扣血
+9. effect-application   — 状态、标签、治疗、持续效果挂载
+10. post-apply          — 专注、持续伤害、击破检测、后置触发
+11. settle              — 写日志、快照和后续 Socket
 ```
 
-每一步可以被规则 trigger 监听并插入效果（这就是"被动联动"机制）。
+每一步可以被规则 trigger 监听并插入效果。没有用到的阶段标记 `skipped`，需要 GM/玩家确认的阶段标记 `waiting`，不能在前端另起一套隐藏流程。
 
-### 4.3 三档触发策略
+### 4.3 自动化模式
 
-按规则规格 §14 已定义：始终问 / 智能问 / 自动。每个 EffectInstance 与每个被动 AbilityDefinition 都带 `reactionStrat` 字段。Phase F 实装。
+- `manual`：手动预览，只产出 workflow 和结算卡，不真实扣资源/扣血/应用效果。
+- `assisted`：半自动，内部测试默认。自动掷骰和应用当前可处理的结果，同时保留 workflow、撤销快照和人工修正空间。
+- `full`：全自动，目标确认、掷骰、判定、应用伤害和效果都走自动阶段。
+
+`reactionStrat` 仍用于单个反应/被动能力的“始终问 / 智能问 / 自动”，但它是 workflow 阶段内的策略，不再代表整个自动化系统的开关。
 
 ---
 

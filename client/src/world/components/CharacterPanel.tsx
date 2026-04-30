@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import type { CharacterItem } from "../../pages/world/types";
 
 /**
@@ -16,6 +16,14 @@ type CharacterPanelProps = {
   onOpenCharacter: (characterId: string) => void;
   onOpenCreate: () => void;
   onCharacterContextMenu: (event: MouseEvent, characterId: string) => void;
+};
+
+type FolderNode = {
+  path: string;
+  name: string;
+  icon: string;
+  characters: CharacterItem[];
+  collapsed: boolean;
 };
 
 function getRecordNumber(record: unknown, key: string, fallback = 0) {
@@ -46,62 +54,132 @@ export function CharacterPanel({
   onOpenCreate,
   onCharacterContextMenu,
 }: CharacterPanelProps) {
+  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
+
+  // 按类型分组角色
+  const pcCharacters = characters.filter(c => c.type === "PC");
+  const npcCharacters = characters.filter(c => c.type === "NPC");
+  const monsterCharacters = characters.filter(c => c.type !== "PC" && c.type !== "NPC");
+
+  const folders: FolderNode[] = [];
+
+  if (pcCharacters.length > 0) {
+    folders.push({
+      path: "玩家队伍",
+      name: "玩 家 队 伍",
+      icon: "👥",
+      characters: pcCharacters,
+      collapsed: collapsedFolders.has("玩家队伍")
+    });
+  }
+
+  if (npcCharacters.length > 0) {
+    folders.push({
+      path: "NPC·友方",
+      name: "NPC · 友方",
+      icon: "👥",
+      characters: npcCharacters,
+      collapsed: collapsedFolders.has("NPC·友方")
+    });
+  }
+
+  if (monsterCharacters.length > 0) {
+    folders.push({
+      path: "怪物·本局",
+      name: "怪 物 · 本 局",
+      icon: "👿",
+      characters: monsterCharacters,
+      collapsed: collapsedFolders.has("怪物·本局")
+    });
+  }
+
+  const toggleFolder = (path: string) => {
+    setCollapsedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  const getCharacterIcon = (character: CharacterItem) => {
+    if (character.type === "PC") return "🛡️";
+    if (character.type === "NPC") return "👨‍🌾";
+    return "🗡️";
+  };
+
+  const getCharacterTag = (character: CharacterItem) => {
+    if (character.type === "PC") return { text: "绑定", className: "tag-ok" };
+    if (character.type === "NPC") return { text: "NPC", className: "tag-npc" };
+    const level = getRecordNumber(character.snapshot, "level", 1);
+    return { text: `CR ${level}`, className: "tag-foe" };
+  };
+
   return (
-    <section className="world-card world-character-roster" data-world-component="character-roster-panel" data-world-layer="panel">
-      <div className="world-character-roster__head">
-        <div>
-          <strong>角色花名册</strong>
-          <p>点击条目打开角色卡，右键条目进行快捷操作。</p>
-        </div>
-        {canCreateCharacter ? (
-          <button type="button" className="world-stage-header-btn" onClick={onOpenCreate}>
-            创建角色
-          </button>
+    <>
+      <div className="res-toolbar">
+        <button
+          type="button"
+          className="sc-btn sc-btn--gold"
+          onClick={onOpenCreate}
+          disabled={!canCreateCharacter}
+        >
+          新 建 角 色
+        </button>
+        <button type="button" className="sc-btn" disabled>新 建 目 录</button>
+        <button type="button" className="sc-btn" disabled>导 入</button>
+        <button type="button" className="sc-btn" disabled>导 出</button>
+      </div>
+      <div className="res-tree">
+        {characters.length === 0 ? (
+          <div style={{ padding: '12px', color: 'var(--sc-ink-mute)', fontSize: '12px', textAlign: 'center' }}>
+            {readOnlyHint || "当前世界还没有可见角色。"}
+          </div>
         ) : (
-          <span className="world-stage-pill">只读</span>
+          <ul>
+            {folders.map((folder) => (
+              <li key={folder.path}>
+                <li className={`dir ${folder.collapsed ? 'collapsed' : ''}`.trim()} onClick={() => toggleFolder(folder.path)}>
+                  <span className="caret">▾</span>
+                  <span className="ic">{folder.icon}</span>
+                  <span>{folder.name}</span>
+                  <span className="meta">{folder.characters.length}</span>
+                </li>
+                <ul>
+                  {folder.characters.map((character) => {
+                    const level = getRecordNumber(character.snapshot, "level", 1);
+                    const className = getRecordString(character.snapshot, "class", "");
+                    const isActive = character.id === selectedCharacterId;
+                    const tag = getCharacterTag(character);
+
+                    return (
+                      <li
+                        key={character.id}
+                        className={`leaf ${isActive ? 'active' : ''}`.trim()}
+                        onClick={() => {
+                          onSelectCharacter(character.id);
+                          onOpenCharacter(character.id);
+                        }}
+                        onContextMenu={(event) => onCharacterContextMenu(event, character.id)}
+                      >
+                        <span className="ic">{getCharacterIcon(character)}</span>
+                        <span>{character.name}{className ? ` · ${className}` : ''} {level > 1 ? level : ''}</span>
+                        <span className={`meta ${tag.className}`.trim()}>{tag.text}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
-
-      {characters.length === 0 ? (
-        <div className="world-stage-empty">{readOnlyHint || "当前世界还没有可见角色。"}</div>
-      ) : (
-        <div className="world-character-roster__list">
-          {characters.map((character) => {
-            const level = getRecordNumber(character.snapshot, "level", 1);
-            const className = getRecordString(character.snapshot, "class", "未知职业");
-            const hp = getRecordNumber(character.stats, "hp", 0);
-            const mp = getRecordNumber(character.stats, "mp", 0);
-            const ac = getRecordNumber(character.snapshot, "ac", 10);
-            const isActive = character.id === selectedCharacterId;
-
-            return (
-              <button
-                type="button"
-                key={character.id}
-                className={`world-character-roster__row ${isActive ? "is-active" : ""}`.trim()}
-                onClick={() => {
-                  onSelectCharacter(character.id);
-                  onOpenCharacter(character.id);
-                }}
-                onContextMenu={(event) => onCharacterContextMenu(event, character.id)}
-              >
-                <span className="world-character-roster__avatar">{character.name.slice(0, 1).toUpperCase()}</span>
-                <span className="world-character-roster__main">
-                  <strong>{character.name}</strong>
-                  <em>{character.type} · Lv.{level} · {className}</em>
-                </span>
-                <span className="world-character-roster__stats">
-                  <i>HP {hp}</i>
-                  <i>MP {mp}</i>
-                  <i>AC {ac}</i>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      <p className="world-stage-readonly-note">提示：右键角色可设为当前角色、投放棋子或打开角色卡。</p>
-    </section>
+      <div className="text-xs" style={{ color: 'var(--sc-ink-mute)', marginTop: '8px', padding: '0 4px' }}>
+        左键点击打开角色卡；右键角色 → 设为当前 / 投放棋子 / 快捷操作
+      </div>
+    </>
   );
 }

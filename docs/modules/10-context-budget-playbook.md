@@ -14,6 +14,29 @@
 6. 修改后更新对应模块文档和必要的总蓝图。
 7. 提交前跑模块对应的最小验证。
 
+## 并发 AI 工作流
+
+1. 开始前运行 `git status --short --branch`，确认当前 worktree 是否干净。
+2. 选择一个主模块并只写该模块入口文件；必须跨模块时，先说明依赖模块和共享契约变更点。
+3. 跨前后端或持久化字段先改 `09` 共享契约，再改 UI / service / route，避免不同 AI 各自发明字段。
+4. 世界页面只负责装配。新增功能应先落在模块组件、hook、store 或 service，再由 `WorldPage.tsx` 接一层薄入口。
+5. 完成后更新模块卡片的约定、待拆分点或验证项，让下一位 AI 不需要重新猜边界。
+
+## 反硬编码检查
+
+- Tab、覆盖层、资源类型、规则节点、动作类型、权限入口优先集中到 registry/config，再由组件渲染。
+- 同一字符串字面量如果同时出现在 client、server、shared，优先提升到 shared 类型、常量或明确的映射表。
+- 资源模板新增类型时，至少检查 `EntityType`、API path、route/service、Prisma schema、导入导出、模块文档。
+- 规则结算新增能力效果时优先扩展数据表达式，不把职业名、能力名或特殊效果写死在 service。
+- CSS 颜色、圆角、阴影、动效走主题 token；组件级样式就近放置，避免继续堆进全局大文件。
+
+## 分支清理纪律
+
+- 可以自动删除：已合并到 `main`、没有关联 worktree、没有未提交文件的本地旧分支。
+- 不自动删除：当前分支、`main`、远端共享分支、脏 worktree、含未跟踪文件的 worktree、未合并提交。
+- 删除前先看 `git branch --merged main`、`git worktree list --porcelain` 和目标 worktree 的 `git status --short`。
+- 远端 prune 或远端分支删除失败时，不要改用强删；报告失败原因即可。
+
 ## 任务到模块的快速映射
 
 - “UI 丑、布局、HUD、舞台”：`01`。

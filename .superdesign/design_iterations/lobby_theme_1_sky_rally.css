@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800;900&family=ZCOOL+XiaoWei&display=swap');
+
+:root {
+  --sd-bg: radial-gradient(circle at 18% 6%, rgba(87, 190, 255, 0.26), transparent 32%), radial-gradient(circle at 86% 10%, rgba(255, 195, 91, 0.26), transparent 30%), linear-gradient(145deg, #f5fbff 0%, #eaf7ff 48%, #fff8ec 100%);
+  --sd-panel: rgba(255, 255, 255, 0.9);
+  --sd-panel-strong: rgba(255, 255, 255, 0.98);
+  --sd-panel-soft: rgba(239, 249, 255, 0.88);
+  --sd-border: rgba(91, 154, 230, 0.32);
+  --sd-border-strong: rgba(65, 137, 226, 0.5);
+  --sd-text: #10264d;
+  --sd-muted: #42638f;
+  --sd-faint: #6f8db2;
+  --sd-blue: #1274ff;
+  --sd-blue-soft: #2fc6ff;
+  --sd-orange: #f59e0b;
+  --sd-orange-soft: rgba(245, 158, 11, 0.18);
+  --sd-success: #08a37b;
+  --sd-danger: #dc2626;
+  --sd-shadow: 0 18px 42px rgba(28, 84, 150, 0.16);
+  --sd-shadow-soft: 0 10px 24px rgba(35, 94, 154, 0.12);
+  --sd-radius: 8px;
+  --sd-radius-lg: 12px;
+  --sd-font: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --sd-display: 'ZCOOL XiaoWei', 'Noto Sans SC', serif;
+}

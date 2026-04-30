@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ComponentType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { MessageSquare, Swords, Map as MapIcon, User, Package, Settings } from "lucide-react";
+import { MessageSquare, Swords, Map as MapIcon, User, Package, Settings, Sparkles, Dice5, Music, Layers } from "lucide-react";
 import "../../world/styles/world-shell.css";
 import { http } from "../../lib/http";
 import { connectSocket, disconnectSocket, socket, SOCKET_EVENTS } from "../../lib/socket";
@@ -43,6 +43,13 @@ import {
   type HUDSlot,
 } from "../../../../shared/types/world-entities";
 import { PERMISSIONS, hasPermission, isTabVisible, type WorldRoleType } from "../../../../shared/types/permissions";
+import {
+  SystemPanelContent,
+  getDefaultToolbarButtons,
+  getDefaultTreeData,
+  type TreeNode,
+  type SystemTabKey as SystemPanelTabKey,
+} from "../../world/components/SystemPanelContent";
 import type {
   TokenItem,
   CharacterItem,
@@ -217,7 +224,7 @@ type StoryEventSearchResult = {
   }>;
 };
 
-type SystemTabKey = "chat" | "battle" | "scene" | "character" | "pack" | "system";
+type SystemTabKey = "chat" | "battle" | "scene" | "char" | "ability" | "item" | "random" | "music" | "collect" | "system";
 
 type OverlayState =
   | { id: string; kind: "entity"; entityType: EntityType; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
@@ -278,6 +285,8 @@ type WorldLatencyEntry = {
   updatedAt: string;
 };
 
+type AbilityAutomationMode = "manual" | "assisted" | "full";
+
 type AbilityExecutionResult = {
   ability: {
     id: string;
@@ -320,6 +329,16 @@ type AbilityExecutionResult = {
     value: string | number | boolean | null;
     label?: string;
   }>;
+  workflow?: {
+    mode: AbilityAutomationMode;
+    status: "running" | "waiting" | "completed" | "failed";
+    damageApplications?: Array<{
+      targetName: string;
+      rawDamage: number;
+      appliedDamage: number;
+      applied: boolean;
+    }>;
+  };
 };
 
 const EMPTY_UNREAD: ChannelUnreadMap = { OOC: 0, IC: 0, SYSTEM: 0, SESSION: 0, COMBAT: 0 };
@@ -333,11 +352,15 @@ const SYSTEM_TABS: Array<{
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   { key: "chat", label: "聊", title: "世界频道", description: "OOC / IC / SYSTEM 实时同步", view: "chat", icon: MessageSquare },
-  { key: "battle", label: "战", title: "战斗与剧情", description: "先攻序列、回合推进、剧情事件", view: "battle", icon: Swords },
-  { key: "scene", label: "景", title: "场景控制", description: "舞台、视觉、棋子与测量", view: "scene", icon: MapIcon },
-  { key: "character", label: "角", title: "角色谱系", description: "角色卡绑定、编辑与摘要", view: "scene", icon: User },
-  { key: "pack", label: "包", title: "资源包", description: "导入导出世界模板", view: "system", icon: Package },
-  { key: "system", label: "系", title: "系统中枢", description: "模块、权限与资源库", view: "system", icon: Settings },
+  { key: "battle", label: "战", title: "战斗序列", description: "先攻顺序、回合操作、状态管理", view: "battle", icon: Swords },
+  { key: "scene", label: "景", title: "场景控制", description: "场景、视觉、网格、光照、迷雾", view: "scene", icon: MapIcon },
+  { key: "char", label: "角", title: "角色管理", description: "玩家 / NPC / 怪物图鉴", view: "scene", icon: User },
+  { key: "ability", label: "能", title: "能力库", description: "职业特性、法术、状态、触发器", view: "scene", icon: Sparkles },
+  { key: "item", label: "物", title: "物品库", description: "武器、防具、消耗品、魔法道具", view: "scene", icon: Package },
+  { key: "random", label: "随", title: "随机工具", description: "随机表、牌堆、骰子", view: "scene", icon: Dice5 },
+  { key: "music", label: "乐", title: "音乐播放", description: "BGM、SFX、歌单管理", view: "scene", icon: Music },
+  { key: "collect", label: "集", title: "合集管理", description: "世界包导入 / 导出", view: "system", icon: Layers },
+  { key: "system", label: "系", title: "系统设置", description: "权限、模块、资源库", view: "system", icon: Settings },
 ];
 
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
@@ -561,6 +584,60 @@ function canEditEntityType(role: WorldRoleType | null, entityType: EntityType) {
   }
 }
 
+const ABILITY_CATEGORY_LABELS: Record<string, string> = {
+  spell: "法术",
+  combatTechnique: "战技",
+  feature: "职业特性",
+  racial: "种族能力",
+  item: "物品能力",
+  custom: "自定义",
+};
+
+function getEntityText(record: EntityRecord, key: string, fallback = "") {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function buildAbilityLibraryTree(records: EntityRecord[], collapsedNodes: Set<string>): TreeNode[] {
+  if (records.length === 0) {
+    return getDefaultTreeData("ability");
+  }
+
+  const groups = new Map<string, EntityRecord[]>();
+  for (const record of records) {
+    const folder = getEntityText(record, "folderPath");
+    const category = getEntityText(record, "category", "custom");
+    const groupLabel = folder || ABILITY_CATEGORY_LABELS[category] || category || "未分类";
+    groups.set(groupLabel, [...(groups.get(groupLabel) ?? []), record]);
+  }
+
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right, "zh-Hans-CN"))
+    .map(([label, items]) => {
+      const id = `ability-group:${label}`;
+      return {
+        id,
+        type: "dir" as const,
+        icon: "✦",
+        label,
+        meta: `${items.length}`,
+        collapsed: collapsedNodes.has(id),
+        children: items
+          .slice()
+          .sort((left, right) =>
+            getEntityText(left, "name", "未命名能力").localeCompare(getEntityText(right, "name", "未命名能力"), "zh-Hans-CN")
+          )
+          .map((item) => ({
+            id: `ability:${item.id}`,
+            type: "leaf" as const,
+            icon: "◆",
+            label: getEntityText(item, "name", "未命名能力"),
+            meta: getEntityText(item, "activation", getEntityText(item, "actionType")),
+          })),
+      };
+    });
+}
+
 function messageBadges(message: ChatMessage): string[] {
   const badges: string[] = [];
   if (message.metadata?.storyEventCheckTag) {
@@ -684,8 +761,13 @@ export default function WorldPage() {
   const [selectedBattleAbilityId, setSelectedBattleAbilityId] = useState("");
   const [abilityActorCharacterId, setAbilityActorCharacterId] = useState("");
   const [abilityTargetCharacterId, setAbilityTargetCharacterId] = useState("");
+  const [abilityAutomationMode, setAbilityAutomationMode] = useState<AbilityAutomationMode>("assisted");
   const [abilityExecuting, setAbilityExecuting] = useState(false);
   const [abilityExecutionResult, setAbilityExecutionResult] = useState<AbilityExecutionResult | null>(null);
+
+  // 系统面板目录树状态
+  const [treeData, setTreeData] = useState<Record<string, TreeNode[]>>({});
+  const [treeCollapsedNodes, setTreeCollapsedNodes] = useState<Set<string>>(new Set());
 
   const actualRole = myRole as WorldRoleType | null;
   const isActualGm = actualRole === "GM";
@@ -2022,7 +2104,7 @@ export default function WorldPage() {
       }
       openAbilityOverlay();
     } else {
-      openTab("character");
+      openTab("char");
     }
   };
 
@@ -2041,8 +2123,10 @@ export default function WorldPage() {
       const resp = await http.post(`/worlds/${worldId}/scenes/${selectedSceneId}/abilities/${selectedBattleAbilityId}/execute`, {
         actorCharacterId: abilityActorCharacterId,
         targetCharacterIds: abilityTargetCharacterId ? [abilityTargetCharacterId] : [],
+        automationMode: abilityAutomationMode,
         metadata: {
           source: "world-battle-panel",
+          automationMode: abilityAutomationMode,
         },
       });
 
@@ -2226,10 +2310,10 @@ export default function WorldPage() {
         openTab("scene");
         break;
       case "openCharacterTab":
-        openTab("character");
+        openTab("char");
         break;
       case "openPackTab":
-        openTab("pack");
+        openTab("collect");
         break;
       case "openSystemTab":
         openTab("system");
@@ -2749,85 +2833,144 @@ export default function WorldPage() {
   };
 
   const renderChatTab = () => (
-    <div className="world-stage-tab-scroll world-stage-chat-shell">
-      <div className="world-stage-channel-switcher">
-        {(["OOC", "IC", "SYSTEM"] as WorldChatChannel[]).map((channel) => (
-          <button
-            key={channel}
-            type="button"
-            className={`world-stage-channel-btn ${worldChatChannel === channel ? "is-active" : ""}`.trim()}
-            onClick={() => setWorldChatChannel(channel)}
-          >
-            <span>{channel}</span>
-            {worldChatUnread[channel] > 0 ? <em>{worldChatUnread[channel]}</em> : null}
-          </button>
-        ))}
+    <div className="sys-tab-pane chat-pane active">
+      <div className="chat-channel-bar">
+        <button
+          type="button"
+          className={`sc-btn ${worldChatChannel === "OOC" ? "sc-btn--gold" : ""}`.trim()}
+          onClick={() => setWorldChatChannel("OOC")}
+        >
+          全 体
+        </button>
+        <button
+          type="button"
+          className={`sc-btn ${worldChatChannel === "IC" ? "sc-btn--gold" : ""}`.trim()}
+          onClick={() => setWorldChatChannel("IC")}
+        >
+          队 伍
+        </button>
+        <button
+          type="button"
+          className={`sc-btn ${worldChatChannel === "SESSION" ? "sc-btn--gold" : ""}`.trim()}
+          onClick={() => setWorldChatChannel("SESSION")}
+        >
+          私 信
+        </button>
+        <button
+          type="button"
+          className={`sc-btn ${worldChatChannel === "SYSTEM" ? "sc-btn--gold" : ""}`.trim()}
+          onClick={() => setWorldChatChannel("SYSTEM")}
+        >
+          旁 白
+        </button>
       </div>
-
-      <div className="world-stage-chat-list">
-        {worldMessages.length === 0 ? <div className="world-stage-empty">当前频道还没有消息。</div> : null}
-        {worldMessages.map((message) => (
-          <article
-            key={message.id}
-            className={`world-stage-chat-message ${focusedWorldMessageId === message.id ? "world-stage-chat-message--focused" : ""}`.trim()}
-            data-world-message-id={message.id}
-          >
-            <div className="world-stage-chat-message__meta">
-              <strong>{message.fromUser.displayName || message.fromUser.username}</strong>
-              <span>{message.channelKey || "OOC"} · {new Date(message.createdAt).toLocaleString()}</span>
-            </div>
-            {messageBadges(message).length > 0 ? (
-              <div className="world-stage-chat-message__badges">
-                {messageBadges(message).map((badge) => (
-                  <span className="world-stage-chat-message__badge" key={`${message.id}-${badge}`}>{badge}</span>
-                ))}
-              </div>
-            ) : null}
-            <p className="world-chat-message__content">{message.content}</p>
-            {message.metadata?.storyEventCard?.eventId ? (
-              <button type="button" className="world-stage-inline-link" onClick={() => onLocateStoryEvent(message.metadata!.storyEventCard!.eventId)}>
-                定位关联事件
-              </button>
-            ) : null}
-            {message.metadata?.storyEventCheckTag?.eventId ? (
-              <button type="button" className="world-stage-inline-link" onClick={() => onLocateStoryEvent(message.metadata!.storyEventCheckTag!.eventId)}>
-                打开检定事件
-              </button>
-            ) : null}
-          </article>
-        ))}
+      <div className="chat-stream">
+        <ul className="text-xs">
+          {worldMessages.length === 0 ? (
+            <li style={{ color: "var(--sc-ink-mute)", textAlign: "center", padding: "20px 0" }}>
+              当前频道还没有消息。
+            </li>
+          ) : null}
+          {worldMessages
+            .filter((msg) => (msg.channelKey || "OOC") === worldChatChannel)
+            .slice(-20)
+            .map((msg) => (
+              <li key={msg.id} data-world-message-id={msg.id}>
+                <b style={{ color: "var(--sc-primary-deep)" }}>{msg.fromUser.displayName || msg.fromUser.username || "未知"}</b>
+                <span style={{ color: "var(--sc-ink-mute)" }}> · {new Date(msg.createdAt).toLocaleTimeString()}</span>
+                <div style={{ color: "var(--sc-ink-soft)", marginTop: "2px" }}>{msg.content}</div>
+              </li>
+            ))}
+        </ul>
       </div>
-
-      <form className="world-stage-chat-composer" onSubmit={onSendWorldMessage}>
-        <textarea
-          rows={3}
+      <div className="chat-input-bar">
+        <input
+          className="sc-input"
+          placeholder="说点什么…"
           value={worldChatInput}
-          onChange={(event) => setWorldChatInput(event.target.value)}
-          placeholder={canSendCurrentChannel ? `发送到 ${worldChatChannel} 频道...` : "SYSTEM 频道仅 GM 可发送"}
+          onChange={(e) => setWorldChatInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void onSendWorldMessage(e as unknown as FormEvent);
+            }
+          }}
         />
-        <div className="world-stage-chat-actions">
-          <span>{selectedScene ? `当前场景：${selectedScene.name}` : "未选中场景"}</span>
-          <button type="submit" disabled={worldChatSending || !canSendCurrentChannel || !selectedSceneId}>
-            {worldChatSending ? "发送中..." : "发送"}
+        <button
+          type="button"
+          className="sc-btn sc-btn--gold"
+          onClick={(e) => void onSendWorldMessage(e as unknown as FormEvent)}
+          disabled={worldChatSending || !canSendCurrentChannel}
+        >
+          {worldChatSending ? "发送中..." : "发 送"}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderBattleTab = () => (
+    <div className="sys-tab-pane">
+      <div className="sys-section">
+        <h5>先 攻 顺 序</h5>
+        {sceneCombatState?.participants && sceneCombatState.participants.length > 0 ? (
+          <ul className="text-xs space-y-1">
+            {sceneCombatState.participants.map((participant, index) => {
+              const isCurrent = index === sceneCombatState.turnIndex;
+              return (
+                <li
+                  key={participant.tokenId}
+                  className="flex justify-between items-center"
+                  style={{
+                    background: isCurrent ? "rgba(245,166,35,0.15)" : "transparent",
+                    borderRadius: "4px",
+                    padding: "4px 6px",
+                  }}
+                >
+                  <span>
+                    {isCurrent ? <b style={{ color: "var(--sc-accent-deep)" }}>▶ {participant.name}</b> : participant.name}
+                  </span>
+                  <span className="pc-lv">{participant.initiative}</span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="text-xs" style={{ color: "var(--sc-ink-mute)", padding: "8px 0" }}>
+            当前场景没有战斗进行中。
+          </div>
+        )}
+      </div>
+      <div className="sys-section">
+        <h5>回 合 操 作</h5>
+        <div className="sys-row mb-2">
+          <button
+            type="button"
+            className="sc-btn sc-btn--gold"
+            onClick={() => void onAdvanceSceneCombatTurn()}
+            disabled={!canAdvanceTurn || sceneCombatState?.status !== "active"}
+          >
+            下 一 回 合
+          </button>
+          <button type="button" className="sc-btn" disabled={!canManageCombat}>
+            回 合 终 止
           </button>
         </div>
-      </form>
-
-      {canUseAssistant ? (
-        <section className="world-stage-assistant-card">
-          <strong>AI 助手草稿</strong>
-          <p>读取当前场景的聊天与事件卡，生成一条可审阅的 SYSTEM 建议。</p>
-          <textarea
-            rows={3}
-            value={assistantInstruction}
-            onChange={(event) => setAssistantInstruction(event.target.value)}
-            placeholder="可选：补充本轮希望 AI 关注的要点"
-          />
-          <button type="button" disabled={assistantGenerating || !selectedSceneId} onClick={() => void onGenerateAssistantResponse()}>
-            {assistantGenerating ? "生成中..." : "生成 SYSTEM 草稿"}
+        <div className="sys-row">
+          <button type="button" className="sc-btn" disabled={!canManageCombat}>
+            重 投 先 攻
           </button>
-        </section>
-      ) : null}
+          <button type="button" className="sc-btn sc-btn--danger" disabled={!canManageCombat}>
+            结 束 战 斗
+          </button>
+        </div>
+      </div>
+      <div className="sys-section">
+        <h5>本 回 合 状 态</h5>
+        <div className="text-xs" style={{ color: "var(--sc-ink-soft)" }}>
+          回合数：<b>{sceneCombatState?.round ?? 0}</b> · 已用动作：<b>移动 + 标准</b> · 剩余：
+          <b style={{ color: "var(--sc-success)" }}>附赠动作 ×1</b>
+        </div>
+      </div>
     </div>
   );
 
@@ -2850,6 +2993,7 @@ export default function WorldPage() {
         selectedAbilityId={selectedBattleAbilityId}
         actorCharacterId={abilityActorCharacterId}
         targetCharacterId={abilityTargetCharacterId}
+        automationMode={abilityAutomationMode}
         executing={abilityExecuting}
         latestResult={abilityExecutionResult}
         canExecuteAction={canExecuteAbility}
@@ -2857,6 +3001,7 @@ export default function WorldPage() {
         onAbilityChange={setSelectedBattleAbilityId}
         onActorChange={setAbilityActorCharacterId}
         onTargetChange={setAbilityTargetCharacterId}
+        onAutomationModeChange={setAbilityAutomationMode}
         onExecute={() => {
           void onExecuteSelectedAbility();
         }}
@@ -3025,139 +3170,423 @@ export default function WorldPage() {
     );
   };
 
-  const renderBattleTab = () => (
-    <div className="world-stage-tab-scroll world-stage-tab-scroll--compact">
-      <section className="world-stage-command-panel" data-world-component="battle-command-surface" data-world-layer="panel">
-        <div>
-          <strong>战斗指挥台</strong>
-          <p>
-            {sceneCombatState
-              ? `第 ${sceneCombatState.round} 轮 · ${sceneCombatState.participants.length} 名参战单位 · ${sceneCombatState.status}`
-              : "当前场景尚未载入战斗状态。"}
-          </p>
-        </div>
-        <div className="world-stage-command-panel__actions">
-          <button type="button" onClick={openAbilityOverlay}>能力结算</button>
-          <button type="button" onClick={openStoryOverlay}>剧情事件</button>
-          <button
-            type="button"
-            onClick={() => setShowBattleBar((prev) => !prev)}
-            disabled={sceneCombatState?.status !== "active" || battleEntries.length === 0}
-          >
-            {isBattleSequenceVisible ? "隐藏先攻条" : "显示先攻条"}
-          </button>
-        </div>
-      </section>
-      {abilityExecutionResult ? (
-        <section className="world-stage-command-panel world-stage-command-panel--result" data-world-component="battle-latest-result">
-          <div>
-            <strong>最近结算</strong>
-            <p>
-              {abilityExecutionResult.actor.name} · {abilityExecutionResult.ability.name}
-              {abilityExecutionResult.targets.length > 0 ? ` → ${abilityExecutionResult.targets.map((item) => item.name).join(" / ")}` : ""}
-            </p>
-          </div>
-          <button type="button" onClick={openAbilityOverlay}>查看详情</button>
-        </section>
-      ) : null}
-      <SceneCombatPanel
-        combatState={sceneCombatState}
-        loading={sceneCombatLoading}
-        saving={sceneCombatSaving}
-        advancing={sceneCombatAdvancing}
-        canManage={canManageCombat}
-        onParticipantContextMenu={(event, tokenId) => contextMenu.open(event, "initiative-entry", tokenId)}
-        onRefresh={() => {
-          void loadSceneCombatState();
+  const renderSceneTab = () => {
+    const tabKey = "scene" as SystemPanelTabKey;
+    const currentTreeData = treeData[tabKey] || getDefaultTreeData(tabKey);
+
+    return (
+      <SystemPanelContent
+        activeTab={tabKey}
+        toolbarButtons={getDefaultToolbarButtons(tabKey)}
+        treeData={currentTreeData}
+        footerNote="左键点击场景切换；右键场景 → 场景配置弹窗（网格 / 光照 / 迷雾 / 背景）"
+        onTreeNodeClick={(node) => {
+          console.log("Scene node clicked:", node);
+          // TODO: 实现场景切换逻辑
         }}
-        onSave={(input) => {
-          void onSaveSceneCombatState(input);
-        }}
-        onNextTurn={() => {
-          void onAdvanceSceneCombatTurn();
+        onTreeNodeToggle={(nodeId) => {
+          setTreeCollapsedNodes((prev) => {
+            const next = new Set(prev);
+            if (next.has(nodeId)) {
+              next.delete(nodeId);
+            } else {
+              next.add(nodeId);
+            }
+            return next;
+          });
+          setTreeData((prev) => ({
+            ...prev,
+            [tabKey]: toggleTreeNode(currentTreeData, nodeId),
+          }));
         }}
       />
-    </div>
-  );
+    );
+  };
 
-  const renderSceneTab = () => (
-    <div className="world-stage-tab-scroll">
-      {role === "GM" ? (
-        <ScenePanel
-          scenes={scenes}
-          selectedSceneId={selectedSceneId}
-          createName={newSceneName}
-          renameName={renameSceneName}
-          creating={creatingScene}
-          renaming={renamingScene}
-          deleting={deletingScene}
-          sorting={sortingScene}
-          canMoveUp={canMoveSceneUp}
-          canMoveDown={canMoveSceneDown}
-          onSelectScene={setSelectedSceneId}
-          onCreateNameChange={setNewSceneName}
-          onRenameNameChange={setRenameSceneName}
-          onCreateScene={onCreateScene}
-          onRenameScene={onRenameScene}
-          onDeleteScene={onDeleteScene}
-          onMoveSceneUp={() => {
-            void onMoveScene("UP");
+  const renderCharacterTab = () => {
+    const tabKey = "char" as SystemPanelTabKey;
+    const currentTreeData = treeData[tabKey] || getDefaultTreeData(tabKey);
+
+    return (
+      <SystemPanelContent
+        activeTab={tabKey}
+        toolbarButtons={getDefaultToolbarButtons(tabKey)}
+        treeData={currentTreeData}
+        onTreeNodeClick={(node) => {
+          console.log("Character node clicked:", node);
+          // TODO: 实现角色选择逻辑
+        }}
+        onTreeNodeToggle={(nodeId) => {
+          setTreeCollapsedNodes((prev) => {
+            const next = new Set(prev);
+            if (next.has(nodeId)) {
+              next.delete(nodeId);
+            } else {
+              next.add(nodeId);
+            }
+            return next;
+          });
+          setTreeData((prev) => ({
+            ...prev,
+            [tabKey]: toggleTreeNode(currentTreeData, nodeId),
+          }));
+        }}
+      />
+    );
+  };
+
+  const renderAbilityTab = () => {
+    const tabKey = "ability" as SystemPanelTabKey;
+    const currentTreeData = buildAbilityLibraryTree(abilityRecords, treeCollapsedNodes);
+    const abilityToolbarButtons = [
+      {
+        label: canEditEntityType(role, "abilities") ? "新 建 能 力" : "查 看 能 力",
+        variant: "gold" as const,
+        onClick: () => openEntityOverlay("abilities", "能力模板库"),
+      },
+      {
+        label: "能 力 库",
+        onClick: () => openEntityOverlay("abilities", "能力模板库"),
+      },
+      {
+        label: "种 族",
+        onClick: () => openEntityOverlay("races", "种族模板库"),
+      },
+      {
+        label: "职 业",
+        onClick: () => openEntityOverlay("professions", "职业模板库"),
+      },
+    ];
+
+    return (
+      <SystemPanelContent
+        activeTab={tabKey}
+        toolbarButtons={abilityToolbarButtons}
+        treeData={currentTreeData}
+        footerNote="双击条目在能力库里编辑；种族、职业可以挂接这些能力。"
+        onTreeNodeClick={(node) => {
+          if (node.type === "leaf") {
+            openEntityOverlay("abilities", "能力模板库");
+          }
+        }}
+        onTreeNodeToggle={(nodeId) => {
+          setTreeCollapsedNodes((prev) => {
+            const next = new Set(prev);
+            if (next.has(nodeId)) {
+              next.delete(nodeId);
+            } else {
+              next.add(nodeId);
+            }
+            return next;
+          });
+        }}
+      />
+    );
+  };
+
+  const renderItemTab = () => {
+    const tabKey = "item" as SystemPanelTabKey;
+    const currentTreeData = treeData[tabKey] || getDefaultTreeData(tabKey);
+
+    return (
+      <SystemPanelContent
+        activeTab={tabKey}
+        toolbarButtons={getDefaultToolbarButtons(tabKey)}
+        treeData={currentTreeData}
+        onTreeNodeClick={(node) => {
+          console.log("Item node clicked:", node);
+        }}
+        onTreeNodeToggle={(nodeId) => {
+          setTreeCollapsedNodes((prev) => {
+            const next = new Set(prev);
+            if (next.has(nodeId)) {
+              next.delete(nodeId);
+            } else {
+              next.add(nodeId);
+            }
+            return next;
+          });
+          setTreeData((prev) => ({
+            ...prev,
+            [tabKey]: toggleTreeNode(currentTreeData, nodeId),
+          }));
+        }}
+      />
+    );
+  };
+
+  const renderRandomTab = () => {
+    const tabKey = "random" as SystemPanelTabKey;
+    const currentTreeData = treeData[tabKey] || getDefaultTreeData(tabKey);
+
+    return (
+      <SystemPanelContent
+        activeTab={tabKey}
+        toolbarButtons={getDefaultToolbarButtons(tabKey)}
+        treeData={currentTreeData}
+        onTreeNodeClick={(node) => {
+          console.log("Random node clicked:", node);
+        }}
+        onTreeNodeToggle={(nodeId) => {
+          setTreeCollapsedNodes((prev) => {
+            const next = new Set(prev);
+            if (next.has(nodeId)) {
+              next.delete(nodeId);
+            } else {
+              next.add(nodeId);
+            }
+            return next;
+          });
+          setTreeData((prev) => ({
+            ...prev,
+            [tabKey]: toggleTreeNode(currentTreeData, nodeId),
+          }));
+        }}
+      />
+    );
+  };
+
+  const renderMusicTab = () => {
+    const tabKey = "music" as SystemPanelTabKey;
+    const musicToolbarButtons = [
+      {
+        label: "🎵 导 入 音 乐",
+        variant: "gold" as const,
+        onClick: () => console.log("Import music"),
+      },
+      {
+        label: "新 建 歌 单",
+        onClick: () => console.log("New playlist"),
+      },
+      {
+        label: "导 出 歌 单",
+        onClick: () => console.log("Export playlist"),
+      },
+    ];
+
+    const musicTreeData: TreeNode[] = [
+      {
+        id: "music-explore",
+        type: "dir",
+        label: "探 索",
+        icon: "📁",
+        meta: "4",
+        collapsed: false,
+        children: [
+          { id: "music-1", label: "风之旋律", icon: "🎵", meta: "3:24", type: "leaf" },
+          { id: "music-2", label: "静谧之夜", icon: "🎵", meta: "2:46", type: "leaf" },
+        ],
+      },
+      {
+        id: "music-battle",
+        type: "dir",
+        label: "战 斗",
+        icon: "📁",
+        meta: "3",
+        collapsed: false,
+        children: [
+          { id: "music-3", label: "王都风暴", icon: "🎵", meta: "4:08", type: "leaf" },
+        ],
+      },
+    ];
+
+    return (
+      <div className="sys-tab-pane">
+        <div className="res-toolbar" style={{ display: "flex", gap: "4px", padding: "6px 8px" }}>
+          {musicToolbarButtons.map((btn, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`sc-btn ${btn.variant === "gold" ? "sc-btn--gold" : ""}`.trim()}
+              onClick={btn.onClick}
+            >
+              {btn.label}
+            </button>
+          ))}
+        </div>
+        <div className="sys-section">
+          <h5>正 在 播 放</h5>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "6px",
+                background: "var(--sc-grad-blue)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "18px",
+              }}
+            >
+              🎵
+            </span>
+            <div style={{ flex: 1 }}>
+              <b style={{ color: "var(--sc-primary-deep)" }}>风 之 旋 律</b>
+              <div style={{ fontSize: "10px", color: "var(--sc-ink-mute)" }}>环境 · 探索</div>
+            </div>
+            <button type="button" className="sc-btn">
+              ⏯
+            </button>
+          </div>
+          <div style={{ height: "4px", background: "var(--sc-line)", borderRadius: "2px", marginTop: "8px" }}>
+            <div style={{ width: "34%", height: "100%", background: "var(--sc-accent)", borderRadius: "2px" }}></div>
+          </div>
+          <div className="sys-row" style={{ marginTop: "8px" }}>
+            <button type="button" className="sc-btn sc-btn--gold" title="列表顺序播放">
+              列 表
+            </button>
+            <button type="button" className="sc-btn" title="列表循环">
+              🔁 列表循环
+            </button>
+            <button type="button" className="sc-btn" title="随机播放">
+              🔀 随 机
+            </button>
+            <button type="button" className="sc-btn" title="单曲循环">
+              🔂 单 曲
+            </button>
+          </div>
+        </div>
+        <SystemPanelContent
+          activeTab={tabKey}
+          toolbarButtons={[]}
+          treeData={musicTreeData}
+          onTreeNodeClick={(node) => {
+            console.log("Music node clicked:", node);
           }}
-          onMoveSceneDown={() => {
-            void onMoveScene("DOWN");
+          onTreeNodeToggle={(nodeId) => {
+            console.log("Music node toggled:", nodeId);
           }}
         />
-      ) : (
-        <div className="world-card">
-          <strong>场景导航</strong>
-          <p>切换你当前正在参与的舞台。</p>
-          <select value={selectedSceneId} onChange={(event) => setSelectedSceneId(event.target.value)}>
-            {scenes.map((scene) => (
-              <option value={scene.id} key={scene.id}>#{scene.sortOrder} {scene.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      </div>
+    );
+  };
 
-      <TokenPanel
-        tokenCount={tokenList.length}
-        selectedCharacterName={selectedCharacter?.name ?? ""}
-        canDeployToken={canDeployToken}
-        readOnlyHint="当前身份没有棋子投放权限，或尚未绑定可操作角色。"
-        onAddMyToken={onAddMyToken}
-        onCenterToken={onCenterToken}
-      />
-      <SceneVisualPanel
-        visualState={sceneVisualState}
-        loading={sceneVisualLoading}
-        saving={sceneVisualSaving}
-        canManage={canManageSceneVisual}
-        onRefresh={() => {
-          void loadSceneVisualState();
-        }}
-        onPatch={(input) => {
-          void onPatchSceneVisualState(input);
-        }}
-      />
-      {hasPermission(role, PERMISSIONS.MEASURE_PLACE) ? <MeasurePanel /> : null}
-      {hasPermission(role, PERMISSIONS.DRAW_ON_MAP) ? <DrawPanel /> : null}
-    </div>
-  );
+  const renderCollectTab = () => {
+    const tabKey = "collect" as SystemPanelTabKey;
+    const collectToolbarButtons = [
+      {
+        label: "📤 导 出 本 世 界",
+        variant: "gold" as const,
+        onClick: () => console.log("Export world"),
+      },
+      {
+        label: "📥 导 入 合 集",
+        variant: "blue" as const,
+        onClick: () => console.log("Import collection"),
+      },
+      {
+        label: "新 建 目 录",
+        onClick: () => console.log("New directory"),
+      },
+    ];
 
-  const renderCharacterTab = () => (
-    <div className="world-stage-tab-scroll world-stage-tab-scroll--compact">
-      <CharacterPanel
-        characters={characters}
-        selectedCharacterId={selectedCharacterId}
-        onSelectCharacter={setSelectedCharacterId}
-        onOpenCharacter={(characterId) => openCharacterOverlay(characterId)}
-        onOpenCreate={() => openCharacterOverlay(undefined, "create")}
-        onCharacterContextMenu={(event, characterId) => contextMenu.open(event, "character-card", characterId)}
-        canCreateCharacter={canCreateCharacter}
-        readOnlyHint="当前身份只能查看角色资料，不能创建或改写这张角色卡。"
+    const collectTreeData: TreeNode[] = [
+      {
+        id: "collect-world-a",
+        type: "dir",
+        label: "A 世 界 · 薇 藤 谷",
+        icon: "📦",
+        meta: "已导入",
+        tagType: "ok",
+        collapsed: false,
+        children: [
+          {
+            id: "collect-a-scenes",
+            type: "dir",
+            label: "场 景",
+            icon: "🏞️",
+            meta: "8",
+            collapsed: false,
+            children: [
+              { id: "collect-a-scene-1", label: "薇藤口入", icon: "🏞️", type: "leaf" },
+              { id: "collect-a-scene-2", label: "隐修者之庐", icon: "🏞️", type: "leaf" },
+            ],
+          },
+          {
+            id: "collect-a-chars",
+            type: "dir",
+            label: "角 色",
+            icon: "👥",
+            meta: "12",
+            collapsed: true,
+            children: [],
+          },
+          {
+            id: "collect-a-items",
+            type: "dir",
+            label: "物 品",
+            icon: "⚔️",
+            meta: "23",
+            collapsed: true,
+            children: [],
+          },
+          {
+            id: "collect-a-abilities",
+            type: "dir",
+            label: "能 力",
+            icon: "📜",
+            meta: "9",
+            collapsed: true,
+            children: [],
+          },
+        ],
+      },
+      {
+        id: "collect-world-b",
+        type: "dir",
+        label: "B 世 界 · 冰 原 传 说",
+        icon: "📦",
+        meta: "已导入",
+        tagType: "ok",
+        collapsed: false,
+        children: [
+          {
+            id: "collect-b-scenes",
+            type: "dir",
+            label: "场 景",
+            icon: "🏞️",
+            meta: "5",
+            collapsed: true,
+            children: [],
+          },
+          {
+            id: "collect-b-items",
+            type: "dir",
+            label: "物 品",
+            icon: "⚔️",
+            meta: "14",
+            collapsed: true,
+            children: [],
+          },
+        ],
+      },
+      {
+        id: "collect-snapshot",
+        type: "dir",
+        label: "本 世 界 · 快 照",
+        icon: "📁",
+        meta: "3",
+        collapsed: true,
+        children: [],
+      },
+    ];
+
+    return (
+      <SystemPanelContent
+        activeTab={tabKey}
+        toolbarButtons={collectToolbarButtons}
+        treeData={collectTreeData}
+        footerNote="导出时可选择「场景 / 角色 / 能力 / 物品 / 随机」子资产；导入后作为顶级目录（可重命名）挂在下方。"
+        onTreeNodeClick={(node) => {
+          console.log("Collection node clicked:", node);
+        }}
+        onTreeNodeToggle={(nodeId) => {
+          console.log("Collection node toggled:", nodeId);
+        }}
       />
-    </div>
-  );
+    );
+  };
 
   const renderPackTab = () => (
     <div className="world-stage-tab-scroll world-stage-tab-scroll--system">
@@ -3169,6 +3598,19 @@ export default function WorldPage() {
       </div>
     </div>
   );
+
+  // 辅助函数：切换目录树节点的折叠状态
+  const toggleTreeNode = (nodes: TreeNode[], targetId: string): TreeNode[] => {
+    return nodes.map((node) => {
+      if (node.id === targetId) {
+        return { ...node, collapsed: !node.collapsed };
+      }
+      if (node.children) {
+        return { ...node, children: toggleTreeNode(node.children, targetId) };
+      }
+      return node;
+    });
+  };
 
   const themeEffective = useThemeStore((s) => s.effective);
   const themeUserPref = useThemeStore((s) => s.userPreference);
@@ -3326,8 +3768,8 @@ export default function WorldPage() {
             <span className="world-system-action-btn__arrow">›</span>
           </button>
 
-          {visibleTabs.some((tab) => tab.key === "pack") ? (
-            <button type="button" className="world-system-action-btn" onClick={() => openTab("pack")}>
+          {visibleTabs.some((tab) => tab.key === "collect") ? (
+            <button type="button" className="world-system-action-btn" onClick={() => openTab("collect")}>
               <span className="world-system-action-btn__title">资源包导入导出</span>
               <span className="world-system-action-btn__arrow">›</span>
             </button>
@@ -3408,10 +3850,20 @@ export default function WorldPage() {
         return renderBattleTab();
       case "scene":
         return renderSceneTab();
-      case "character":
+      case "char":
         return renderCharacterTab();
-      case "pack":
-        return renderPackTab();
+      case "ability":
+        return renderAbilityTab();
+      case "item":
+        return renderItemTab();
+      case "random":
+        return renderRandomTab();
+      case "music":
+        return renderMusicTab();
+      case "collect":
+        return renderCollectTab();
+      case "system":
+        return renderSystemTab();
       default:
         return renderSystemTab();
     }
