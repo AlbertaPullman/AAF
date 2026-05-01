@@ -45,6 +45,7 @@ export interface FolderRecord {
   icon: string | null;
   sortOrder: number;
   collapsed: boolean;
+  permissionMode: "DEFAULT" | "PLAYER_EDIT" | string;
   createdAt: string;
   updatedAt: string;
 }

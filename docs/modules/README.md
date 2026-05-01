@@ -24,7 +24,7 @@
 | --- | --- | --- |
 | 世界外壳与布局 | 世界页面、五大容器、HUD、系统板入口、左侧队伍简卡 | `01-world-shell.md` |
 | 系统板与弹窗 | 藏 UI、右侧系统板、覆盖层、工具面板体验 | `02-system-panel-overlays.md` |
-| 资源模板库 | 职业/种族/能力/物品/命刻/牌组/随机表编辑器、分类树、导入导出 | `03-resource-template-library.md` |
+| 资源目录与编辑器 | 职业/种族/能力/物品/命刻/牌组/随机表编辑器、目录树、导入导出 | `03-resource-template-library.md` |
 | 规则引擎与结算 | 能力触发器、条件、效果、检定、伤害治疗、战斗结算 | `04-rules-engine-settlement.md` |
 | 角色与权限 | GM/玩家助手/玩家/旁观者权限，角色卡、角色简卡、成员管理 | `05-characters-permissions.md` |
 | 场景战斗与 Socket | 场景、棋子、先攻、战斗序列、实时同步、聊天隔离 | `06-scenes-combat-socket.md` |

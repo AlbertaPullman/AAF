@@ -11,7 +11,16 @@ import {
   patchWorldMemberManage,
   patchWorldTheme
 } from "../controllers/world.controller";
-import { getWorldCharacters, postWorldCharacter, putWorldCharacter } from "../controllers/character.controller";
+import { getWorldCharacters, postWorldCharacter, postWorldCharactersReorder, putWorldCharacter } from "../controllers/character.controller";
+import { postWorldResourceIcon } from "../controllers/resource-asset.controller";
+import {
+  deleteWorldFolder,
+  getWorldFolders,
+  getWorldFolderTree,
+  patchWorldFolder,
+  postWorldFolder,
+  postWorldFoldersReorder,
+} from "../controllers/folder.controller";
 import {
   deleteWorldScene,
   getWorldSceneCombat,
@@ -68,35 +77,43 @@ import {
   getAbilities as getAbilitiesCtrl,
   getAbilityById as getAbilityByIdCtrl,
   postAbility as postAbilityCtrl,
+  postAbilityReorder as postAbilityReorderCtrl,
   putAbility as putAbilityCtrl,
   removeAbility as removeAbilityCtrl,
   getRaces as getRacesCtrl,
   postRace as postRaceCtrl,
+  postRaceReorder as postRaceReorderCtrl,
   putRace as putRaceCtrl,
   removeRace as removeRaceCtrl,
   getProfessions as getProfessionsCtrl,
   postProfession as postProfessionCtrl,
+  postProfessionReorder as postProfessionReorderCtrl,
   putProfession as putProfessionCtrl,
   removeProfession as removeProfessionCtrl,
   getBackgrounds as getBackgroundsCtrl,
   postBackground as postBackgroundCtrl,
+  postBackgroundReorder as postBackgroundReorderCtrl,
   putBackground as putBackgroundCtrl,
   removeBackground as removeBackgroundCtrl,
   getItems as getItemsCtrl,
   postItem as postItemCtrl,
+  postItemReorder as postItemReorderCtrl,
   putItem as putItemCtrl,
   removeItem as removeItemCtrl,
   getFateClocks as getFateClocksCtrl,
   postFateClock as postFateClockCtrl,
+  postFateClockReorder as postFateClockReorderCtrl,
   putFateClock as putFateClockCtrl,
   patchFateClockAdvance as patchFateClockAdvanceCtrl,
   removeFateClock as removeFateClockCtrl,
   getDecks as getDecksCtrl,
   postDeck as postDeckCtrl,
+  postDeckReorder as postDeckReorderCtrl,
   putDeck as putDeckCtrl,
   removeDeck as removeDeckCtrl,
   getRandomTables as getRandomTablesCtrl,
   postRandomTable as postRandomTableCtrl,
+  postRandomTableReorder as postRandomTableReorderCtrl,
   putRandomTable as putRandomTableCtrl,
   removeRandomTable as removeRandomTableCtrl,
   getCollectionPack as getCollectionPackCtrl,
@@ -116,7 +133,9 @@ worldRoutes.get("/:worldId/members/manage", authMiddleware, getWorldMemberManage
 worldRoutes.patch("/:worldId/members/:memberUserId/manage", authMiddleware, patchWorldMemberManage);
 worldRoutes.get("/:worldId/characters", authMiddleware, getWorldCharacters);
 worldRoutes.post("/:worldId/characters", authMiddleware, postWorldCharacter);
+worldRoutes.post("/:worldId/characters/reorder", authMiddleware, postWorldCharactersReorder);
 worldRoutes.put("/:worldId/characters/:characterId", authMiddleware, putWorldCharacter);
+worldRoutes.post("/:worldId/resource-icons", authMiddleware, postWorldResourceIcon);
 worldRoutes.get("/:worldId/scenes", authMiddleware, getWorldScenes);
 worldRoutes.post("/:worldId/scenes", authMiddleware, postWorldScene);
 worldRoutes.put("/:worldId/scenes/:sceneId", authMiddleware, putWorldScene);
@@ -150,46 +169,61 @@ worldRoutes.get("/:worldId/chat-channels", authMiddleware, getWorldChatChannels)
 worldRoutes.post("/:worldId/chat-channels", authMiddleware, postWorldChatChannel);
 worldRoutes.post("/:worldId/chat-channels/:channelKey/invite", authMiddleware, postWorldChatChannelInvite);
 
+worldRoutes.get("/:worldId/folders/:type", authMiddleware, getWorldFolders);
+worldRoutes.get("/:worldId/folders/:type/tree", authMiddleware, getWorldFolderTree);
+worldRoutes.post("/:worldId/folders/:type", authMiddleware, postWorldFolder);
+worldRoutes.post("/:worldId/folders/:type/reorder", authMiddleware, postWorldFoldersReorder);
+worldRoutes.patch("/:worldId/folders/:folderId", authMiddleware, patchWorldFolder);
+worldRoutes.delete("/:worldId/folders/:folderId", authMiddleware, deleteWorldFolder);
+
 // ──── 能力系统实体 CRUD ────
 worldRoutes.get("/:worldId/abilities", authMiddleware, getAbilitiesCtrl);
 worldRoutes.get("/:worldId/abilities/:id", authMiddleware, getAbilityByIdCtrl);
 worldRoutes.post("/:worldId/abilities", authMiddleware, postAbilityCtrl);
+worldRoutes.post("/:worldId/abilities/reorder", authMiddleware, postAbilityReorderCtrl);
 worldRoutes.put("/:worldId/abilities/:id", authMiddleware, putAbilityCtrl);
 worldRoutes.delete("/:worldId/abilities/:id", authMiddleware, removeAbilityCtrl);
 
 worldRoutes.get("/:worldId/races", authMiddleware, getRacesCtrl);
 worldRoutes.post("/:worldId/races", authMiddleware, postRaceCtrl);
+worldRoutes.post("/:worldId/races/reorder", authMiddleware, postRaceReorderCtrl);
 worldRoutes.put("/:worldId/races/:id", authMiddleware, putRaceCtrl);
 worldRoutes.delete("/:worldId/races/:id", authMiddleware, removeRaceCtrl);
 
 worldRoutes.get("/:worldId/professions", authMiddleware, getProfessionsCtrl);
 worldRoutes.post("/:worldId/professions", authMiddleware, postProfessionCtrl);
+worldRoutes.post("/:worldId/professions/reorder", authMiddleware, postProfessionReorderCtrl);
 worldRoutes.put("/:worldId/professions/:id", authMiddleware, putProfessionCtrl);
 worldRoutes.delete("/:worldId/professions/:id", authMiddleware, removeProfessionCtrl);
 
 worldRoutes.get("/:worldId/backgrounds", authMiddleware, getBackgroundsCtrl);
 worldRoutes.post("/:worldId/backgrounds", authMiddleware, postBackgroundCtrl);
+worldRoutes.post("/:worldId/backgrounds/reorder", authMiddleware, postBackgroundReorderCtrl);
 worldRoutes.put("/:worldId/backgrounds/:id", authMiddleware, putBackgroundCtrl);
 worldRoutes.delete("/:worldId/backgrounds/:id", authMiddleware, removeBackgroundCtrl);
 
 worldRoutes.get("/:worldId/items", authMiddleware, getItemsCtrl);
 worldRoutes.post("/:worldId/items", authMiddleware, postItemCtrl);
+worldRoutes.post("/:worldId/items/reorder", authMiddleware, postItemReorderCtrl);
 worldRoutes.put("/:worldId/items/:id", authMiddleware, putItemCtrl);
 worldRoutes.delete("/:worldId/items/:id", authMiddleware, removeItemCtrl);
 
 worldRoutes.get("/:worldId/fate-clocks", authMiddleware, getFateClocksCtrl);
 worldRoutes.post("/:worldId/fate-clocks", authMiddleware, postFateClockCtrl);
+worldRoutes.post("/:worldId/fate-clocks/reorder", authMiddleware, postFateClockReorderCtrl);
 worldRoutes.put("/:worldId/fate-clocks/:id", authMiddleware, putFateClockCtrl);
 worldRoutes.patch("/:worldId/fate-clocks/:id/advance", authMiddleware, patchFateClockAdvanceCtrl);
 worldRoutes.delete("/:worldId/fate-clocks/:id", authMiddleware, removeFateClockCtrl);
 
 worldRoutes.get("/:worldId/decks", authMiddleware, getDecksCtrl);
 worldRoutes.post("/:worldId/decks", authMiddleware, postDeckCtrl);
+worldRoutes.post("/:worldId/decks/reorder", authMiddleware, postDeckReorderCtrl);
 worldRoutes.put("/:worldId/decks/:id", authMiddleware, putDeckCtrl);
 worldRoutes.delete("/:worldId/decks/:id", authMiddleware, removeDeckCtrl);
 
 worldRoutes.get("/:worldId/random-tables", authMiddleware, getRandomTablesCtrl);
 worldRoutes.post("/:worldId/random-tables", authMiddleware, postRandomTableCtrl);
+worldRoutes.post("/:worldId/random-tables/reorder", authMiddleware, postRandomTableReorderCtrl);
 worldRoutes.put("/:worldId/random-tables/:id", authMiddleware, putRandomTableCtrl);
 worldRoutes.delete("/:worldId/random-tables/:id", authMiddleware, removeRandomTableCtrl);
 

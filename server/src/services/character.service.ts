@@ -1,5 +1,6 @@
 import { CharacterType, Prisma, WorldRole } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import { resolveFolderAssignment } from "./folder.service";
 
 type CreateCharacterInput = {
   worldId: string;
@@ -7,6 +8,8 @@ type CreateCharacterInput = {
   name: string;
   type?: CharacterType;
   userId?: string | null;
+  folderId?: string | null;
+  sortOrder?: number;
 };
 
 type UpdateCharacterInput = {
@@ -16,7 +19,26 @@ type UpdateCharacterInput = {
   name?: string;
   stats?: unknown;
   snapshot?: unknown;
+  folderId?: string | null;
+  sortOrder?: number;
+  permissionMode?: string;
 };
+
+const characterSelect = {
+  id: true,
+  worldId: true,
+  userId: true,
+  name: true,
+  type: true,
+  avatarUrl: true,
+  folderId: true,
+  sortOrder: true,
+  permissionMode: true,
+  stats: true,
+  snapshot: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 async function getMembership(worldId: string, userId: string) {
   return prisma.worldMember.findUnique({
@@ -61,21 +83,8 @@ export async function listCharacters(worldId: string, requesterId: string) {
 
   return prisma.character.findMany({
     where: { worldId },
-    select: {
-      id: true,
-      worldId: true,
-      userId: true,
-      name: true,
-      type: true,
-      avatarUrl: true,
-      stats: true,
-      snapshot: true,
-      createdAt: true,
-      updatedAt: true
-    },
-    orderBy: {
-      createdAt: "asc"
-    }
+    select: characterSelect,
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }]
   });
 }
 
@@ -96,6 +105,10 @@ export async function createCharacter(input: CreateCharacterInput) {
     throw new Error("only gm can create npc");
   }
 
+  const folderData = input.folderId !== undefined
+    ? await resolveFolderAssignment(input.worldId, "CHARACTER", input.folderId)
+    : { folderId: null };
+
   if (membership.role !== WorldRole.GM) {
 
     return prisma.character.create({
@@ -103,20 +116,11 @@ export async function createCharacter(input: CreateCharacterInput) {
         worldId: input.worldId,
         userId: input.requesterId,
         name: normalizedName,
-        type
+        type,
+        folderId: folderData.folderId,
+        sortOrder: input.sortOrder ?? 0,
       },
-      select: {
-        id: true,
-        worldId: true,
-        userId: true,
-        name: true,
-        type: true,
-        avatarUrl: true,
-        stats: true,
-        snapshot: true,
-        createdAt: true,
-        updatedAt: true
-      }
+      select: characterSelect
     });
   }
 
@@ -125,20 +129,11 @@ export async function createCharacter(input: CreateCharacterInput) {
       worldId: input.worldId,
       userId: input.userId ?? null,
       name: normalizedName,
-      type
+      type,
+      folderId: folderData.folderId,
+      sortOrder: input.sortOrder ?? 0,
     },
-    select: {
-      id: true,
-      worldId: true,
-      userId: true,
-      name: true,
-      type: true,
-      avatarUrl: true,
-      stats: true,
-      snapshot: true,
-      createdAt: true,
-      updatedAt: true
-    }
+    select: characterSelect
   });
 }
 
@@ -167,6 +162,9 @@ export async function updateCharacter(input: UpdateCharacterInput) {
 
   const data: {
     name?: string;
+    folderId?: string | null;
+    sortOrder?: number;
+    permissionMode?: string;
     stats?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
     snapshot?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
   } = {};
@@ -185,21 +183,49 @@ export async function updateCharacter(input: UpdateCharacterInput) {
   if (typeof input.snapshot !== "undefined") {
     data.snapshot = toPrismaJson(input.snapshot);
   }
+  if (typeof input.folderId !== "undefined") {
+    const folderData = await resolveFolderAssignment(input.worldId, "CHARACTER", input.folderId);
+    data.folderId = folderData.folderId;
+  }
+  if (typeof input.sortOrder !== "undefined") {
+    data.sortOrder = Number(input.sortOrder);
+  }
+  if (typeof input.permissionMode !== "undefined") {
+    data.permissionMode = input.permissionMode;
+  }
 
   return prisma.character.update({
     where: { id: input.characterId },
     data,
-    select: {
-      id: true,
-      worldId: true,
-      userId: true,
-      name: true,
-      type: true,
-      avatarUrl: true,
-      stats: true,
-      snapshot: true,
-      createdAt: true,
-      updatedAt: true
-    }
+    select: characterSelect
   });
+}
+
+export async function reorderCharacters(input: {
+  worldId: string;
+  requesterId: string;
+  folderId?: string | null;
+  orderedIds: string[];
+}) {
+  const membership = await getMembership(input.worldId, input.requesterId);
+  if (!membership || membership.status !== "ACTIVE") throw new Error("not a member of world");
+  if (membership.role !== WorldRole.GM) throw new Error("permission denied");
+
+  const folderData = input.folderId !== undefined
+    ? await resolveFolderAssignment(input.worldId, "CHARACTER", input.folderId)
+    : { folderId: null };
+  const orderedIds = Array.from(new Set(input.orderedIds.map((item) => String(item ?? "").trim()).filter(Boolean)));
+  if (orderedIds.length === 0) throw new Error("orderedIds is required");
+
+  const siblings = await prisma.character.findMany({
+    where: { worldId: input.worldId, folderId: folderData.folderId },
+    select: { id: true },
+  });
+  const siblingIds = new Set(siblings.map((item) => item.id));
+  for (const id of orderedIds) {
+    if (!siblingIds.has(id)) throw new Error("character reorder contains non-sibling character");
+  }
+
+  await prisma.$transaction(orderedIds.map((id, index) => prisma.character.update({ where: { id }, data: { sortOrder: index } })));
+  return listCharacters(input.worldId, input.requesterId);
 }

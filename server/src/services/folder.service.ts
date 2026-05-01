@@ -138,6 +138,7 @@ function toFolderRecord(row: {
   icon: string | null;
   sortOrder: number;
   collapsed: boolean;
+  permissionMode?: string;
   createdAt: Date;
   updatedAt: Date;
 }): FolderRecord {
@@ -151,6 +152,7 @@ function toFolderRecord(row: {
     icon: row.icon,
     sortOrder: row.sortOrder,
     collapsed: row.collapsed,
+    permissionMode: row.permissionMode ?? "DEFAULT",
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -187,6 +189,7 @@ export async function createFolder(input: {
   color?: string | null;
   icon?: string | null;
   sortOrder?: number;
+  permissionMode?: string;
 }): Promise<FolderRecord> {
   const name = validateFolderName(input.name);
   const parentId = input.parentId ?? null;
@@ -220,6 +223,7 @@ export async function createFolder(input: {
       color: input.color ?? null,
       icon: input.icon ?? null,
       sortOrder: input.sortOrder ?? 0,
+      permissionMode: input.permissionMode ?? "DEFAULT",
     },
   });
   return toFolderRecord(row);
@@ -308,12 +312,127 @@ export async function deleteFolder(folderId: string): Promise<void> {
   await prisma.folder.delete({ where: { id: folderId } });
 }
 
+export async function deleteFolderInWorld(worldId: string, folderId: string): Promise<void> {
+  const folder = await prisma.folder.findUnique({ where: { id: folderId } });
+  if (!folder || folder.worldId !== worldId) throw new Error("folder not found");
+  await prisma.folder.delete({ where: { id: folderId } });
+}
+
 /**
  * 设置折叠状态（GM UI 偏好）。
  */
 export async function setFolderCollapsed(folderId: string, collapsed: boolean): Promise<FolderRecord> {
   const row = await prisma.folder.update({ where: { id: folderId }, data: { collapsed } });
   return toFolderRecord(row);
+}
+
+export async function updateFolder(input: {
+  worldId: string;
+  folderId: string;
+  name?: string;
+  parentId?: string | null;
+  color?: string | null;
+  icon?: string | null;
+  sortOrder?: number;
+  collapsed?: boolean;
+  permissionMode?: string;
+}): Promise<FolderRecord> {
+  const folder = await prisma.folder.findUnique({ where: { id: input.folderId } });
+  if (!folder || folder.worldId !== input.worldId) throw new Error("folder not found");
+
+  const nextName = input.name !== undefined ? validateFolderName(input.name) : folder.name;
+  const nextParentId = input.parentId !== undefined ? input.parentId : folder.parentId;
+
+  if (input.parentId !== undefined && nextParentId) {
+    const parent = await prisma.folder.findUnique({ where: { id: nextParentId }, select: { worldId: true, type: true } });
+    if (!parent || parent.worldId !== folder.worldId || parent.type !== folder.type) {
+      throw new Error("target parent mismatch (worldId or type)");
+    }
+  }
+
+  if (input.parentId !== undefined) {
+    const allInScope = await prisma.folder.findMany({
+      where: { worldId: folder.worldId, type: folder.type },
+      select: { id: true, parentId: true },
+    });
+    if (wouldCreateFolderCycle(allInScope, input.folderId, nextParentId ?? null)) {
+      throw new Error("cannot move folder into its own descendant");
+    }
+  }
+
+  const sibling = await prisma.folder.findFirst({
+    where: {
+      worldId: folder.worldId,
+      type: folder.type,
+      parentId: nextParentId ?? null,
+      name: nextName,
+      NOT: { id: input.folderId },
+    },
+    select: { id: true },
+  });
+  if (sibling) throw new Error(`folder name already exists at this level: ${nextName}`);
+
+  const row = await prisma.folder.update({
+    where: { id: input.folderId },
+    data: {
+      ...(input.name !== undefined && { name: nextName }),
+      ...(input.parentId !== undefined && { parentId: nextParentId ?? null }),
+      ...(input.color !== undefined && { color: input.color }),
+      ...(input.icon !== undefined && { icon: input.icon }),
+      ...(input.sortOrder !== undefined && { sortOrder: Number(input.sortOrder) }),
+      ...(input.collapsed !== undefined && { collapsed: Boolean(input.collapsed) }),
+      ...(input.permissionMode !== undefined && { permissionMode: input.permissionMode }),
+    },
+  });
+  return toFolderRecord(row);
+}
+
+export async function reorderFolders(input: {
+  worldId: string;
+  type: FolderType;
+  parentId?: string | null;
+  orderedIds: string[];
+}): Promise<FolderRecord[]> {
+  const parentId = input.parentId ?? null;
+  if (parentId) {
+    const parent = await prisma.folder.findUnique({ where: { id: parentId }, select: { worldId: true, type: true } });
+    if (!parent || parent.worldId !== input.worldId || parent.type !== input.type) {
+      throw new Error("target parent mismatch (worldId or type)");
+    }
+  }
+
+  const siblings = await prisma.folder.findMany({ where: { worldId: input.worldId, type: input.type, parentId }, select: { id: true } });
+  const siblingIds = new Set(siblings.map((item) => item.id));
+  for (const id of input.orderedIds) {
+    if (!siblingIds.has(id)) throw new Error("folder reorder contains non-sibling folder");
+  }
+
+  await prisma.$transaction(
+    input.orderedIds.map((id, index) => prisma.folder.update({ where: { id }, data: { sortOrder: index } })),
+  );
+  return listFolders(input.worldId, input.type);
+}
+
+export async function resolveFolderAssignment(
+  worldId: string,
+  type: FolderType,
+  folderIdValue: unknown,
+): Promise<{ folderId: string | null; folderPath: string }> {
+  const folderId = String(folderIdValue ?? "").trim();
+  if (!folderId) return { folderId: null, folderPath: "" };
+
+  const folder = await prisma.folder.findUnique({ where: { id: folderId } });
+  if (!folder || folder.worldId !== worldId || folder.type !== type) throw new Error("folder not found");
+
+  const records = await listFolders(worldId, type);
+  const byId = new Map(records.map((record) => [record.id, record]));
+  const segments: string[] = [];
+  let current: FolderRecord | undefined = byId.get(folder.id);
+  while (current) {
+    segments.unshift(current.name);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+  return { folderId: folder.id, folderPath: segments.join("/") };
 }
 
 /* ──────────── folderPath → folderId 数据迁移（lazy） ──────────── */

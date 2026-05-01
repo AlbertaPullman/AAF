@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ComponentType, type MouseEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MessageSquare, Swords, Map as MapIcon, User, Package, Settings, Sparkles, Dice5, Music, Layers } from "lucide-react";
 import "../../world/styles/world-shell.css";
 import { http } from "../../lib/http";
 import { connectSocket, disconnectSocket, socket, SOCKET_EVENTS } from "../../lib/socket";
+import { resolvePublicAssetUrl } from "../../lib/assets";
 import { useAuthStore } from "../../store/authStore";
 import { AbilityExecutionPanel } from "../../world/components/AbilityExecutionPanel";
 import { BattleSequenceBar, type InitiativeEntry } from "../../world/components/BattleSequenceBar";
-import { CharacterPanel } from "../../world/components/CharacterPanel";
 import { ContextMenu, useContextMenu } from "../../world/components/ContextMenu";
 import { DrawPanel } from "../../world/components/DrawPanel";
 import { FateClockWidget } from "../../world/components/FateClockWidget";
@@ -39,6 +39,8 @@ import {
   type ContextMenuArea,
   type ContextMenuItem,
   type FateClockDefinition,
+  type FolderRecord,
+  type FolderType,
   type HUDConfig,
   type HUDSlot,
 } from "../../../../shared/types/world-entities";
@@ -48,6 +50,7 @@ import {
   getDefaultToolbarButtons,
   getDefaultTreeData,
   type TreeNode,
+  type TreeDropPosition,
   type SystemTabKey as SystemPanelTabKey,
 } from "../../world/components/SystemPanelContent";
 import type {
@@ -227,7 +230,7 @@ type StoryEventSearchResult = {
 type SystemTabKey = "chat" | "battle" | "scene" | "char" | "ability" | "item" | "random" | "music" | "collect" | "system";
 
 type OverlayState =
-  | { id: string; kind: "entity"; entityType: EntityType; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
+  | { id: string; kind: "entity"; entityType: EntityType; entityId?: string; title: string; placement: FloatingToolWindowPlacement; compact?: boolean; editorOnly?: boolean }
   | { id: string; kind: "players"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
   | { id: string; kind: "ability"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
   | { id: string; kind: "story"; title: string; placement: FloatingToolWindowPlacement; compact?: boolean }
@@ -236,7 +239,7 @@ type OverlayState =
   | { id: string; kind: "character"; title: string; characterId?: string; mode: "view" | "create"; placement: FloatingToolWindowPlacement; compact?: boolean };
 
 type OverlayDraft =
-  | { kind: "entity"; entityType: EntityType; title: string; compact?: boolean }
+  | { kind: "entity"; entityType: EntityType; entityId?: string; title: string; compact?: boolean; editorOnly?: boolean }
   | { kind: "players"; title: string; compact?: boolean }
   | { kind: "ability"; title: string; compact?: boolean }
   | { kind: "story"; title: string; compact?: boolean }
@@ -598,44 +601,174 @@ function getEntityText(record: EntityRecord, key: string, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-function buildAbilityLibraryTree(records: EntityRecord[], collapsedNodes: Set<string>): TreeNode[] {
-  if (records.length === 0) {
-    return getDefaultTreeData("ability");
+type ManagedTreeRecord = EntityRecord | CharacterItem;
+
+type ManagedTreePayload =
+  | { kind: "folder"; folderType: FolderType; id: string; parentId: string | null; permissionMode?: string }
+  | { kind: "entity"; entityType: EntityType; id: string; folderId: string | null; permissionMode?: string }
+  | { kind: "character"; id: string; folderId: string | null; permissionMode?: string };
+
+type NameDialogState = {
+  title: string;
+  label: string;
+  initialValue?: string;
+  confirmLabel?: string;
+  onConfirm: (value: string) => Promise<void> | void;
+} | null;
+
+type ResourceMenuState = {
+  x: number;
+  y: number;
+  node: TreeNode;
+  payload: ManagedTreePayload;
+} | null;
+
+function getRecordFolderId(record: ManagedTreeRecord) {
+  const value = "folderId" in record ? record.folderId : record["folderId"];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getRecordSortOrder(record: ManagedTreeRecord) {
+  const value = "sortOrder" in record ? record.sortOrder : record["sortOrder"];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function sortTreeRecords<T extends ManagedTreeRecord>(records: T[]) {
+  return records.slice().sort((left, right) => {
+    const order = getRecordSortOrder(left) - getRecordSortOrder(right);
+    if (order !== 0) return order;
+    return String(left.name ?? "").localeCompare(String(right.name ?? ""), "zh-Hans-CN");
+  });
+}
+
+function buildManagedTree(args: {
+  folderType: FolderType;
+  folders: FolderRecord[];
+  records: ManagedTreeRecord[];
+  collapsedNodes: Set<string>;
+  activeRecordId?: string;
+  entityType?: EntityType;
+  leafKind: "entity" | "character";
+  folderIcon: string;
+  leafIcon: string;
+  leafMeta: (record: ManagedTreeRecord) => string | undefined;
+}): TreeNode[] {
+  const foldersByParent = new Map<string | null, FolderRecord[]>();
+  for (const folder of args.folders) {
+    const list = foldersByParent.get(folder.parentId ?? null) ?? [];
+    list.push(folder);
+    foldersByParent.set(folder.parentId ?? null, list);
   }
 
-  const groups = new Map<string, EntityRecord[]>();
-  for (const record of records) {
-    const folder = getEntityText(record, "folderPath");
-    const category = getEntityText(record, "category", "custom");
-    const groupLabel = folder || ABILITY_CATEGORY_LABELS[category] || category || "未分类";
-    groups.set(groupLabel, [...(groups.get(groupLabel) ?? []), record]);
+  const recordsByFolder = new Map<string | null, ManagedTreeRecord[]>();
+  for (const record of args.records) {
+    const folderId = getRecordFolderId(record);
+    const list = recordsByFolder.get(folderId) ?? [];
+    list.push(record);
+    recordsByFolder.set(folderId, list);
   }
 
-  return [...groups.entries()]
-    .sort(([left], [right]) => left.localeCompare(right, "zh-Hans-CN"))
-    .map(([label, items]) => {
-      const id = `ability-group:${label}`;
-      return {
-        id,
-        type: "dir" as const,
-        icon: "✦",
-        label,
-        meta: `${items.length}`,
-        collapsed: collapsedNodes.has(id),
-        children: items
-          .slice()
-          .sort((left, right) =>
-            getEntityText(left, "name", "未命名能力").localeCompare(getEntityText(right, "name", "未命名能力"), "zh-Hans-CN")
-          )
-          .map((item) => ({
-            id: `ability:${item.id}`,
-            type: "leaf" as const,
-            icon: "◆",
-            label: getEntityText(item, "name", "未命名能力"),
-            meta: getEntityText(item, "activation", getEntityText(item, "actionType")),
-          })),
-      };
-    });
+  const buildFolderNode = (folder: FolderRecord): TreeNode => {
+    const childFolders = (foldersByParent.get(folder.id) ?? [])
+      .slice()
+      .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name, "zh-Hans-CN"))
+      .map(buildFolderNode);
+    const leafNodes = sortTreeRecords(recordsByFolder.get(folder.id) ?? []).map((record) => buildLeafNode(record, folder.id));
+    const nodeId = `${args.folderType.toLowerCase()}:folder:${folder.id}`;
+    return {
+      id: nodeId,
+      type: "dir",
+      icon: folder.icon || args.folderIcon,
+      label: folder.name,
+      meta: `${childFolders.length + leafNodes.length}`,
+      collapsed: args.collapsedNodes.has(nodeId) || folder.collapsed,
+      children: [...childFolders, ...leafNodes],
+      dragData: { kind: "folder", folderType: args.folderType, id: folder.id, parentId: folder.parentId ?? null, permissionMode: folder.permissionMode },
+    };
+  };
+
+  const buildLeafNode = (record: ManagedTreeRecord, folderId: string | null): TreeNode => {
+    const payload: ManagedTreePayload = args.leafKind === "character"
+      ? { kind: "character", id: record.id, folderId }
+      : { kind: "entity", entityType: args.entityType!, id: record.id, folderId };
+    payload.permissionMode = typeof (record as EntityRecord).permissionMode === "string" ? String((record as EntityRecord).permissionMode) : undefined;
+    const nodeId = `${args.leafKind}:${record.id}`;
+    const iconUrl = resolvePublicAssetUrl((record as EntityRecord).iconUrl) ?? null;
+    return {
+      id: nodeId,
+      type: "leaf",
+      icon: args.leafIcon,
+      iconUrl,
+      label: record.name || "未命名",
+      meta: args.leafMeta(record),
+      active: args.activeRecordId === record.id,
+      dragData: payload,
+    };
+  };
+
+  const roots = (foldersByParent.get(null) ?? [])
+    .slice()
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name, "zh-Hans-CN"))
+    .map(buildFolderNode);
+  const rootLeaves = sortTreeRecords(recordsByFolder.get(null) ?? []).map((record) => buildLeafNode(record, null));
+  return [...roots, ...rootLeaves];
+}
+
+function ResourceNameDialog({ dialog, onClose }: { dialog: NonNullable<NameDialogState>; onClose: () => void }) {
+  const [value, setValue] = useState(dialog.initialValue ?? "");
+
+  useEffect(() => {
+    setValue(dialog.initialValue ?? "");
+  }, [dialog]);
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    void Promise.resolve(dialog.onConfirm(trimmed)).then(onClose);
+  };
+
+  return (
+    <div className="world-resource-dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <form className="world-resource-dialog" role="dialog" aria-modal="true" aria-label={dialog.title} onSubmit={onSubmit} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="world-resource-dialog__head">
+          <strong>{dialog.title}</strong>
+          <button type="button" className="world-resource-dialog__icon-btn" aria-label="关闭" onClick={onClose}>×</button>
+        </div>
+        <label className="world-resource-dialog__field">
+          <span>{dialog.label}</span>
+          <input autoFocus value={value} onChange={(event) => setValue(event.target.value)} />
+        </label>
+        <div className="world-resource-dialog__actions">
+          <button type="button" className="sc-btn" onClick={onClose}>取消</button>
+          <button type="submit" className="sc-btn sc-btn--gold" disabled={!value.trim()}>{dialog.confirmLabel ?? "确定"}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ResourceNodeContextMenu({
+  menu,
+  onAction,
+  onClose,
+}: {
+  menu: NonNullable<ResourceMenuState>;
+  onAction: (action: "rename" | "import" | "export" | "copy" | "permission") => void;
+  onClose: () => void;
+}) {
+  const isFolder = menu.payload.kind === "folder";
+  return (
+    <div className="world-resource-menu-backdrop" role="presentation" onMouseDown={onClose}>
+      <div className="world-resource-menu" role="menu" style={{ left: menu.x, top: menu.y }} onMouseDown={(event) => event.stopPropagation()}>
+        <button type="button" role="menuitem" onClick={() => onAction("rename")}>重命名</button>
+        <button type="button" role="menuitem" onClick={() => onAction("import")}>导入</button>
+        <button type="button" role="menuitem" onClick={() => onAction("export")}>导出</button>
+        <button type="button" role="menuitem" onClick={() => onAction("copy")}>复制</button>
+        <button type="button" role="menuitem" onClick={() => onAction("permission")}>{isFolder ? "目录权限" : "权限"}</button>
+      </div>
+    </div>
+  );
 }
 
 function messageBadges(message: ChatMessage): string[] {
@@ -666,7 +799,13 @@ export default function WorldPage() {
 
   const loadEntities = useWorldEntityStore((state) => state.loadEntities);
   const createEntity = useWorldEntityStore((state) => state.createEntity);
+  const updateEntity = useWorldEntityStore((state) => state.updateEntity);
   const deleteEntity = useWorldEntityStore((state) => state.deleteEntity);
+  const reorderEntities = useWorldEntityStore((state) => state.reorderEntities);
+  const loadFolders = useWorldEntityStore((state) => state.loadFolders);
+  const createFolder = useWorldEntityStore((state) => state.createFolder);
+  const updateFolder = useWorldEntityStore((state) => state.updateFolder);
+  const reorderFolders = useWorldEntityStore((state) => state.reorderFolders);
   const advanceFateClock = useWorldEntityStore((state) => state.advanceFateClock);
   const resetWorldEntities = useWorldEntityStore((state) => state.resetAll);
   const abilityRecords = useWorldEntityStore((state) => state.abilities.items);
@@ -677,6 +816,9 @@ export default function WorldPage() {
   const deckRecords = useWorldEntityStore((state) => state.decks.items);
   const randomTableRecords = useWorldEntityStore((state) => state.randomTables.items);
   const fateClockRecords = useWorldEntityStore((state) => state.fateClocks.items);
+  const characterFolders = useWorldEntityStore((state) => state.folders.CHARACTER.items);
+  const abilityFolders = useWorldEntityStore((state) => state.folders.ABILITY.items);
+  const itemFolders = useWorldEntityStore((state) => state.folders.ITEM.items);
 
   const [worldName, setWorldName] = useState("世界");
   const [myRole, setMyRole] = useState<WorldDetail["myRole"]>(null);
@@ -748,6 +890,8 @@ export default function WorldPage() {
   const [fateClockDirection, setFateClockDirection] = useState<"advance" | "countdown">("advance");
   const [fateClockVisible, setFateClockVisible] = useState(true);
   const [overlays, setOverlays] = useState<OverlayState[]>([]);
+  const [nameDialog, setNameDialog] = useState<NameDialogState>(null);
+  const [resourceMenu, setResourceMenu] = useState<ResourceMenuState>(null);
   const overlayCounterRef = useRef(0);
   const [stageNotice, setStageNotice] = useState("正在连接世界舞台...");
   const [hudConfig, setHudConfig] = useState<HUDConfig>(() => createDefaultHudConfig());
@@ -941,7 +1085,7 @@ export default function WorldPage() {
   const resolveHudIcon = (type: "ability" | "item", id: string) => {
     const source = type === "ability" ? abilityRecords : itemRecords;
     const found = source.find((entry) => entry.id === id) as { iconUrl?: string } | undefined;
-    return found?.iconUrl;
+    return resolvePublicAssetUrl(found?.iconUrl);
   };
 
   const partyCharacters = useMemo(() => {
@@ -1548,19 +1692,19 @@ export default function WorldPage() {
   };
 
   const getOverlayKey = (overlay: OverlayDraft | OverlayState) => {
-    if (overlay.kind === "entity") return `entity:${overlay.entityType}`;
+    if (overlay.kind === "entity") return overlay.editorOnly ? "entity:resource-editor" : `entity:${overlay.entityType}:manager`;
     if (overlay.kind === "character") return `character:${overlay.mode}:${overlay.characterId ?? "new"}`;
     return overlay.kind;
   };
 
-  const createOverlayPlacement = (kind: OverlayDraft["kind"], index: number): FloatingToolWindowPlacement => {
+  const createOverlayPlacement = (draft: OverlayDraft, index: number): FloatingToolWindowPlacement => {
     const viewportWidth = typeof window === "undefined" ? 1440 : window.innerWidth;
-    const baseWidth = kind === "entity" ? 760 : kind === "character" ? 600 : kind === "hotkeys" ? 640 : 700;
+    const baseWidth = draft.kind === "entity" && draft.editorOnly ? 900 : draft.kind === "entity" ? 760 : draft.kind === "character" ? 600 : draft.kind === "hotkeys" ? 640 : 700;
     const width = Math.min(baseWidth, Math.max(420, viewportWidth - 44));
     const offset = index % 7;
     return {
-      left: Math.max(16, Math.min(96 + offset * 34, viewportWidth - width - 16)),
-      top: 54 + offset * 28,
+      left: Math.max(16, Math.min((viewportWidth - width) / 2 + offset * 18, viewportWidth - width - 16)),
+      top: draft.kind === "entity" && draft.editorOnly ? 82 + offset * 14 : 54 + offset * 28,
       width,
       zIndex: 292 + index,
     };
@@ -1590,7 +1734,8 @@ export default function WorldPage() {
     setOverlays((prev) => {
       const existing = prev.find((item) => getOverlayKey(item) === key);
       if (existing) {
-        const ordered = [...prev.filter((item) => item.id !== existing.id), existing];
+        const updatedExisting = { ...existing, ...draft, id: existing.id, placement: existing.placement } as OverlayState;
+        const ordered = [...prev.filter((item) => item.id !== existing.id), updatedExisting];
         return ordered.map((item, index) => ({ ...item, placement: { ...item.placement, zIndex: 292 + index } }));
       }
 
@@ -1598,7 +1743,7 @@ export default function WorldPage() {
       const next = {
         ...draft,
         id,
-        placement: createOverlayPlacement(draft.kind, prev.length),
+        placement: createOverlayPlacement(draft, prev.length),
       } as OverlayState;
       return [...prev, next].map((item, index) => ({ ...item, placement: { ...item.placement, zIndex: 292 + index } }));
     });
@@ -1606,6 +1751,11 @@ export default function WorldPage() {
 
   const openEntityOverlay = (entityType: EntityType, title: string) => {
     openOverlay({ kind: "entity", entityType, title });
+    setSystemPanelCollapsed(false);
+  };
+
+  const openEntityEditorOverlay = (entityType: EntityType, entityId: string, title: string) => {
+    openOverlay({ kind: "entity", entityType, entityId, title, editorOnly: true });
     setSystemPanelCollapsed(false);
   };
 
@@ -1809,6 +1959,224 @@ export default function WorldPage() {
       setError(resolveErrorMessage(err, "创建角色失败"));
     } finally {
       setCreatingCharacter(false);
+    }
+  };
+
+  const askForName = (dialog: NonNullable<NameDialogState>) => {
+    setResourceMenu(null);
+    setNameDialog(dialog);
+  };
+
+  const createCharacterFromName = async (name: string, folderId: string | null = null) => {
+    if (!worldId) return;
+    setCreatingCharacter(true);
+    try {
+      const resp = await http.post(`/worlds/${worldId}/characters`, { name, type: "PC", folderId });
+      const created = resp.data?.data as CharacterItem;
+      setCharacters((prev) => [...prev, created]);
+      setSelectedCharacterId(created.id);
+      openCharacterOverlay(created.id);
+      setStageNotice(`角色“${created.name}”已创建。`);
+    } catch (err) {
+      setError(resolveErrorMessage(err, "创建角色失败"));
+    } finally {
+      setCreatingCharacter(false);
+    }
+  };
+
+  const createManagedEntityFromName = async (type: EntityType, name: string, folderId: string | null = null) => {
+    if (!worldId) return;
+    try {
+      const defaults = type === "abilities"
+        ? { category: "custom", source: "custom", activation: "active", actionType: "standard", description: "", rulesText: "" }
+        : type === "items"
+          ? { category: "gear", rarity: "common", description: "" }
+          : {};
+      const created = await createEntity(worldId, type, { ...defaults, name, folderId });
+      openEntityEditorOverlay(type, created.id, `${type === "items" ? "物品" : "能力"}编辑 · ${created.name}`);
+      setStageNotice(`${type === "items" ? "物品" : "能力"}“${created.name}”已创建。`);
+    } catch (err) {
+      setError(resolveErrorMessage(err, "创建资源失败"));
+    }
+  };
+
+  const createManagedFolderFromName = async (type: FolderType, name: string, parentId: string | null = null) => {
+    if (!worldId) return;
+    try {
+      const created = await createFolder(worldId, type, { name, parentId });
+      setStageNotice(`目录“${created.name}”已创建。`);
+    } catch (err) {
+      setError(resolveErrorMessage(err, "创建目录失败"));
+    }
+  };
+
+  const updateCharacterPatch = async (characterId: string, data: Record<string, unknown>) => {
+    if (!worldId) return null;
+    const resp = await http.put(`/worlds/${worldId}/characters/${characterId}`, data);
+    const updated = resp.data?.data as CharacterItem;
+    setCharacters((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    return updated;
+  };
+
+  const reorderCharacterSiblings = async (folderId: string | null, orderedIds: string[]) => {
+    if (!worldId) return;
+    const resp = await http.post(`/worlds/${worldId}/characters/reorder`, { folderId, orderedIds });
+    setCharacters(resp.data?.data as CharacterItem[]);
+  };
+
+  const insertOrderedId = (ids: string[], movingId: string, targetId: string, position: TreeDropPosition) => {
+    const next = ids.filter((id) => id !== movingId);
+    const targetIndex = next.indexOf(targetId);
+    if (targetIndex < 0) return [...next, movingId];
+    next.splice(position === "before" ? targetIndex : targetIndex + 1, 0, movingId);
+    return next;
+  };
+
+  const readTreePayload = (node: TreeNode): ManagedTreePayload | null => {
+    const data = node.dragData as ManagedTreePayload | undefined;
+    if (!data || typeof data.kind !== "string") return null;
+    return data;
+  };
+
+  const onManagedTreeDrop = async (target: TreeNode, position: TreeDropPosition, dragData: Record<string, unknown>) => {
+    if (!worldId) return;
+    const source = dragData as ManagedTreePayload;
+    const targetPayload = readTreePayload(target);
+    if (!source || !targetPayload) return;
+    if (source.kind === targetPayload.kind && source.id === targetPayload.id) return;
+
+    try {
+      if (position === "inside" && targetPayload.kind === "folder") {
+        if (source.kind === "folder") {
+          if (source.folderType !== targetPayload.folderType) return;
+          await updateFolder(worldId, source.id, { parentId: targetPayload.id });
+          await loadFolders(worldId, source.folderType);
+        } else if (source.kind === "entity") {
+          await updateEntity(worldId, source.entityType, source.id, { folderId: targetPayload.id });
+        } else {
+          await updateCharacterPatch(source.id, { folderId: targetPayload.id });
+        }
+        setStageNotice(`已移动到“${target.label}”。`);
+        return;
+      }
+
+      if (source.kind === "folder" && targetPayload.kind === "folder" && source.folderType === targetPayload.folderType) {
+        const parentId = targetPayload.parentId;
+        await updateFolder(worldId, source.id, { parentId });
+        const orderedIds = insertOrderedId(
+          (useWorldEntityStore.getState().folders[source.folderType].items ?? [])
+            .filter((folder) => (folder.parentId ?? null) === parentId)
+            .map((folder) => folder.id),
+          source.id,
+          targetPayload.id,
+          position,
+        );
+        await reorderFolders(worldId, source.folderType, { parentId, orderedIds });
+        setStageNotice("目录顺序已更新。");
+        return;
+      }
+
+      if (source.kind === "entity" && targetPayload.kind === "entity" && source.entityType === targetPayload.entityType) {
+        const records = targetPayload.entityType === "items" ? itemRecords : abilityRecords;
+        const folderId = targetPayload.folderId;
+        await updateEntity(worldId, source.entityType, source.id, { folderId });
+        const orderedIds = insertOrderedId(
+          records.filter((item) => getRecordFolderId(item) === folderId).map((item) => item.id),
+          source.id,
+          targetPayload.id,
+          position,
+        );
+        await reorderEntities(worldId, source.entityType, { folderId, orderedIds });
+        setStageNotice("资源顺序已更新。");
+        return;
+      }
+
+      if (source.kind === "character" && targetPayload.kind === "character") {
+        const folderId = targetPayload.folderId;
+        await updateCharacterPatch(source.id, { folderId });
+        const orderedIds = insertOrderedId(
+          characters.filter((item) => getRecordFolderId(item) === folderId).map((item) => item.id),
+          source.id,
+          targetPayload.id,
+          position,
+        );
+        await reorderCharacterSiblings(folderId, orderedIds);
+        setStageNotice("角色顺序已更新。");
+      }
+    } catch (err) {
+      setError(resolveErrorMessage(err, "移动失败"));
+    }
+  };
+
+  const onManagedTreeContextMenu = (event: MouseEvent, node: TreeNode) => {
+    const payload = readTreePayload(node);
+    if (!payload) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setResourceMenu({ x: event.clientX, y: event.clientY, node, payload });
+  };
+
+  const onResourceMenuAction = async (action: "rename" | "import" | "export" | "copy" | "permission") => {
+    const current = resourceMenu;
+    if (!current || !worldId) return;
+    setResourceMenu(null);
+    const { payload, node } = current;
+
+    if (action === "import" || action === "export") {
+      setStageNotice(action === "import" ? "导入会沿用当前合集导入流程。" : "导出会沿用当前合集导出流程。");
+      openTab("collect");
+      return;
+    }
+
+    if (action === "permission") {
+      try {
+        const nextMode = payload.permissionMode === "PLAYER_EDIT" ? "DEFAULT" : "PLAYER_EDIT";
+        if (payload.kind === "folder") {
+          await updateFolder(worldId, payload.id, { permissionMode: nextMode });
+        } else if (payload.kind === "entity") {
+          await updateEntity(worldId, payload.entityType, payload.id, { permissionMode: nextMode });
+        } else {
+          await updateCharacterPatch(payload.id, { permissionMode: nextMode });
+        }
+        setStageNotice(nextMode === "PLAYER_EDIT" ? "已开放玩家编辑权限。" : "已恢复默认权限。");
+      } catch (err) {
+        setError(resolveErrorMessage(err, "更新权限失败"));
+      }
+      return;
+    }
+
+    if (action === "rename") {
+      askForName({
+        title: payload.kind === "folder" ? "重命名目录" : "重命名条目",
+        label: "新名称",
+        initialValue: node.label,
+        confirmLabel: "保存",
+        onConfirm: async (value) => {
+          if (payload.kind === "folder") {
+            await updateFolder(worldId, payload.id, { name: value });
+          } else if (payload.kind === "entity") {
+            await updateEntity(worldId, payload.entityType, payload.id, { name: value });
+          } else {
+            await updateCharacterPatch(payload.id, { name: value });
+          }
+          setStageNotice(`已重命名为“${value}”。`);
+        },
+      });
+      return;
+    }
+
+    if (action === "copy") {
+      const copyName = `${node.label} 副本`;
+      if (payload.kind === "folder") {
+        await createManagedFolderFromName(payload.folderType, copyName, payload.parentId);
+      } else if (payload.kind === "entity") {
+        const sourceRecords = payload.entityType === "items" ? itemRecords : abilityRecords;
+        const sourceRecord = sourceRecords.find((item) => item.id === payload.id);
+        await createEntity(worldId, payload.entityType, { ...(sourceRecord ?? {}), id: undefined, name: copyName, folderId: payload.folderId });
+      } else {
+        await createCharacterFromName(copyName, payload.folderId);
+      }
+      setStageNotice(`已复制“${node.label}”。`);
     }
   };
 
@@ -2489,8 +2857,11 @@ export default function WorldPage() {
       loadEntities(worldId, "abilities"),
       loadEntities(worldId, "items"),
       loadEntities(worldId, "fateClocks"),
+      loadFolders(worldId, "CHARACTER"),
+      loadFolders(worldId, "ABILITY"),
+      loadFolders(worldId, "ITEM"),
     ]);
-  }, [loadEntities, worldId]);
+  }, [loadEntities, loadFolders, worldId]);
 
   useEffect(() => {
     if (!selectedBattleAbilityId && abilityRecords.length > 0) {
@@ -3205,68 +3576,50 @@ export default function WorldPage() {
 
   const renderCharacterTab = () => {
     const tabKey = "char" as SystemPanelTabKey;
-    const currentTreeData = treeData[tabKey] || getDefaultTreeData(tabKey);
-
-    return (
-      <SystemPanelContent
-        activeTab={tabKey}
-        toolbarButtons={getDefaultToolbarButtons(tabKey)}
-        treeData={currentTreeData}
-        onTreeNodeClick={(node) => {
-          console.log("Character node clicked:", node);
-          // TODO: 实现角色选择逻辑
-        }}
-        onTreeNodeToggle={(nodeId) => {
-          setTreeCollapsedNodes((prev) => {
-            const next = new Set(prev);
-            if (next.has(nodeId)) {
-              next.delete(nodeId);
-            } else {
-              next.add(nodeId);
-            }
-            return next;
-          });
-          setTreeData((prev) => ({
-            ...prev,
-            [tabKey]: toggleTreeNode(currentTreeData, nodeId),
-          }));
-        }}
-      />
-    );
-  };
-
-  const renderAbilityTab = () => {
-    const tabKey = "ability" as SystemPanelTabKey;
-    const currentTreeData = buildAbilityLibraryTree(abilityRecords, treeCollapsedNodes);
-    const abilityToolbarButtons = [
+    const currentTreeData = buildManagedTree({
+      folderType: "CHARACTER",
+      folders: characterFolders,
+      records: characters,
+      collapsedNodes: treeCollapsedNodes,
+      activeRecordId: selectedCharacterId,
+      leafKind: "character",
+      folderIcon: "▣",
+      leafIcon: "◈",
+      leafMeta: (record) => ((record as CharacterItem).type === "NPC" ? "NPC" : "PC"),
+    });
+    const characterToolbarButtons = [
       {
-        label: canEditEntityType(role, "abilities") ? "新 建 能 力" : "查 看 能 力",
+        label: "新 建 角 色",
         variant: "gold" as const,
-        onClick: () => openEntityOverlay("abilities", "能力模板库"),
+        onClick: () => askForName({
+          title: "新建角色",
+          label: "角色名字",
+          confirmLabel: "创建",
+          onConfirm: (value) => createCharacterFromName(value),
+        }),
       },
       {
-        label: "能 力 库",
-        onClick: () => openEntityOverlay("abilities", "能力模板库"),
+        label: "新 建 目 录",
+        onClick: () => askForName({
+          title: "新建角色目录",
+          label: "目录名字",
+          confirmLabel: "创建",
+          onConfirm: (value) => createManagedFolderFromName("CHARACTER", value),
+        }),
       },
-      {
-        label: "种 族",
-        onClick: () => openEntityOverlay("races", "种族模板库"),
-      },
-      {
-        label: "职 业",
-        onClick: () => openEntityOverlay("professions", "职业模板库"),
-      },
+      { label: "导 入", onClick: () => openTab("collect") },
+      { label: "导 出", onClick: () => openTab("collect") },
     ];
 
     return (
       <SystemPanelContent
         activeTab={tabKey}
-        toolbarButtons={abilityToolbarButtons}
+        toolbarButtons={characterToolbarButtons}
         treeData={currentTreeData}
-        footerNote="双击条目在能力库里编辑；种族、职业可以挂接这些能力。"
         onTreeNodeClick={(node) => {
-          if (node.type === "leaf") {
-            openEntityOverlay("abilities", "能力模板库");
+          const payload = readTreePayload(node);
+          if (payload?.kind === "character") {
+            openCharacterOverlay(payload.id);
           }
         }}
         onTreeNodeToggle={(nodeId) => {
@@ -3280,21 +3633,61 @@ export default function WorldPage() {
             return next;
           });
         }}
+        onTreeNodeDrop={(target, position, payload) => { void onManagedTreeDrop(target, position, payload); }}
+        onTreeNodeContextMenu={onManagedTreeContextMenu}
       />
     );
   };
 
-  const renderItemTab = () => {
-    const tabKey = "item" as SystemPanelTabKey;
-    const currentTreeData = treeData[tabKey] || getDefaultTreeData(tabKey);
+  const renderAbilityTab = () => {
+    const tabKey = "ability" as SystemPanelTabKey;
+    const currentTreeData = buildManagedTree({
+      folderType: "ABILITY",
+      folders: abilityFolders,
+      records: abilityRecords,
+      collapsedNodes: treeCollapsedNodes,
+      activeRecordId: selectedBattleAbilityId,
+      entityType: "abilities",
+      leafKind: "entity",
+      folderIcon: "✦",
+      leafIcon: "◆",
+      leafMeta: (record) => ABILITY_CATEGORY_LABELS[getEntityText(record as EntityRecord, "category", "custom")] || getEntityText(record as EntityRecord, "activation"),
+    });
+    const abilityToolbarButtons = [
+      {
+        label: "新 建 能 力",
+        variant: "gold" as const,
+        onClick: () => askForName({
+          title: "新建能力",
+          label: "能力名字",
+          confirmLabel: "创建并编辑",
+          onConfirm: (value) => createManagedEntityFromName("abilities", value),
+        }),
+      },
+      {
+        label: "新 建 目 录",
+        onClick: () => askForName({
+          title: "新建能力目录",
+          label: "目录名字",
+          confirmLabel: "创建",
+          onConfirm: (value) => createManagedFolderFromName("ABILITY", value),
+        }),
+      },
+      { label: "导 入", onClick: () => openTab("collect") },
+      { label: "导 出", onClick: () => openTab("collect") },
+    ];
 
     return (
       <SystemPanelContent
         activeTab={tabKey}
-        toolbarButtons={getDefaultToolbarButtons(tabKey)}
+        toolbarButtons={abilityToolbarButtons}
         treeData={currentTreeData}
         onTreeNodeClick={(node) => {
-          console.log("Item node clicked:", node);
+          const payload = readTreePayload(node);
+          if (payload?.kind === "entity" && payload.entityType === "abilities") {
+            setSelectedBattleAbilityId(payload.id);
+            openEntityEditorOverlay("abilities", payload.id, `能力编辑 · ${node.label}`);
+          }
         }}
         onTreeNodeToggle={(nodeId) => {
           setTreeCollapsedNodes((prev) => {
@@ -3306,11 +3699,74 @@ export default function WorldPage() {
             }
             return next;
           });
-          setTreeData((prev) => ({
-            ...prev,
-            [tabKey]: toggleTreeNode(currentTreeData, nodeId),
-          }));
         }}
+        onTreeNodeDrop={(target, position, payload) => { void onManagedTreeDrop(target, position, payload); }}
+        onTreeNodeContextMenu={onManagedTreeContextMenu}
+      />
+    );
+  };
+
+  const renderItemTab = () => {
+    const tabKey = "item" as SystemPanelTabKey;
+    const currentTreeData = buildManagedTree({
+      folderType: "ITEM",
+      folders: itemFolders,
+      records: itemRecords,
+      collapsedNodes: treeCollapsedNodes,
+      entityType: "items",
+      leafKind: "entity",
+      folderIcon: "▣",
+      leafIcon: "◊",
+      leafMeta: (record) => [getEntityText(record as EntityRecord, "category", "gear"), getEntityText(record as EntityRecord, "rarity")].filter(Boolean).join(" · "),
+    });
+    const itemToolbarButtons = [
+      {
+        label: "新 建 物 品",
+        variant: "gold" as const,
+        onClick: () => askForName({
+          title: "新建物品",
+          label: "物品名字",
+          confirmLabel: "创建并编辑",
+          onConfirm: (value) => createManagedEntityFromName("items", value),
+        }),
+      },
+      {
+        label: "新 建 目 录",
+        onClick: () => askForName({
+          title: "新建物品目录",
+          label: "目录名字",
+          confirmLabel: "创建",
+          onConfirm: (value) => createManagedFolderFromName("ITEM", value),
+        }),
+      },
+      { label: "导 入", onClick: () => openTab("collect") },
+      { label: "导 出", onClick: () => openTab("collect") },
+    ];
+
+    return (
+      <SystemPanelContent
+        activeTab={tabKey}
+        toolbarButtons={itemToolbarButtons}
+        treeData={currentTreeData}
+        onTreeNodeClick={(node) => {
+          const payload = readTreePayload(node);
+          if (payload?.kind === "entity" && payload.entityType === "items") {
+            openEntityEditorOverlay("items", payload.id, `物品编辑 · ${node.label}`);
+          }
+        }}
+        onTreeNodeToggle={(nodeId) => {
+          setTreeCollapsedNodes((prev) => {
+            const next = new Set(prev);
+            if (next.has(nodeId)) {
+              next.delete(nodeId);
+            } else {
+              next.add(nodeId);
+            }
+            return next;
+          });
+        }}
+        onTreeNodeDrop={(target, position, payload) => { void onManagedTreeDrop(target, position, payload); }}
+        onTreeNodeContextMenu={onManagedTreeContextMenu}
       />
     );
   };
@@ -3646,201 +4102,65 @@ export default function WorldPage() {
     />
   );
 
-  const renderSystemTab = () => (
-    <div className="world-system-config-page">
-      <div className="world-system-section-title">
-        <strong>世界设置</strong>
-        <span>{worldName} · {selectedScene?.name || "未选中场景"} · 在线 {onlineCount}</span>
+  const renderSystemTab = () => {
+    const hostDisplayName = user?.displayName || user?.username || "";
+    const displayRole = role === "GM" ? (hostDisplayName ? `GM_${hostDisplayName}` : "GM") : role === "ASSISTANT" ? "玩家助手" : role === "PLAYER" ? "玩家" : role === "OBSERVER" ? "观战" : "未加入";
+    return (
+      <div className="world-system-config-page world-system-config-page--codex">
+        <section className="sys-section world-system-sky-section" aria-label="世界信息">
+          <h5>世界信息</h5>
+          <div className="world-system-info-list">
+            <div><span>世界名</span><strong>{worldName}</strong></div>
+            <div><span>规则版本</span><strong>v1.0.0</strong></div>
+            <div><span>主持</span><strong>{displayRole}</strong></div>
+            <div><span>玩家</span><strong>{onlineCount} / 6</strong></div>
+          </div>
+        </section>
+
+        <section className="sys-section world-system-sky-section" aria-label="视角权限">
+          <h5>视角权限</h5>
+          <div className="sys-row">
+            {isGm ? <button type="button" className="sc-btn sc-btn--gold" onClick={() => setGmPlayerView(false)}>GM 视角</button> : null}
+            {isGm ? <button type="button" className="sc-btn" onClick={() => setGmPlayerView(true)}>玩家视角</button> : null}
+            <button type="button" className="sc-btn">观战</button>
+            {canManagePlayers ? <button type="button" className="sc-btn" onClick={() => void openPlayerOverlay()}>玩家权限管理</button> : null}
+          </div>
+        </section>
+
+        <section className="sys-section world-system-sky-section" aria-label="资源插件">
+          <h5>资源 · 插件</h5>
+          <div className="sys-row">
+            <button type="button" className="sc-btn" onClick={() => openTab("collect")}>资源包</button>
+            <button type="button" className="sc-btn" onClick={() => setStageNotice(`插件状态：${runtimeState?.status || "未加载"}`)}>插件管理</button>
+            <button type="button" className="sc-btn" onClick={() => openTab("ability")}>能力库</button>
+            <button type="button" className="sc-btn" onClick={() => openTab("item")}>物品库</button>
+          </div>
+        </section>
+
+        <section className="sys-section world-system-sky-section" aria-label="世界操作">
+          <h5>世界操作</h5>
+          <div className="sys-row">
+            <button type="button" className="sc-btn" onClick={() => setStageNotice("世界设置已保存。")}>保存</button>
+            <button type="button" className="sc-btn sc-btn--blue" onClick={() => openTab("collect")}>快照</button>
+            <button type="button" className="sc-btn" onClick={openThemeOverlay}>设置</button>
+            <button type="button" className="sc-btn" onClick={openHotkeyOverlay}>⌨ 快捷键</button>
+            <button type="button" className="sc-btn sc-btn--danger" onClick={() => navigate("/lobby")}>返回大厅</button>
+          </div>
+        </section>
+
+        <section className="sys-section world-system-sky-section" aria-label="记录与日志">
+          <h5>记录与日志</h5>
+          <div className="sys-row">
+            <button type="button" className="sc-btn sc-btn--gold" onClick={() => openTab("chat")}>▣ 打开日志</button>
+            <button type="button" className="sc-btn" onClick={() => { setError(null); setStageNotice("提示与临时日志已清空。"); }}>清空</button>
+          </div>
+          <p className="world-system-sky-note">含骰点 / 伤害 / 系统事件流，可导出 JSON / Markdown</p>
+        </section>
+
+        {!isGm ? <p className="world-system-sky-note">当前身份只开放公开查询和个人设置；资源包、权限和插件管理由 GM 操作。</p> : null}
       </div>
-
-      <section className="world-system-rule-query" aria-label="规则查询">
-        <div className="world-system-rule-query__head">
-          <strong>规则查询</strong>
-          <span>查询当前世界公开规则资料。玩家只在这里查规则，不会碰到 GM 管理入口。</span>
-        </div>
-        <div className="world-system-rule-query__grid">
-          {canViewEntityType(role, "abilities") ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={() => openEntityOverlay("abilities", "能力规则查询")}>
-              <span className="world-system-action-btn__title">能力规则</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          {canViewEntityType(role, "items") ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={() => openEntityOverlay("items", "装备物品查询")}>
-              <span className="world-system-action-btn__title">装备物品</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          {canViewEntityType(role, "races") ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={() => openEntityOverlay("races", "种族血脉查询")}>
-              <span className="world-system-action-btn__title">种族血脉</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          {canViewEntityType(role, "professions") ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={() => openEntityOverlay("professions", "职业与天赋查询")}>
-              <span className="world-system-action-btn__title">职业天赋</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          {canViewEntityType(role, "backgrounds") ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={() => openEntityOverlay("backgrounds", "背景查询")}>
-              <span className="world-system-action-btn__title">背景资料</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          {canViewEntityType(role, "decks") ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={() => openEntityOverlay("decks", "牌组查询")}>
-              <span className="world-system-action-btn__title">牌组</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          {canViewEntityType(role, "randomTables") ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={() => openEntityOverlay("randomTables", "随机表查询")}>
-              <span className="world-system-action-btn__title">随机表</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={openHotkeyOverlay}>
-            <span className="world-system-action-btn__title">快捷键设置</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn world-system-action-btn--query" onClick={openThemeOverlay}>
-            <span className="world-system-action-btn__title">设计风格</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-        </div>
-      </section>
-
-      <p className="world-system-visibility-note">
-        常用快捷键：{shortcutPreview || "尚未设置。你可以打开快捷键设置录制键盘、鼠标或组合键。"}
-      </p>
-
-      {isGm ? (
-        <>
-          <div className="world-system-section-title world-system-section-title--help">
-            <strong>GM 控制台</strong>
-            <span>权限、模板、命刻、资源包与世界模块</span>
-          </div>
-
-          <button type="button" className="world-system-action-btn world-system-action-btn--debug" onClick={() => setGmPlayerView(true)}>
-            <span className="world-system-action-btn__title">进入玩家视角</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-
-          {canManagePlayers ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--setting" onClick={() => void openPlayerOverlay()}>
-              <span className="world-system-action-btn__title">玩家权限管理</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("abilities", "能力模板库")}>
-            <span className="world-system-action-btn__title">能力模板库</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("items", "物品与装备库")}>
-            <span className="world-system-action-btn__title">物品与装备库</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("races", "种族模板库")}>
-            <span className="world-system-action-btn__title">种族模板库</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("professions", "职业模板库")}>
-            <span className="world-system-action-btn__title">职业模板库</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("backgrounds", "背景模板库")}>
-            <span className="world-system-action-btn__title">背景模板库</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("fateClocks", "命刻编辑器")}>
-            <span className="world-system-action-btn__title">命刻编辑器</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("decks", "卡组编辑器")}>
-            <span className="world-system-action-btn__title">卡组编辑器</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-          <button type="button" className="world-system-action-btn" onClick={() => openEntityOverlay("randomTables", "随机表编辑器")}>
-            <span className="world-system-action-btn__title">随机表编辑器</span>
-            <span className="world-system-action-btn__arrow">›</span>
-          </button>
-
-          {visibleTabs.some((tab) => tab.key === "collect") ? (
-            <button type="button" className="world-system-action-btn" onClick={() => openTab("collect")}>
-              <span className="world-system-action-btn__title">资源包导入导出</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-
-          <div className="world-system-section-title world-system-section-title--help">
-            <strong>运行状态</strong>
-            <span>{runtimeState?.status || "未加载"} · {runtimeLoading ? "刷新中" : "就绪"}</span>
-          </div>
-
-          <p className="world-system-window__summary">
-            {runtimeState
-              ? `世界引擎状态：${runtimeState.status}。${runtimeState.message || "当前没有新的异常摘要。"}`
-              : "运行状态尚未拉取。"}
-          </p>
-
-          <div className="world-extension-pack-pane">
-            <div className="world-extension-pack-grid">
-              {runtimeModules.map((module) => {
-                const toggling = togglingModuleKey === module.key;
-                return (
-                  <article className="world-extension-pack-card" key={module.key}>
-                    <div className="world-extension-pack-card__head">
-                      <div className="world-extension-pack-card__title-wrap">
-                        <strong>{module.displayName}</strong>
-                        <span>{module.key}</span>
-                      </div>
-                      <label className="world-extension-pack-card__toggle">
-                        <span>{module.status === "enabled" ? "已启用" : "未启用"}</span>
-                        <input
-                          type="checkbox"
-                          checked={module.status === "enabled"}
-                          disabled={!canManageModules || toggling}
-                          onChange={() => {
-                            void onToggleRuntimeModule(module);
-                          }}
-                        />
-                      </label>
-                    </div>
-                    <p className="world-extension-pack-card__desc">
-                      {module.dependencies.length > 0 ? `依赖：${module.dependencies.join(" / ")}` : "独立模块，可单独启用。"}
-                    </p>
-                    <div className="world-extension-pack-card__meta">
-                      <span>{toggling ? "切换中..." : `更新于 ${new Date(module.updatedAt).toLocaleString()}`}</span>
-                    </div>
-                    <div className="world-extension-pack-card__foot">可直接在当前世界开关。</div>
-                  </article>
-                );
-              })}
-              {runtimeModules.length === 0 && !moduleLoading ? <div className="world-system-window__empty">暂无可用模块。</div> : null}
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {isGmPlayerView ? (
-            <button type="button" className="world-system-action-btn world-system-action-btn--debug" onClick={() => setGmPlayerView(false)}>
-              <span className="world-system-action-btn__title">退出玩家视角</span>
-              <span className="world-system-action-btn__arrow">›</span>
-            </button>
-          ) : null}
-          <p className="world-system-visibility-note">当前身份只开放公开规则查询。需要修改世界模板、资源包或玩家权限时，请交给 GM 操作。</p>
-        </>
-      )}
-
-      <button type="button" className="world-system-lobby-btn" onClick={() => navigate("/lobby")}>
-        <span className="world-system-action-btn__title">返回大厅</span>
-        <span className="world-system-action-btn__arrow">›</span>
-      </button>
-    </div>
-  );
+    );
+  };
 
   const renderActiveSystemTab = () => {
     switch (activeTabMeta.key) {
@@ -4164,13 +4484,14 @@ export default function WorldPage() {
                   title={tab.title}
                 >
                   <Icon className="ico" />
+                  {tab.key === "chat" && unreadTotal > 0 ? <span className="badge">{unreadTotal}</span> : null}
                 </button>
               );
             })}
           </div>
           <div className="sys-body">
             {/* 聊天和战斗 tab 不显示标题栏，直接显示内容 */}
-            {activeTabMeta.key !== "chat" && activeTabMeta.key !== "battle" && (
+            {activeTabMeta.key !== "chat" && activeTabMeta.key !== "battle" && activeTabMeta.key !== "system" && (
               <div className="sys-body__head">
                 <div className="sys-body__copy">
                   <strong>{activeTabMeta.title}</strong>
@@ -4200,13 +4521,23 @@ export default function WorldPage() {
         onClose={contextMenu.close}
       />
 
+      {resourceMenu ? (
+        <ResourceNodeContextMenu
+          menu={resourceMenu}
+          onAction={(action) => { void onResourceMenuAction(action); }}
+          onClose={() => setResourceMenu(null)}
+        />
+      ) : null}
+
+      {nameDialog ? <ResourceNameDialog dialog={nameDialog} onClose={() => setNameDialog(null)} /> : null}
+
       {overlays.map((activeOverlay) => (
         <FloatingToolWindow
           key={activeOverlay.id}
           id={activeOverlay.id}
           title={activeOverlay.title}
           placement={activeOverlay.placement}
-          componentName={`overlay-${activeOverlay.kind}`}
+          componentName={`overlay-${activeOverlay.kind}${activeOverlay.kind === "entity" && activeOverlay.editorOnly ? "-editor" : ""}`}
           compact={activeOverlay.compact}
           onMove={moveOverlay}
           onFocus={focusOverlay}
@@ -4218,6 +4549,9 @@ export default function WorldPage() {
               entityType={activeOverlay.entityType}
               label={activeOverlay.title}
               canEdit={canEditEntityType(role, activeOverlay.entityType)}
+              initialItemId={activeOverlay.entityId}
+              editorOnly={activeOverlay.editorOnly}
+              onRequestClose={() => closeOverlay(activeOverlay.id)}
             />
           ) : activeOverlay.kind === "players" ? (
             <PlayerManagePane

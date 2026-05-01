@@ -56,6 +56,7 @@ function makeFolder(
     icon: null,
     sortOrder,
     collapsed: false,
+    permissionMode: "DEFAULT",
     createdAt,
     updatedAt: createdAt,
   };

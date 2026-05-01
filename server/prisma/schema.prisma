@@ -149,6 +149,7 @@ model Folder {
   icon        String?
   sortOrder   Int         @default(0)
   collapsed   Boolean     @default(false)
+  permissionMode String    @default("DEFAULT")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -213,6 +214,8 @@ model Character {
   name        String
   avatarUrl   String?
   type        CharacterType @default(PC)
+  sortOrder   Int           @default(0)
+  permissionMode String     @default("DEFAULT")
   stats       Json?
   snapshot    Json?
   aiConfig    Json?
@@ -345,6 +348,7 @@ model AbilityDefinition {
   upcastEffect  String?
   sortOrder     Int      @default(0)
   folderId      String?
+  permissionMode String   @default("DEFAULT")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   world         World    @relation(fields: [worldId], references: [id])
@@ -375,6 +379,7 @@ model RaceDefinition {
   ageDesc       String   @default("")
   traits        Json     @default("[]")
   subtypes      Json     @default("[]")
+  sortOrder     Int      @default(0)
   folderId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -410,6 +415,7 @@ model ProfessionDefinition {
   furyPerLevel        Float    @default(0)
   levelFeatures       Json     @default("[]")
   talentTreeIds       Json     @default("[]")
+  sortOrder           Int      @default(0)
   folderId            String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -436,6 +442,7 @@ model BackgroundDefinition {
   toolProficiencies Json    @default("[]")
   startingEquipment Json    @default("[]")
   features         Json     @default("[]")
+  sortOrder        Int      @default(0)
   folderId         String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -472,7 +479,9 @@ model ItemDefinition {
   enhanceSlots  Int      @default(0)
   gemSlots      Int      @default(0)
   tags          Json     @default("[]")
+  sortOrder     Int      @default(0)
   folderId      String?
+  permissionMode String   @default("DEFAULT")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   world         World    @relation(fields: [worldId], references: [id])
@@ -500,6 +509,7 @@ model FateClock {
   status          String   @default("active")
   sceneId         String?
   history         Json     @default("[]")
+  sortOrder       Int      @default(0)
   folderId        String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -522,6 +532,7 @@ model DeckDefinition {
   cards         Json     @default("[]")
   replacement   Boolean  @default(true)
   drawnHistory  Json     @default("[]")
+  sortOrder     Int      @default(0)
   folderId      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -543,6 +554,7 @@ model RandomTable {
   description  String   @default("")
   diceFormula  String   @default("1d100")
   entries      Json     @default("[]")
+  sortOrder    Int      @default(0)
   folderId     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { CharacterType } from "@prisma/client";
-import { createCharacter, listCharacters, updateCharacter } from "../services/character.service";
+import { createCharacter, listCharacters, reorderCharacters, updateCharacter } from "../services/character.service";
 
 function parseCharacterType(value: unknown): CharacterType {
   const candidate = typeof value === "string" ? value.toUpperCase() : "PC";
@@ -55,7 +55,9 @@ export async function postWorldCharacter(req: Request, res: Response) {
       requesterId: req.userId,
       name: String(req.body?.name ?? ""),
       type: parseCharacterType(req.body?.type),
-      userId: typeof req.body?.userId === "string" ? req.body.userId : null
+      userId: typeof req.body?.userId === "string" ? req.body.userId : null,
+      folderId: Object.prototype.hasOwnProperty.call(req.body ?? {}, "folderId") ? req.body.folderId : null,
+      sortOrder: req.body?.sortOrder != null ? Number(req.body.sortOrder) : undefined,
     });
 
     res.status(201).json({
@@ -94,7 +96,10 @@ export async function putWorldCharacter(req: Request, res: Response) {
       requesterId: req.userId,
       name: typeof req.body?.name === "string" ? req.body.name : undefined,
       stats: req.body?.stats,
-      snapshot: req.body?.snapshot
+      snapshot: req.body?.snapshot,
+      folderId: Object.prototype.hasOwnProperty.call(req.body ?? {}, "folderId") ? req.body.folderId : undefined,
+      sortOrder: req.body?.sortOrder != null ? Number(req.body.sortOrder) : undefined,
+      permissionMode: req.body?.permissionMode,
     });
 
     res.status(200).json({
@@ -110,6 +115,43 @@ export async function putWorldCharacter(req: Request, res: Response) {
       success: false,
       data: null,
       error: { code: "CHARACTER_UPDATE_ERROR", message },
+      requestId: req.requestId
+    });
+  }
+}
+
+export async function postWorldCharactersReorder(req: Request, res: Response) {
+  try {
+    if (!req.userId) {
+      res.status(401).json({
+        success: false,
+        data: null,
+        error: { code: "UNAUTHORIZED", message: "User not authenticated" },
+        requestId: req.requestId
+      });
+      return;
+    }
+
+    const characters = await reorderCharacters({
+      worldId: req.params.worldId,
+      requesterId: req.userId,
+      folderId: Object.prototype.hasOwnProperty.call(req.body ?? {}, "folderId") ? req.body.folderId : null,
+      orderedIds: Array.isArray(req.body?.orderedIds) ? req.body.orderedIds : []
+    });
+
+    res.status(200).json({
+      success: true,
+      data: characters,
+      error: null,
+      requestId: req.requestId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown error";
+    const status = message === "not a member of world" ? 403 : message.includes("not found") ? 404 : 400;
+    res.status(status).json({
+      success: false,
+      data: null,
+      error: { code: "CHARACTER_REORDER_ERROR", message },
       requestId: req.requestId
     });
   }

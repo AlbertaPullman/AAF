@@ -1,5 +1,7 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { HoverInsightTrigger, type HoverInsightEntry } from "../HoverInsightCards";
+import { http } from "../../../lib/http";
+import { resolvePublicAssetUrl } from "../../../lib/assets";
 import { useWorldEntityStore, type EntityRecord, type EntityType } from "../../stores/worldEntityStore";
 import {
   AbilityVisualEditor,
@@ -43,9 +45,12 @@ type EntityManagerProps = {
   entityType: EntityType;
   label: string;
   canEdit: boolean;
+  initialItemId?: string;
+  editorOnly?: boolean;
+  onRequestClose?: () => void;
 };
 
-type EntityFieldType = "text" | "textarea" | "number" | "boolean" | "select" | "json";
+type EntityFieldType = "text" | "textarea" | "number" | "boolean" | "select" | "json" | "image";
 type EditorPanelKey = "description" | "rules" | "advanced";
 
 type EntityFieldSchema = {
@@ -127,11 +132,11 @@ const SAVE_DC_SOURCE_OPTIONS = DC_TARGET_OPTIONS.map((option) => ({ label: optio
 
 const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
   abilities: {
-    description: "模板库只负责检索和组织条目；双击条目打开编辑器，展示文本与后台结算分开配置。",
+    description: "集中管理能力资源；左侧系统目录负责组织，弹窗只处理当前条目的展示文本与后台结算。",
     fields: [
       { key: "name", label: "名称", type: "text", placeholder: "例如：守护反应", defaultValue: "", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：法术/塑能/冰", defaultValue: "", span: 2, panel: "description" },
-      { key: "iconUrl", label: "图标 URL", type: "text", placeholder: "可选，用于玩家阅读界面展示", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：法术/塑能/冰", defaultValue: "", span: 2, panel: "description" },
+      { key: "iconUrl", label: "能力图标", type: "image", placeholder: "可选，也可以粘贴外部图片 URL", span: 2, panel: "description" },
       { key: "description", label: "玩家简介", type: "textarea", rows: 5, span: 2, panel: "description" },
       { key: "rulesText", label: "玩家可读规则文本", type: "textarea", rows: 8, span: 2, panel: "description" },
       {
@@ -341,11 +346,11 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   races: {
-    description: "种族、血脉与子种模板目录。目录页只展示条目，双击打开描述与规则配置。",
+    description: "种族、血脉与子种资源目录。目录页只展示条目，双击打开描述与规则配置。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：种族/人型/混血", span: 2, panel: "description" },
-      { key: "iconUrl", label: "图标 URL", type: "text", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：种族/人型/混血", span: 2, panel: "description" },
+      { key: "iconUrl", label: "图标", type: "image", span: 2, panel: "description" },
       { key: "description", label: "简介", type: "textarea", rows: 4, span: 2, panel: "description" },
       { key: "loreText", label: "设定文本", type: "textarea", rows: 8, span: 2, panel: "description" },
       { key: "ageDesc", label: "年龄描述", type: "textarea", rows: 3, span: 2, panel: "description" },
@@ -366,11 +371,11 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   professions: {
-    description: "冒险职业与生活职业模板目录。职业阅读文本与后台成长表分开维护。",
+    description: "冒险职业与生活职业资源目录。职业阅读文本与后台成长表分开维护。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：职业/冒险/前卫", span: 2, panel: "description" },
-      { key: "iconUrl", label: "图标 URL", type: "text", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：职业/冒险/前卫", span: 2, panel: "description" },
+      { key: "iconUrl", label: "图标", type: "image", span: 2, panel: "description" },
       { key: "description", label: "简介", type: "textarea", rows: 4, span: 2, panel: "description" },
       { key: "loreText", label: "设定文本", type: "textarea", rows: 8, span: 2, panel: "description" },
       { key: "type", label: "职业类型", type: "select", defaultValue: "combat", options: [
@@ -393,11 +398,11 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   backgrounds: {
-    description: "背景资料模板目录。描述给玩家阅读，规则页维护熟练、装备和背景特性。",
+    description: "背景资料资源目录。描述给玩家阅读，规则页维护熟练、装备和背景特性。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：背景/城市/行会", span: 2, panel: "description" },
-      { key: "iconUrl", label: "图标 URL", type: "text", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：背景/城市/行会", span: 2, panel: "description" },
+      { key: "iconUrl", label: "图标", type: "image", span: 2, panel: "description" },
       { key: "description", label: "简介", type: "textarea", rows: 4, span: 2, panel: "description" },
       { key: "loreText", label: "设定文本", type: "textarea", rows: 8, span: 2, panel: "description" },
       { key: "skillPoints", label: "技能点", type: "number", defaultValue: 0 },
@@ -408,11 +413,11 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   items: {
-    description: "装备、道具、素材与造物组件模板目录。物品说明与装备结算规则分离。",
+    description: "装备、道具、素材与造物组件资源目录。物品说明与装备结算规则分离。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：装备/武器/单手剑", span: 2, panel: "description" },
-      { key: "iconUrl", label: "图标 URL", type: "text", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：装备/武器/单手剑", span: 2, panel: "description" },
+      { key: "iconUrl", label: "图标", type: "image", span: 2, panel: "description" },
       { key: "description", label: "物品说明", type: "textarea", rows: 8, span: 2, panel: "description" },
       { key: "category", label: "物品类型", type: "text", defaultValue: "gear" },
       { key: "subcategory", label: "子类别", type: "text" },
@@ -433,10 +438,10 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   fateClocks: {
-    description: "命刻模板目录。目录管理倒计时条目，编辑器拆分公开描述和 GM 推进参数。",
+    description: "命刻资源目录。目录管理倒计时条目，编辑器拆分公开描述和 GM 推进参数。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：命刻/主线/危机", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：命刻/主线/危机", span: 2, panel: "description" },
       { key: "description", label: "公开描述", type: "textarea", rows: 6, span: 2, panel: "description" },
       { key: "segments", label: "刻度数", type: "number", defaultValue: 6 },
       { key: "filledSegments", label: "已填充", type: "number", defaultValue: 0 },
@@ -453,10 +458,10 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   decks: {
-    description: "牌组模板目录。牌组说明与卡牌列表分开编辑，便于后续接入抽牌自动化。",
+    description: "牌组资源目录。牌组说明与卡牌列表分开编辑，便于后续接入抽牌自动化。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：牌组/剧情/遭遇", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：牌组/剧情/遭遇", span: 2, panel: "description" },
       { key: "description", label: "牌组说明", type: "textarea", rows: 6, span: 2, panel: "description" },
       { key: "replacement", label: "抽后放回", type: "boolean", defaultValue: true },
       { key: "cards", label: "卡牌 JSON", type: "json", rows: 12, span: 2, jsonDefault: [] },
@@ -464,16 +469,22 @@ const ENTITY_SCHEMAS: Record<EntityType, EntitySchema> = {
     ],
   },
   randomTables: {
-    description: "随机表模板目录。表说明给玩家或 GM 阅读，结果项在规则页维护。",
+    description: "随机表资源目录。表说明给玩家或 GM 阅读，结果项在规则页维护。",
     fields: [
       { key: "name", label: "名称", type: "text", span: 2, panel: "description" },
-      { key: "folderPath", label: "模板目录", type: "text", placeholder: "例如：随机表/掉落/荒野", span: 2, panel: "description" },
+      { key: "folderPath", label: "目录路径", type: "text", placeholder: "例如：随机表/掉落/荒野", span: 2, panel: "description" },
       { key: "description", label: "说明", type: "textarea", rows: 6, span: 2, panel: "description" },
       { key: "diceFormula", label: "骰式", type: "text", defaultValue: "1d100" },
       { key: "entries", label: "表项 JSON", type: "json", rows: 14, span: 2, jsonDefault: [] },
     ],
   },
 };
+
+const FALLBACK_ENTITY_TYPE: EntityType = "abilities";
+
+function isRegisteredEntityType(value: unknown): value is EntityType {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(ENTITY_SCHEMAS, value);
+}
 
 function parseJsonInput(value: string): unknown {
   const trimmed = value.trim();
@@ -624,7 +635,11 @@ function getInitialFieldValue(field: EntityFieldSchema, source?: EntityRecord | 
   return source?.[field.key];
 }
 
-function buildInitialFormState(schema: EntitySchema, source?: EntityRecord | null): FormState {
+function buildInitialFormState(schema: EntitySchema | null | undefined, source?: EntityRecord | null): FormState {
+  if (!schema?.fields) {
+    return {};
+  }
+
   return Object.fromEntries(
     schema.fields.map((field) => {
       const rawValue = getInitialFieldValue(field, source);
@@ -646,17 +661,26 @@ function buildInitialFormState(schema: EntitySchema, source?: EntityRecord | nul
   );
 }
 
-function buildExtraJsonDraft(schema: EntitySchema, source?: EntityRecord | null) {
+function buildExtraJsonDraft(schema: EntitySchema | null | undefined, source?: EntityRecord | null) {
   if (!source) {
     return "{}";
   }
 
-  const schemaKeys = new Set(schema.fields.map((field) => field.key));
+  const schemaKeys = new Set((schema?.fields ?? []).map((field) => field.key));
   const extras = Object.fromEntries(
     Object.entries(source).filter(([key]) => !schemaKeys.has(key) && !SYSTEM_KEYS.has(key))
   );
 
   return stringifyJson(extras, {});
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("读取图片失败"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function normalizeFieldValue(field: EntityFieldSchema, rawValue: string | boolean): unknown {
@@ -762,28 +786,30 @@ function buildAbilityCheckPayload(state: FormState) {
 }
 
 function getEditorSubtitle(item: EntityRecord | null) {
-  if (!item) return "新建模板";
+  if (!item) return "新建条目";
   const folder = normalizeFolderPath(item.folderPath);
   const meta = getEntityMeta(item);
   return [folder || "未分类", meta].filter(Boolean).join(" · ");
 }
 
-export function EntityManager({ worldId, entityType, label, canEdit }: EntityManagerProps) {
+export function EntityManager({ worldId, entityType, label, canEdit, initialItemId, editorOnly = false, onRequestClose }: EntityManagerProps) {
+  const isEntityTypeRegistered = isRegisteredEntityType(entityType);
+  const activeEntityType = isEntityTypeRegistered ? entityType : FALLBACK_ENTITY_TYPE;
   const loadEntities = useWorldEntityStore((state) => state.loadEntities);
   const createEntity = useWorldEntityStore((state) => state.createEntity);
   const updateEntity = useWorldEntityStore((state) => state.updateEntity);
   const deleteEntity = useWorldEntityStore((state) => state.deleteEntity);
   const abilityItems = useWorldEntityStore((state) => state.abilities.items);
   const itemItems = useWorldEntityStore((state) => state.items.items);
-  const slice = useWorldEntityStore((state) => state[entityType]);
-  const schema = ENTITY_SCHEMAS[entityType];
-  const specialFieldKeys = SPECIAL_ENTITY_FIELDS[entityType as keyof typeof SPECIAL_ENTITY_FIELDS] ?? new Set<string>();
+  const slice = useWorldEntityStore((state) => state[activeEntityType]);
+  const schema = ENTITY_SCHEMAS[activeEntityType];
+  const specialFieldKeys = SPECIAL_ENTITY_FIELDS[activeEntityType as keyof typeof SPECIAL_ENTITY_FIELDS] ?? new Set<string>();
 
   const [keyword, setKeyword] = useState("");
   const deferredKeyword = useDeferredValue(keyword);
   const [selectedFolder, setSelectedFolder] = useState("");
   const [folderDraft, setFolderDraft] = useState("");
-  const [localFolders, setLocalFolders] = useState<string[]>(() => loadEntityFolders(worldId, entityType));
+  const [localFolders, setLocalFolders] = useState<string[]>(() => loadEntityFolders(worldId, activeEntityType));
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [editing, setEditing] = useState<EntityRecord | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -799,34 +825,35 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
   const [randomTableEditorState, setRandomTableEditorState] = useState<RandomTableEditorState>(() => buildRandomTableEditorState(null));
   const [extraJsonText, setExtraJsonText] = useState("{}");
   const [editorError, setEditorError] = useState<string | null>(null);
+  const [uploadingFieldKey, setUploadingFieldKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!worldId) {
+    if (!worldId || !isEntityTypeRegistered) {
       return;
     }
-    void loadEntities(worldId, entityType);
-  }, [worldId, entityType, loadEntities]);
+    void loadEntities(worldId, activeEntityType);
+  }, [worldId, activeEntityType, isEntityTypeRegistered, loadEntities]);
 
   useEffect(() => {
-    if (!worldId) {
+    if (!worldId || !isEntityTypeRegistered) {
       return;
     }
 
-    if (["professions", "races", "backgrounds", "items", "randomTables"].includes(entityType)) {
+    if (["professions", "races", "backgrounds", "items", "randomTables"].includes(activeEntityType)) {
       void loadEntities(worldId, "abilities");
     }
 
-    if (["decks", "randomTables"].includes(entityType)) {
+    if (["decks", "randomTables"].includes(activeEntityType)) {
       void loadEntities(worldId, "items");
     }
-  }, [entityType, loadEntities, worldId]);
+  }, [activeEntityType, isEntityTypeRegistered, loadEntities, worldId]);
 
   useEffect(() => {
-    setLocalFolders(loadEntityFolders(worldId, entityType));
+    setLocalFolders(isEntityTypeRegistered ? loadEntityFolders(worldId, activeEntityType) : []);
     setSelectedFolder("");
     setSelectedItemId(null);
     setKeyword("");
-  }, [entityType, worldId]);
+  }, [activeEntityType, isEntityTypeRegistered, worldId]);
 
   useEffect(() => {
     setFormState(buildInitialFormState(schema, editing));
@@ -843,14 +870,27 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
     setEditorTab("description");
   }, [editing, schema]);
 
+  useEffect(() => {
+    if (!initialItemId) return;
+    const item = slice.items.find((candidate) => candidate.id === initialItemId);
+    if (!item) return;
+    setSelectedItemId(item.id);
+    setIsCreating(false);
+    setEditing(item);
+  }, [initialItemId, slice.items]);
+
   const persistFolders = useCallback(
     (folders: string[]) => {
+      if (!isEntityTypeRegistered) {
+        setLocalFolders([]);
+        return [];
+      }
       const normalized = expandFolderAncestors(folders);
-      saveEntityFolders(worldId, entityType, normalized);
+      saveEntityFolders(worldId, activeEntityType, normalized);
       setLocalFolders(normalized);
       return normalized;
     },
-    [entityType, worldId]
+    [activeEntityType, isEntityTypeRegistered, worldId]
   );
 
   const registerFolderPath = useCallback(
@@ -895,9 +935,10 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
   }, [deferredKeyword, selectedFolder, slice.items]);
 
   const beginCreate = useCallback(() => {
+    if (!isEntityTypeRegistered) return;
     setIsCreating(true);
     setEditing({ id: "", worldId, name: "", folderPath: selectedFolder });
-  }, [selectedFolder, worldId]);
+  }, [isEntityTypeRegistered, selectedFolder, worldId]);
 
   const beginEdit = useCallback((item: EntityRecord) => {
     setIsCreating(false);
@@ -909,7 +950,10 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
     setEditing(null);
     setIsCreating(false);
     setEditorError(null);
-  }, []);
+    if (editorOnly) {
+      onRequestClose?.();
+    }
+  }, [editorOnly, onRequestClose]);
 
   const createFolder = useCallback(() => {
     const normalized = normalizeFolderPath(folderDraft);
@@ -927,18 +971,18 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
   }, [folderCount, localFolders, persistFolders, selectedFolder]);
 
   const moveSelectedToFolder = useCallback(async () => {
-    if (!selectedItem || !canEdit || !worldId) return;
+    if (!selectedItem || !canEdit || !worldId || !isEntityTypeRegistered) return;
     const nextFolder = normalizeFolderPath(selectedFolder);
-    await updateEntity(worldId, entityType, selectedItem.id, { folderPath: nextFolder });
+    await updateEntity(worldId, activeEntityType, selectedItem.id, { folderPath: nextFolder });
     registerFolderPath(nextFolder);
-  }, [canEdit, entityType, registerFolderPath, selectedFolder, selectedItem, updateEntity, worldId]);
+  }, [activeEntityType, canEdit, isEntityTypeRegistered, registerFolderPath, selectedFolder, selectedItem, updateEntity, worldId]);
 
   const deleteSelected = useCallback(async () => {
-    if (!selectedItem || !canEdit || !worldId) return;
+    if (!selectedItem || !canEdit || !worldId || !isEntityTypeRegistered) return;
     if (!window.confirm(`确定删除「${selectedItem.name}」吗？`)) return;
-    await deleteEntity(worldId, entityType, selectedItem.id);
+    await deleteEntity(worldId, activeEntityType, selectedItem.id);
     setSelectedItemId(null);
-  }, [canEdit, deleteEntity, entityType, selectedItem, worldId]);
+  }, [activeEntityType, canEdit, deleteEntity, isEntityTypeRegistered, selectedItem, worldId]);
 
   const updateField = useCallback((field: EntityFieldSchema, value: string | boolean) => {
     startTransition(() => {
@@ -951,8 +995,33 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
     });
   }, []);
 
+  const uploadIconFile = useCallback(async (field: EntityFieldSchema, file: File) => {
+    if (!worldId || !canEdit) return;
+    if (!file.type.startsWith("image/")) {
+      setEditorError("请选择 PNG、JPG、WebP 或 GIF 图片。");
+      return;
+    }
+    setUploadingFieldKey(field.key);
+    setEditorError(null);
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const response = await http.post(`/worlds/${worldId}/resource-icons`, {
+        fileName: file.name,
+        mimeType: file.type,
+        dataUrl,
+      });
+      const nextUrl = response.data?.data?.url;
+      if (typeof nextUrl !== "string" || !nextUrl) throw new Error("上传接口没有返回图标地址");
+      updateField(field, nextUrl);
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : "上传图标失败");
+    } finally {
+      setUploadingFieldKey(null);
+    }
+  }, [canEdit, updateField, worldId]);
+
   const submit = useCallback(async () => {
-    if (!editing || !worldId) {
+    if (!editing || !worldId || !isEntityTypeRegistered) {
       return;
     }
 
@@ -977,35 +1046,35 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
       nextData[field.key] = normalizeFieldValue(field, rawValue);
     }
 
-    if (entityType === "abilities") {
+    if (activeEntityType === "abilities") {
       Object.assign(nextData, buildAbilityCheckPayload(formState), buildAbilityEditorPayload(abilityEditorState));
     }
 
-    if (entityType === "races") {
+    if (activeEntityType === "races") {
       Object.assign(nextData, buildRaceEditorPayload(raceEditorState));
     }
 
-    if (entityType === "backgrounds") {
+    if (activeEntityType === "backgrounds") {
       Object.assign(nextData, buildBackgroundEditorPayload(backgroundEditorState));
     }
 
-    if (entityType === "items") {
+    if (activeEntityType === "items") {
       Object.assign(nextData, buildItemEditorPayload(itemEditorState));
     }
 
-    if (entityType === "professions") {
+    if (activeEntityType === "professions") {
       Object.assign(nextData, buildProfessionEditorPayload(professionEditorState));
     }
 
-    if (entityType === "fateClocks") {
+    if (activeEntityType === "fateClocks") {
       Object.assign(nextData, buildFateClockEditorPayload(fateClockEditorState));
     }
 
-    if (entityType === "decks") {
+    if (activeEntityType === "decks") {
       Object.assign(nextData, buildDeckEditorPayload(deckEditorState));
     }
 
-    if (entityType === "randomTables") {
+    if (activeEntityType === "randomTables") {
       Object.assign(nextData, buildRandomTableEditorPayload(randomTableEditorState));
     }
 
@@ -1025,23 +1094,30 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
 
     setEditorError(null);
     const saved = isCreating
-      ? await createEntity(worldId, entityType, nextData)
-      : await updateEntity(worldId, entityType, editing.id, nextData);
+      ? await createEntity(worldId, activeEntityType, nextData)
+      : await updateEntity(worldId, activeEntityType, editing.id, nextData);
     const savedFolder = normalizeFolderPath(saved.folderPath ?? nextData.folderPath);
     registerFolderPath(savedFolder);
     setSelectedItemId(saved.id);
-    closeEditor();
+    if (editorOnly) {
+      setEditing(saved);
+      setIsCreating(false);
+    } else {
+      closeEditor();
+    }
   }, [
     abilityEditorState,
+    activeEntityType,
     backgroundEditorState,
     closeEditor,
     createEntity,
     deckEditorState,
     editing,
-    entityType,
+    editorOnly,
     extraJsonText,
     fateClockEditorState,
     formState,
+    isEntityTypeRegistered,
     itemEditorState,
     isCreating,
     professionEditorState,
@@ -1096,6 +1172,54 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
           />
           {field.helperText ? <small>{field.helperText}</small> : null}
         </label>
+      );
+    }
+
+    if (field.type === "image") {
+      const rawUrl = String(value ?? "");
+      const previewUrl = resolvePublicAssetUrl(rawUrl);
+      const uploading = uploadingFieldKey === field.key;
+      return (
+        <div className={`${wrapperClass} entity-form__field--image`.trim()} key={field.key}>
+          <span>{field.label}</span>
+          <div className="entity-form__image-field">
+            <div className="entity-form__image-preview" aria-label="图标预览">
+              {previewUrl ? <img src={previewUrl} alt="" /> : <span>{String(formState.name || editing?.name || label).slice(0, 1)}</span>}
+            </div>
+            <div className="entity-form__image-controls">
+              <input
+                className="entity-form__input"
+                type="text"
+                value={rawUrl}
+                disabled={!canEdit || uploading}
+                placeholder={field.placeholder}
+                onChange={(event) => updateField(field, event.target.value)}
+              />
+              <div className="entity-form__image-actions">
+                <label className={`entity-mgr__edit-btn entity-form__upload-btn ${!canEdit || uploading ? "is-disabled" : ""}`.trim()}>
+                  {uploading ? "上传中..." : "导入图标"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    disabled={!canEdit || uploading}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void uploadIconFile(field, file);
+                    }}
+                  />
+                </label>
+                {rawUrl ? (
+                  <button type="button" className="entity-mgr__cancel-btn" disabled={!canEdit || uploading} onClick={() => updateField(field, "")}>
+                    清除
+                  </button>
+                ) : null}
+              </div>
+              <small>上传后的图标会进入资源素材目录；导出资源包时会随包带出。</small>
+            </div>
+          </div>
+          {field.helperText ? <small>{field.helperText}</small> : null}
+        </div>
       );
     }
 
@@ -1170,35 +1294,166 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
   };
 
   const renderSpecialEditor = () => {
-    if (entityType === "abilities") {
+    if (activeEntityType === "abilities") {
       return <AbilityVisualEditor value={abilityEditorState} disabled={!canEdit} onChange={setAbilityEditorState} />;
     }
-    if (entityType === "races") {
+    if (activeEntityType === "races") {
       return <RaceVisualEditor value={raceEditorState} disabled={!canEdit} abilityOptions={abilityOptions} onChange={setRaceEditorState} />;
     }
-    if (entityType === "backgrounds") {
+    if (activeEntityType === "backgrounds") {
       return <BackgroundVisualEditor value={backgroundEditorState} disabled={!canEdit} abilityOptions={abilityOptions} onChange={setBackgroundEditorState} />;
     }
-    if (entityType === "items") {
+    if (activeEntityType === "items") {
       return <ItemVisualEditor value={itemEditorState} disabled={!canEdit} abilityOptions={abilityOptions} onChange={setItemEditorState} />;
     }
-    if (entityType === "professions") {
+    if (activeEntityType === "professions") {
       return <ProfessionVisualEditor value={professionEditorState} disabled={!canEdit} abilityOptions={abilityOptions} onChange={setProfessionEditorState} />;
     }
-    if (entityType === "fateClocks") {
+    if (activeEntityType === "fateClocks") {
       return <FateClockVisualEditor value={fateClockEditorState} disabled={!canEdit} onChange={setFateClockEditorState} />;
     }
-    if (entityType === "decks") {
+    if (activeEntityType === "decks") {
       return <DeckVisualEditor value={deckEditorState} disabled={!canEdit} itemOptions={itemOptions} onChange={setDeckEditorState} />;
     }
-    if (entityType === "randomTables") {
+    if (activeEntityType === "randomTables") {
       return <RandomTableVisualEditor value={randomTableEditorState} disabled={!canEdit} abilityOptions={abilityOptions} itemOptions={itemOptions} onChange={setRandomTableEditorState} />;
     }
     return null;
   };
 
+  if (!isEntityTypeRegistered) {
+    const rawEntityTypeLabel = String(entityType ?? "未提供");
+    return (
+      <section className="entity-mgr" aria-label={`${label}管理器`} data-world-component="entity-resource-editor">
+        <header className="entity-mgr__header">
+          <div className="entity-mgr__title-wrap">
+            <h3 className="entity-mgr__title">{label || "资源编辑器"}</h3>
+            <p className="entity-mgr__summary">这个资源入口没有注册对应的编辑器 schema。</p>
+          </div>
+        </header>
+        <div className="entity-mgr__error">无法打开资源编辑器：入口类型「{rawEntityTypeLabel}」未注册。</div>
+      </section>
+    );
+  }
+
+  const editorContent = editing ? (
+    <div
+      className={`entity-mgr__editor ${editorOnly ? "entity-mgr__editor--single" : "entity-mgr__editor--modal entity-mgr__editor--floating-detail"}`}
+      role="dialog"
+      aria-modal="false"
+      aria-label={isCreating ? `新建${label}` : `编辑${editing.name}`}
+    >
+        <div className="entity-mgr__editor-header">
+          <div className="entity-mgr__editor-identity">
+            <div className="entity-mgr__editor-icon">
+              {resolvePublicAssetUrl(formState.iconUrl) ? <img src={resolvePublicAssetUrl(formState.iconUrl)} alt="" /> : <span>{String(formState.name || editing.name || label).slice(0, 1)}</span>}
+            </div>
+            <div>
+              <h4>{isCreating ? `新建${label}` : String(formState.name || editing.name || "未命名")}</h4>
+              <p>{getEditorSubtitle(editing)}</p>
+            </div>
+          </div>
+          {!editorOnly ? (
+            <button type="button" className="entity-mgr__close-btn" onClick={closeEditor}>
+              关闭
+            </button>
+          ) : null}
+        </div>
+
+        <div className="entity-mgr__editor-tabs" role="tablist">
+          {[
+            ["description", "展示文本"],
+            ["rules", "规则结算"],
+            ["advanced", "高级数据"],
+          ].map(([key, text]) => (
+            <button
+              key={key}
+              type="button"
+              className={editorTab === key ? "is-active" : ""}
+              onClick={() => setEditorTab(key as EditorPanelKey)}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
+
+        {editorError ? <div className="entity-mgr__error">{editorError}</div> : null}
+
+        <div className="entity-mgr__editor-scroll">
+          {editorTab === "description" ? (
+            <section className="entity-mgr__editor-panel entity-mgr__editor-panel--read">
+              <div className="entity-mgr__panel-note">
+                <strong>玩家阅读面</strong>
+                <span>这里放玩家会直接阅读的名称、图标、简介、设定和规则文字，不放结算公式。</span>
+              </div>
+              {renderFieldsForPanel("description")}
+            </section>
+          ) : null}
+
+          {editorTab === "rules" ? (
+            <section className="entity-mgr__editor-panel entity-mgr__editor-panel--rules">
+              <div className="entity-mgr__panel-note">
+                <strong>后台结算面</strong>
+                <span>这里配置类型、动作、检定、消耗、触发器、效果和成长表；字段会按选择自动展开。</span>
+              </div>
+              {renderFieldsForPanel("rules")}
+              {renderSpecialEditor()}
+            </section>
+          ) : null}
+
+          {editorTab === "advanced" ? (
+            <section className="entity-mgr__editor-panel entity-mgr__editor-panel--advanced">
+              <div className="entity-mgr__panel-note">
+                <strong>高级扩展</strong>
+                <span>仅用于当前可视化表单尚未覆盖的额外字段。常规能力、效果和目录不要写在这里。</span>
+              </div>
+              {renderFieldsForPanel("advanced")}
+              <label className="entity-form__field entity-form__field--span-2">
+                <span>额外 JSON 扩展</span>
+                <textarea
+                  className="entity-form__textarea"
+                  rows={12}
+                  value={extraJsonText}
+                  disabled={!canEdit}
+                  onChange={(event) => setExtraJsonText(event.target.value)}
+                />
+                <small>必须是 JSON 对象。这里会与上方字段合并保存。</small>
+              </label>
+            </section>
+          ) : null}
+        </div>
+
+        {canEdit ? (
+          <div className="entity-mgr__editor-footer">
+            <button type="button" className="entity-mgr__cancel-btn" onClick={closeEditor}>
+              取消
+            </button>
+            <button type="button" className="entity-mgr__save-btn" onClick={() => void submit()}>
+              保存
+            </button>
+          </div>
+        ) : null}
+      </div>
+  ) : null;
+
+  const editorPanel = editorOnly || !editorContent ? editorContent : (
+    <div className="entity-mgr__editor-dock" role="presentation">
+      {editorContent}
+    </div>
+  );
+
+  if (editorOnly) {
+    return (
+      <section className="entity-mgr entity-mgr--editor-only" aria-label={`${label}编辑器`} data-world-component="entity-resource-editor">
+        {slice.loading ? <div className="entity-mgr__loading">加载中...</div> : null}
+        {slice.error ? <div className="entity-mgr__error">{slice.error}</div> : null}
+        {editorPanel ?? (!slice.loading ? <div className="entity-mgr__empty">未找到要编辑的资源。</div> : null)}
+      </section>
+    );
+  }
+
   return (
-    <section className="entity-mgr" aria-label={`${label}管理器`} data-world-component="entity-template-library">
+    <section className="entity-mgr" aria-label={`${label}管理器`} data-world-component="entity-resource-manager">
       <header className="entity-mgr__header">
         <div className="entity-mgr__title-wrap">
           <h3 className="entity-mgr__title">{label}</h3>
@@ -1223,7 +1478,7 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
       {slice.error ? <div className="entity-mgr__error">{slice.error}</div> : null}
 
       <div className="entity-mgr__body">
-        <aside className="entity-mgr__library-tree" aria-label="模板分类">
+        <aside className="entity-mgr__library-tree" aria-label="资源分类">
           <div className="entity-mgr__library-title">
             <strong>分类</strong>
             <span>{folderRows.length - 1} 个目录</span>
@@ -1297,10 +1552,10 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
           <div className="entity-mgr__list">
             {filteredItems.length === 0 && !slice.loading ? <div className="entity-mgr__empty">暂无数据。可以先创建分类，再新建条目。</div> : null}
             {filteredItems.map((item) => {
-              const dragType = entityType === "abilities" ? "ability" : entityType === "items" ? "item" : null;
+              const dragType = activeEntityType === "abilities" ? "ability" : activeEntityType === "items" ? "item" : null;
               const meta = getEntityMeta(item);
               const folderPath = normalizeFolderPath(item.folderPath);
-              const insightEntry = getEntityInsightEntry(entityType, item);
+              const insightEntry = getEntityInsightEntry(activeEntityType, item);
 
               return (
                 <HoverInsightTrigger entry={insightEntry} key={item.id}>
@@ -1329,100 +1584,7 @@ export function EntityManager({ worldId, entityType, label, canEdit }: EntityMan
         </section>
       </div>
 
-      {editing ? (
-        <div className="entity-mgr__editor-dock" role="presentation">
-          <div className="entity-mgr__editor entity-mgr__editor--modal entity-mgr__editor--floating-detail" role="dialog" aria-modal="false" aria-label={isCreating ? `新建${label}` : `编辑${editing.name}`}>
-            <div className="entity-mgr__editor-header">
-              <div className="entity-mgr__editor-identity">
-                <div className="entity-mgr__editor-icon">
-                  {String(formState.iconUrl ?? "").trim() ? <img src={String(formState.iconUrl)} alt="" /> : <span>{String(formState.name || editing.name || label).slice(0, 1)}</span>}
-                </div>
-                <div>
-                  <h4>{isCreating ? `新建${label}` : String(formState.name || editing.name || "未命名")}</h4>
-                  <p>{getEditorSubtitle(editing)}</p>
-                </div>
-              </div>
-              <button type="button" className="entity-mgr__close-btn" onClick={closeEditor}>
-                关闭
-              </button>
-            </div>
-
-            <div className="entity-mgr__editor-tabs" role="tablist">
-              {[
-                ["description", "展示文本"],
-                ["rules", "规则结算"],
-                ["advanced", "高级数据"],
-              ].map(([key, text]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={editorTab === key ? "is-active" : ""}
-                  onClick={() => setEditorTab(key as EditorPanelKey)}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-
-            {editorError ? <div className="entity-mgr__error">{editorError}</div> : null}
-
-            <div className="entity-mgr__editor-scroll">
-              {editorTab === "description" ? (
-                <section className="entity-mgr__editor-panel entity-mgr__editor-panel--read">
-                  <div className="entity-mgr__panel-note">
-                    <strong>玩家阅读面</strong>
-                    <span>这里放玩家会直接阅读的名称、图标、简介、设定和规则文字，不放结算公式。</span>
-                  </div>
-                  {renderFieldsForPanel("description")}
-                </section>
-              ) : null}
-
-              {editorTab === "rules" ? (
-                <section className="entity-mgr__editor-panel entity-mgr__editor-panel--rules">
-                  <div className="entity-mgr__panel-note">
-                    <strong>后台结算面</strong>
-                    <span>这里配置类型、动作、检定、消耗、触发器、效果和成长表；字段会按选择自动展开。</span>
-                  </div>
-                  {renderFieldsForPanel("rules")}
-                  {renderSpecialEditor()}
-                </section>
-              ) : null}
-
-              {editorTab === "advanced" ? (
-                <section className="entity-mgr__editor-panel entity-mgr__editor-panel--advanced">
-                  <div className="entity-mgr__panel-note">
-                    <strong>高级扩展</strong>
-                    <span>仅用于当前可视化表单尚未覆盖的额外字段。常规能力、效果和目录不要写在这里。</span>
-                  </div>
-                  {renderFieldsForPanel("advanced")}
-                  <label className="entity-form__field entity-form__field--span-2">
-                    <span>额外 JSON 扩展</span>
-                    <textarea
-                      className="entity-form__textarea"
-                      rows={12}
-                      value={extraJsonText}
-                      disabled={!canEdit}
-                      onChange={(event) => setExtraJsonText(event.target.value)}
-                    />
-                    <small>必须是 JSON 对象。这里会与上方字段合并保存。</small>
-                  </label>
-                </section>
-              ) : null}
-            </div>
-
-            {canEdit ? (
-              <div className="entity-mgr__editor-footer">
-                <button type="button" className="entity-mgr__cancel-btn" onClick={closeEditor}>
-                  取消
-                </button>
-                <button type="button" className="entity-mgr__save-btn" onClick={() => void submit()}>
-                  保存
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      {editorPanel}
     </section>
   );
 }

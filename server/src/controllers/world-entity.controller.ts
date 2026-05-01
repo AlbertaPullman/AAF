@@ -9,6 +9,7 @@ import {
   listDecks, createDeck, updateDeck, deleteDeck,
   listRandomTables, createRandomTable, updateRandomTable, deleteRandomTable,
   exportCollectionPack, importCollectionPack,
+  reorderEntities, type WorldResourceEntityType,
 } from "../services/world-entity.service";
 
 /* ──── 辅助 ──── */
@@ -46,6 +47,20 @@ async function handleCrud(
   }
 }
 
+function reorderHandler(type: WorldResourceEntityType, errorCode: string) {
+  return (req: Request, res: Response) =>
+    handleCrud(
+      req,
+      res,
+      () => reorderEntities(req.params.worldId, req.userId!, type, {
+        ...(Object.prototype.hasOwnProperty.call(req.body ?? {}, "folderId") && { folderId: req.body.folderId }),
+        ...(Object.prototype.hasOwnProperty.call(req.body ?? {}, "folderPath") && { folderPath: req.body.folderPath }),
+        orderedIds: req.body?.orderedIds,
+      }),
+      errorCode,
+    );
+}
+
 /* ──── Abilities ──── */
 
 export const getAbilities = (req: Request, res: Response) =>
@@ -63,6 +78,8 @@ export const putAbility = (req: Request, res: Response) =>
 export const removeAbility = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteAbility(req.params.worldId, req.params.id, req.userId!), "ABILITY_DELETE_ERROR");
 
+export const postAbilityReorder = reorderHandler("abilities", "ABILITY_REORDER_ERROR");
+
 /* ──── Races ──── */
 
 export const getRaces = (req: Request, res: Response) =>
@@ -76,6 +93,8 @@ export const putRace = (req: Request, res: Response) =>
 
 export const removeRace = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteRace(req.params.worldId, req.params.id, req.userId!), "RACE_DELETE_ERROR");
+
+export const postRaceReorder = reorderHandler("races", "RACE_REORDER_ERROR");
 
 /* ──── Professions ──── */
 
@@ -91,6 +110,8 @@ export const putProfession = (req: Request, res: Response) =>
 export const removeProfession = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteProfession(req.params.worldId, req.params.id, req.userId!), "PROFESSION_DELETE_ERROR");
 
+export const postProfessionReorder = reorderHandler("professions", "PROFESSION_REORDER_ERROR");
+
 /* ──── Backgrounds ──── */
 
 export const getBackgrounds = (req: Request, res: Response) =>
@@ -105,6 +126,8 @@ export const putBackground = (req: Request, res: Response) =>
 export const removeBackground = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteBackground(req.params.worldId, req.params.id, req.userId!), "BACKGROUND_DELETE_ERROR");
 
+export const postBackgroundReorder = reorderHandler("backgrounds", "BACKGROUND_REORDER_ERROR");
+
 /* ──── Items ──── */
 
 export const getItems = (req: Request, res: Response) =>
@@ -118,6 +141,8 @@ export const putItem = (req: Request, res: Response) =>
 
 export const removeItem = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteItem(req.params.worldId, req.params.id, req.userId!), "ITEM_DELETE_ERROR");
+
+export const postItemReorder = reorderHandler("items", "ITEM_REORDER_ERROR");
 
 /* ──── FateClocks ──── */
 
@@ -140,6 +165,8 @@ export const patchFateClockAdvance = (req: Request, res: Response) =>
 export const removeFateClock = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteFateClock(req.params.worldId, req.params.id, req.userId!), "FATE_CLOCK_DELETE_ERROR");
 
+export const postFateClockReorder = reorderHandler("fateClocks", "FATE_CLOCK_REORDER_ERROR");
+
 /* ──── Decks ──── */
 
 export const getDecks = (req: Request, res: Response) =>
@@ -154,6 +181,8 @@ export const putDeck = (req: Request, res: Response) =>
 export const removeDeck = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteDeck(req.params.worldId, req.params.id, req.userId!), "DECK_DELETE_ERROR");
 
+export const postDeckReorder = reorderHandler("decks", "DECK_REORDER_ERROR");
+
 /* ──── RandomTables ──── */
 
 export const getRandomTables = (req: Request, res: Response) =>
@@ -167,6 +196,8 @@ export const putRandomTable = (req: Request, res: Response) =>
 
 export const removeRandomTable = (req: Request, res: Response) =>
   handleCrud(req, res, () => deleteRandomTable(req.params.worldId, req.params.id, req.userId!), "RANDOM_TABLE_DELETE_ERROR");
+
+export const postRandomTableReorder = reorderHandler("randomTables", "RANDOM_TABLE_REORDER_ERROR");
 
 /* ──── Collection Pack ──── */
 

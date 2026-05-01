@@ -20,6 +20,9 @@ export type CharacterItem = {
   userId: string | null;
   name: string;
   type: "PC" | "NPC";
+  folderId?: string | null;
+  sortOrder?: number;
+  permissionMode?: string;
   stats?: unknown;
   snapshot?: unknown;
 };

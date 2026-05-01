@@ -41,6 +41,10 @@ const rawDatabaseUrl = process.env.DATABASE_URL ?? "file:../../data/sqlite/aaf.d
 const databaseUrl = normalizeDatabaseUrl(rawDatabaseUrl);
 process.env.DATABASE_URL = databaseUrl;
 
+const workspaceRoot = path.basename(process.cwd()) === "server" ? path.resolve(process.cwd(), "..") : process.cwd();
+const uploadsDir = path.resolve(workspaceRoot, "data/uploads");
+fs.mkdirSync(uploadsDir, { recursive: true });
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   serverPort: Number(process.env.SERVER_PORT ?? 7001),
@@ -48,6 +52,7 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET ?? "replace-with-a-secure-secret",
   jwtExpiresDays: Number(process.env.JWT_EXPIRES_DAYS ?? 365),
   databaseUrl,
+  uploadsDir,
   chatRateLimitWindowMs: Number(process.env.CHAT_RATE_LIMIT_WINDOW_MS ?? 10_000),
   chatRateLimitMaxMessages: Number(process.env.CHAT_RATE_LIMIT_MAX_MESSAGES ?? 5),
   chatBlockedWords: (process.env.CHAT_BLOCKED_WORDS ?? "")

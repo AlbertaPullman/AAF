@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type DragEvent, type MouseEvent, type MutableRefObject, type PointerEvent, type ReactNode } from "react";
 import {
   Map as MapIcon,
   Users,
@@ -27,17 +27,22 @@ export type SystemTabKey =
   | "system";
 
 export type TreeNodeType = "dir" | "leaf";
+export type TreeDropPosition = "inside" | "before" | "after";
 
 export interface TreeNode {
   id: string;
   type: TreeNodeType;
   icon?: string;
+  iconUrl?: string | null;
   label: string;
   meta?: string;
   tagType?: "foe" | "npc" | "ok";
   children?: TreeNode[];
   collapsed?: boolean;
   active?: boolean;
+  draggable?: boolean;
+  dragData?: Record<string, unknown>;
+  dropDisabled?: boolean;
 }
 
 export interface ToolbarButton {
@@ -53,6 +58,8 @@ export interface SystemPanelContentProps {
   footerNote?: string;
   onTreeNodeClick?: (node: TreeNode) => void;
   onTreeNodeToggle?: (nodeId: string) => void;
+  onTreeNodeDrop?: (target: TreeNode, position: TreeDropPosition, dragData: Record<string, unknown>) => void;
+  onTreeNodeContextMenu?: (event: MouseEvent, node: TreeNode) => void;
   children?: ReactNode;
 }
 
@@ -83,26 +90,82 @@ interface ResTreeProps {
   nodes: TreeNode[];
   onNodeClick?: (node: TreeNode) => void;
   onNodeToggle?: (nodeId: string) => void;
+  onNodeDrop?: (target: TreeNode, position: TreeDropPosition, dragData: Record<string, unknown>) => void;
+  onNodeContextMenu?: (event: MouseEvent, node: TreeNode) => void;
 }
 
-function ResTree({ nodes, onNodeClick, onNodeToggle }: ResTreeProps) {
+function ResTree({ nodes, onNodeClick, onNodeToggle, onNodeDrop, onNodeContextMenu }: ResTreeProps) {
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dropHint, setDropHint] = useState<{ nodeId: string; position: TreeDropPosition } | null>(null);
+  const [pickedNode, setPickedNode] = useState<TreeNode | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+
   if (nodes.length === 0) return null;
 
   return (
     <div className="res-tree">
-      <TreeNodeList nodes={nodes} onNodeClick={onNodeClick} onNodeToggle={onNodeToggle} />
+      <TreeNodeList
+        nodes={nodes}
+        onNodeClick={onNodeClick}
+        onNodeToggle={onNodeToggle}
+        onNodeDrop={onNodeDrop}
+        onNodeContextMenu={onNodeContextMenu}
+        draggingNodeId={draggingNodeId}
+        setDraggingNodeId={setDraggingNodeId}
+        dropHint={dropHint}
+        setDropHint={setDropHint}
+        pickedNode={pickedNode}
+        setPickedNode={setPickedNode}
+        longPressTimerRef={longPressTimerRef}
+      />
     </div>
   );
+}
+
+function clearLongPressTimer(timerRef: MutableRefObject<number | null>) {
+  if (timerRef.current) {
+    window.clearTimeout(timerRef.current);
+    timerRef.current = null;
+  }
+}
+
+function getDropPosition(event: DragEvent<HTMLElement>, node: TreeNode): TreeDropPosition {
+  const rect = event.currentTarget.getBoundingClientRect();
+  const offsetY = event.clientY - rect.top;
+  if (node.type === "dir") {
+    if (offsetY < rect.height * 0.25) return "before";
+    if (offsetY > rect.height * 0.75) return "after";
+    return "inside";
+  }
+  return offsetY < rect.height * 0.5 ? "before" : "after";
 }
 
 function TreeNodeList({
   nodes,
   onNodeClick,
   onNodeToggle,
+  onNodeDrop,
+  onNodeContextMenu,
+  draggingNodeId,
+  setDraggingNodeId,
+  dropHint,
+  setDropHint,
+  pickedNode,
+  setPickedNode,
+  longPressTimerRef,
 }: {
   nodes: TreeNode[];
   onNodeClick?: (node: TreeNode) => void;
   onNodeToggle?: (nodeId: string) => void;
+  onNodeDrop?: (target: TreeNode, position: TreeDropPosition, dragData: Record<string, unknown>) => void;
+  onNodeContextMenu?: (event: MouseEvent, node: TreeNode) => void;
+  draggingNodeId: string | null;
+  setDraggingNodeId: (id: string | null) => void;
+  dropHint: { nodeId: string; position: TreeDropPosition } | null;
+  setDropHint: (hint: { nodeId: string; position: TreeDropPosition } | null) => void;
+  pickedNode: TreeNode | null;
+  setPickedNode: (node: TreeNode | null) => void;
+  longPressTimerRef: MutableRefObject<number | null>;
 }) {
   return (
     <ul>
@@ -112,6 +175,15 @@ function TreeNodeList({
           node={node}
           onNodeClick={onNodeClick}
           onNodeToggle={onNodeToggle}
+          onNodeDrop={onNodeDrop}
+          onNodeContextMenu={onNodeContextMenu}
+          draggingNodeId={draggingNodeId}
+          setDraggingNodeId={setDraggingNodeId}
+          dropHint={dropHint}
+          setDropHint={setDropHint}
+          pickedNode={pickedNode}
+          setPickedNode={setPickedNode}
+          longPressTimerRef={longPressTimerRef}
         />
       ))}
     </ul>
@@ -122,12 +194,35 @@ function TreeNodeItem({
   node,
   onNodeClick,
   onNodeToggle,
+  onNodeDrop,
+  onNodeContextMenu,
+  draggingNodeId,
+  setDraggingNodeId,
+  dropHint,
+  setDropHint,
+  pickedNode,
+  setPickedNode,
+  longPressTimerRef,
 }: {
   node: TreeNode;
   onNodeClick?: (node: TreeNode) => void;
   onNodeToggle?: (nodeId: string) => void;
+  onNodeDrop?: (target: TreeNode, position: TreeDropPosition, dragData: Record<string, unknown>) => void;
+  onNodeContextMenu?: (event: MouseEvent, node: TreeNode) => void;
+  draggingNodeId: string | null;
+  setDraggingNodeId: (id: string | null) => void;
+  dropHint: { nodeId: string; position: TreeDropPosition } | null;
+  setDropHint: (hint: { nodeId: string; position: TreeDropPosition } | null) => void;
+  pickedNode: TreeNode | null;
+  setPickedNode: (node: TreeNode | null) => void;
+  longPressTimerRef: MutableRefObject<number | null>;
 }) {
   const handleClick = () => {
+    if (pickedNode && pickedNode.id !== node.id && pickedNode.dragData && onNodeDrop && !node.dropDisabled) {
+      onNodeDrop(node, node.type === "dir" ? "inside" : "after", pickedNode.dragData);
+      setPickedNode(null);
+      return;
+    }
     if (node.type === "dir" && onNodeToggle) {
       onNodeToggle(node.id);
     }
@@ -136,14 +231,70 @@ function TreeNodeItem({
     }
   };
 
+  const handleDragStart = (event: DragEvent<HTMLLIElement>) => {
+    if (node.draggable === false || !node.dragData) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/json", JSON.stringify(node.dragData));
+    setDraggingNodeId(node.id);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLLIElement>) => {
+    if (!onNodeDrop || node.dropDisabled) return;
+    event.preventDefault();
+    const position = getDropPosition(event, node);
+    setDropHint({ nodeId: node.id, position });
+  };
+
+  const handleDrop = (event: DragEvent<HTMLLIElement>) => {
+    if (!onNodeDrop || node.dropDisabled) return;
+    event.preventDefault();
+    const payload = event.dataTransfer.getData("application/json");
+    setDraggingNodeId(null);
+    setDropHint(null);
+    if (!payload) return;
+    try {
+      onNodeDrop(node, dropHint?.nodeId === node.id ? dropHint.position : getDropPosition(event, node), JSON.parse(payload));
+    } catch {
+      return;
+    }
+  };
+
+  const handlePointerDown = (event: PointerEvent<HTMLLIElement>) => {
+    if (event.pointerType === "mouse" || node.draggable === false || !node.dragData) return;
+    clearLongPressTimer(longPressTimerRef);
+    longPressTimerRef.current = window.setTimeout(() => {
+      setPickedNode(node);
+      longPressTimerRef.current = null;
+    }, 420);
+  };
+
+  const handlePointerCancel = () => clearLongPressTimer(longPressTimerRef);
+
   return (
     <>
       <li
-        className={`${node.type} ${node.collapsed ? "collapsed" : ""} ${node.active ? "active" : ""}`.trim()}
+        className={`${node.type} ${node.collapsed ? "collapsed" : ""} ${node.active ? "active" : ""} ${draggingNodeId === node.id ? "is-dragging" : ""} ${pickedNode?.id === node.id ? "is-picked" : ""} ${dropHint?.nodeId === node.id ? `drop-${dropHint.position}` : ""}`.trim()}
         onClick={handleClick}
+        draggable={node.draggable !== false && Boolean(node.dragData)}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={() => setDropHint(null)}
+        onDrop={handleDrop}
+        onDragEnd={() => {
+          setDraggingNodeId(null);
+          setDropHint(null);
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerCancel}
+        onPointerUp={handlePointerCancel}
+        onPointerCancel={handlePointerCancel}
+        onContextMenu={(event) => onNodeContextMenu?.(event, node)}
       >
         {node.type === "dir" && <span className="caret">▾</span>}
-        {node.icon && <span className="ic">{node.icon}</span>}
+        {node.iconUrl ? <img className="ic-img" src={node.iconUrl} alt="" /> : node.icon && <span className="ic">{node.icon}</span>}
         <span>{node.label}</span>
         {node.meta && (
           <span className={`meta ${node.tagType ? `tag-${node.tagType}` : ""}`.trim()}>
@@ -152,7 +303,20 @@ function TreeNodeItem({
         )}
       </li>
       {node.type === "dir" && node.children && !node.collapsed && (
-        <TreeNodeList nodes={node.children} onNodeClick={onNodeClick} onNodeToggle={onNodeToggle} />
+        <TreeNodeList
+          nodes={node.children}
+          onNodeClick={onNodeClick}
+          onNodeToggle={onNodeToggle}
+          onNodeDrop={onNodeDrop}
+          onNodeContextMenu={onNodeContextMenu}
+          draggingNodeId={draggingNodeId}
+          setDraggingNodeId={setDraggingNodeId}
+          dropHint={dropHint}
+          setDropHint={setDropHint}
+          pickedNode={pickedNode}
+          setPickedNode={setPickedNode}
+          longPressTimerRef={longPressTimerRef}
+        />
       )}
     </>
   );
@@ -167,6 +331,8 @@ export function SystemPanelContent({
   footerNote,
   onTreeNodeClick,
   onTreeNodeToggle,
+  onTreeNodeDrop,
+  onTreeNodeContextMenu,
   children,
 }: SystemPanelContentProps) {
   // 如果提供了 children，直接渲染（用于聊天、战斗等特殊 tab）
@@ -178,7 +344,13 @@ export function SystemPanelContent({
   return (
     <div className="sys-body__content">
       <ResToolbar buttons={toolbarButtons} />
-      <ResTree nodes={treeData} onNodeClick={onTreeNodeClick} onNodeToggle={onTreeNodeToggle} />
+      <ResTree
+        nodes={treeData}
+        onNodeClick={onTreeNodeClick}
+        onNodeToggle={onTreeNodeToggle}
+        onNodeDrop={onTreeNodeDrop}
+        onNodeContextMenu={onTreeNodeContextMenu}
+      />
       {footerNote && (
         <div className="res-tree-footer" style={{ color: "var(--sc-ink-mute)", marginTop: "8px", fontSize: "11px" }}>
           {footerNote}

@@ -1,8 +1,8 @@
-# 03 资源模板库
+# 03 资源目录与编辑器
 
 ## 职责
 
-资源模板库支撑零代码自定义：GM 可以可视化创建职业、种族、背景、能力、物品、命刻、牌组、随机表，并用多级分类维护素材库。
+资源目录与编辑器支撑零代码自定义：GM 可以可视化创建职业、种族、背景、能力、物品、命刻、牌组、随机表，并用多级目录维护素材库。世界页不再使用“模板库”作为主 UI 概念。
 
 ## 入口文件
 
@@ -22,25 +22,31 @@
 - 能力编辑器的自动化配置必须映射到 `AbilityAutomationConfig`，并以中文选项呈现 `manual` / `assisted` / `full`、目标确认、自动掷骰、自动应用伤害、自动应用效果等字段；不要在编辑器里另建一套与 workflow 无关的自动化字段。
 - `AbilityDefinition.automation` 是能力模板的持久化字段：Prisma、service create/update、合集包导入导出和可视化编辑器都必须同步透传。
 - 能力库中的公式、DC、状态分类和触发器仍从 shared registry/config 读取；执行时由 `AbilityWorkflowRun` 记录每次结算是否只是预览、等待确认或已经实际应用。
-- 模板库页面只展示分类树和条目摘要。
-- 模板库外层必须吃满弹窗宽度；桌面端分类树保持约 168-196px 窄列，条目区占满剩余空间。条目应使用完整行列表，不使用小卡片网格，避免单条数据漂在左上角。
+- 世界页角色、能力、物品统一集中在右侧系统板各自页签：顶部栏固定为“新建XX / 新建目录 / 导入 / 导出”。能力、物品左键条目直接打开编辑弹窗，不再先进入旧式资源列表页。
+- 能力、种族、职业、背景、物品的 `iconUrl` 字段在编辑器中使用 `image` 控件：GM 可导入本地图标，前端以 data URL 上传到 `POST /worlds/:worldId/resource-icons`，服务端保存到 `data/uploads/resource-icons` 并通过 `/uploads/...` 提供访问。
+- 资源包导出必须把本地上传图标写入顶层 `assets`（base64 + mime + sha256 + publicUrl），导入时先落盘 assets 再重写各资源 `iconUrl`；图标不能只作为某个世界内部不可迁移的裸链接。
+- 目录与条目支持长按/拖拽换位置；右键目录菜单包含重命名、导入、导出、复制、权限。目录左键仅展开/收缩，叶子条目左键执行选择或打开编辑器。
+- `SystemPanelContent` 是系统板目录树的共享渲染与拖拽入口；`EntityManager` 在世界页主要作为条目编辑弹窗使用，列表式管理仅保留给查询/实验页兼容路径。
+- 资源编辑器外层必须吃满弹窗宽度；桌面端分类树保持约 168-196px 窄列，条目区占满剩余空间。条目应使用完整行列表，不使用小卡片网格，避免单条数据漂在左上角。
 - 分类栏底部工具区使用紧凑纵向排布，输入框和按钮必须完整占满栏宽，避免在窄列里被横向挤压变形。
-- 双击条目才打开详细编辑器。
-- 资源库窗口允许多开；详情编辑器也不使用遮罩或点击外部关闭，而是在当前资源库中以更窄的非模态工具窗浮出，避免阻断跨库拖拽。
+- 世界页能力/物品条目单击打开详细编辑器；实验页兼容列表仍允许双击编辑。
+- 资源编辑弹窗在世界页必须复用同一个浮动工具窗；`editorOnly` 模式只渲染单层编辑面板，不再在 `FloatingToolWindow` 内套 `.entity-mgr__editor-dock` 式内层浮窗。
 - 资源条目应接入公共悬浮说明卡：鼠标悬停约 1 秒显示简介，持续悬停约 3 秒固定；说明卡文本中的能力、状态、资源词条可继续嵌套展开。
 - 编辑器使用 `展示文本 / 规则结算 / 高级数据` 页签。
-- `folderPath` 是当前多级分类字段，使用 `/` 分隔。
+- `Folder` 表 + `folderId` 是角色、能力、物品等目录归属的主路径；`folderPath` 仅作为兼容字段和导入导出显示字段保留。
 - 玩家可读描述和 GM 结算配置必须拆开。
 - 检定方式要驱动字段显隐：攻击、豁免、对抗各自显示必要字段。
-- 能力编辑器的触发条件、DC、状态和状态分类必须优先使用 shared registry 的中文选项；GM 不应被迫手写公式路径。当前初版入口在右侧系统板“能力库”页签，并复用能力/种族/职业模板库弹窗。
-- 能力系统实验页 `/system/ability-lab/:worldId?` 复用 `EntityManager` 作为中央工作区，右侧系统板提供能力/物品/随机/资源包入口；分类创建仍由 `EntityManager` 的 `folderPath` 空分类机制维护，避免在测试页另造一套目录模型。
+- 能力编辑器的触发条件、DC、状态和状态分类必须优先使用 shared registry 的中文选项；GM 不应被迫手写公式路径。正式入口在右侧系统板“能力库”页签，创建能力先弹自定义命名框，确认后自动打开同一个能力编辑弹窗。
+- 能力系统实验页 `/system/ability-lab/:worldId?` 复用 `EntityManager` 作为中央工作区，右侧系统板提供能力/物品/随机/资源包入口；实验页仍保留 `folderPath` 兼容分类机制，正式世界页以 Folder API 为准。
 - 状态选择必须区分 `定身 / 干扰 / 其他状态 / 效果标记` 分类；解除或免疫分类时表示命中该分类下任一状态。
 - 资源类型、标签、API 路径、编辑器 schema 应逐步收敛到集中 registry/config。新增类型时不要只在 `EntityManager.tsx` 加一个局部分支，必须同步 shared 类型、store、route/service、Prisma、导入导出和文档。
+- `EntityManager` 打开前必须通过 schema registry 验证 `entityType`；未知类型（例如旧 overlay/HMR 残留或误传系统板 tab key）只显示未注册提示，不允许继续读取 `schema.fields`、load/store 或保存。`buildInitialFormState` 也要对缺失 schema 容错返回空表单，避免 render 阶段崩溃。
 - **本地缓存（B2）**：`worldEntityStore.loadEntities` 走 stale-while-revalidate — 先从 IndexedDB 读到缓存即时渲染，再向 `/worlds/:id/{type}` 发请求，差异时更新 store 并写回缓存。`createEntity / updateEntity / deleteEntity / advanceFateClock` 同步写穿透；`importPack` 调用 `cacheInvalidateWorld(worldId)` 失效全部 8 类缓存。缓存失败（无 IndexedDB / 浏览器隐私模式）静默回退到纯网络模式，不影响主流程。缓存层文件：`client/src/world/lib/worldCache.ts`。
 
 ## 常见任务定位
 
-- 改资源列表/分类/双击行为：只看 `EntityManager.tsx`。
+- 改世界页角色/能力/物品资源树、拖拽、右键菜单：看 `WorldPage.tsx` + `SystemPanelContent.tsx` + `worldEntityStore.ts`。
+- 改资源编辑弹窗字段：看 `EntityManager.tsx` + `EntityVisualEditors.tsx`。
 - 改具体职业/能力/物品可视化字段：看 `EntityVisualEditors.tsx`。
 - 改资源 API 或导入导出：看 `worldEntityStore.ts`、`world-entity.service.ts`、`world.routes.ts`。
 - 改字段落库：看 `schema.prisma`、迁移、`shared/types/world-entities.ts`。
@@ -49,6 +55,7 @@
 
 - `EntityManager.tsx` 同时承载标签、字段 schema、列表行为和编辑器分发；后续应拆出 `entityRegistry` / `entitySchemas`，让新增资源类型变成注册配置而不是修改巨型组件。
 - `world-entity.service.ts` 仍按资源类型重复 CRUD 字段映射；后续可先提取通用权限、排序、folderPath、导入导出适配层，再逐类迁移，避免一次性大重构影响并发任务。
+- 目录权限目前以 `permissionMode` 字段持久化并由右键菜单切换；后续需要补完整的 ACL 继承/移出恢复策略和服务端细粒度授权测试。
 
 ## 验证
 

@@ -92,14 +92,14 @@ const ENTITY_TYPES: EntityType[] = [
 ];
 
 const ENTITY_LABELS: Record<EntityType, string> = {
-  abilities: "能力模板库",
-  races: "种族模板库",
-  professions: "职业模板库",
-  backgrounds: "背景模板库",
-  items: "物品模板库",
-  fateClocks: "命刻模板库",
-  decks: "牌组模板库",
-  randomTables: "随机表模板库",
+  abilities: "能力库",
+  races: "种族资料",
+  professions: "职业资料",
+  backgrounds: "背景资料",
+  items: "物品库",
+  fateClocks: "命刻库",
+  decks: "牌组库",
+  randomTables: "随机表库",
 };
 
 const ENTITY_SHORT_LABELS: Record<EntityType, string> = {
@@ -722,7 +722,7 @@ export default function AbilityLabPage() {
           activeTab="char"
           toolbarButtons={characterToolbarButtons}
           treeData={characterTree}
-          footerNote="角色栏为实验页本地测试数据；能力、物品来自当前世界模板库。"
+          footerNote="角色栏为实验页本地测试数据；能力、物品来自当前世界资源库。"
           onTreeNodeClick={handleTreeNodeClick}
           onTreeNodeToggle={handleTreeNodeToggle}
         />

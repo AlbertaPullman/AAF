@@ -32,6 +32,7 @@ export async function cleanupWorldGraphByOwnerUsername(ownerUsername: string) {
   await prisma.abilityDefinition.deleteMany({ where: { worldId: { in: worldIds } } });
   await prisma.character.deleteMany({ where: { worldId: { in: worldIds } } });
   await prisma.scene.deleteMany({ where: { worldId: { in: worldIds } } });
+  await prisma.folder.deleteMany({ where: { worldId: { in: worldIds } } });
   await prisma.worldMember.deleteMany({ where: { worldId: { in: worldIds } } });
   await prisma.world.deleteMany({ where: { id: { in: worldIds } } });
 }

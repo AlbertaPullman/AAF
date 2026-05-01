@@ -12,6 +12,7 @@ import {
   cacheInvalidateWorld,
   shallowEqualById,
 } from "../lib/worldCache";
+import type { FolderRecord, FolderType } from "../../../../shared/types/world-entities";
 
 /* ──── 类型 ──── */
 
@@ -28,6 +29,12 @@ interface EntitySlice<T extends EntityRecord = EntityRecord> {
   error: string | null;
 }
 
+interface FolderSlice {
+  items: FolderRecord[];
+  loading: boolean;
+  error: string | null;
+}
+
 interface WorldEntityState {
   abilities: EntitySlice;
   races: EntitySlice;
@@ -37,12 +44,21 @@ interface WorldEntityState {
   fateClocks: EntitySlice;
   decks: EntitySlice;
   randomTables: EntitySlice;
+  folders: Record<FolderType, FolderSlice>;
 
   // 通用加载
   loadEntities: (worldId: string, type: EntityType) => Promise<void>;
   createEntity: (worldId: string, type: EntityType, data: Record<string, unknown>) => Promise<EntityRecord>;
   updateEntity: (worldId: string, type: EntityType, id: string, data: Record<string, unknown>) => Promise<EntityRecord>;
   deleteEntity: (worldId: string, type: EntityType, id: string) => Promise<void>;
+  reorderEntities: (worldId: string, type: EntityType, data: { folderId?: string | null; folderPath?: string; orderedIds: string[] }) => Promise<EntityRecord[]>;
+
+  // 目录
+  loadFolders: (worldId: string, type: FolderType) => Promise<void>;
+  createFolder: (worldId: string, type: FolderType, data: Record<string, unknown>) => Promise<FolderRecord>;
+  updateFolder: (worldId: string, folderId: string, data: Record<string, unknown>) => Promise<FolderRecord>;
+  deleteFolder: (worldId: string, folderId: string, type: FolderType) => Promise<void>;
+  reorderFolders: (worldId: string, type: FolderType, data: { parentId?: string | null; orderedIds: string[] }) => Promise<FolderRecord[]>;
 
   // 命刻专用
   advanceFateClock: (worldId: string, id: string, amount: number, reason: string) => Promise<void>;
@@ -69,6 +85,19 @@ const API_PATHS: Record<EntityType, string> = {
 };
 
 const emptySlice = (): EntitySlice => ({ items: [], loading: false, error: null });
+const emptyFolderSlice = (): FolderSlice => ({ items: [], loading: false, error: null });
+const createEmptyFolderState = (): Record<FolderType, FolderSlice> => ({
+  SCENE: emptyFolderSlice(),
+  CHARACTER: emptyFolderSlice(),
+  ABILITY: emptyFolderSlice(),
+  ITEM: emptyFolderSlice(),
+  PROFESSION: emptyFolderSlice(),
+  RACE: emptyFolderSlice(),
+  BACKGROUND: emptyFolderSlice(),
+  FATE_CLOCK: emptyFolderSlice(),
+  DECK: emptyFolderSlice(),
+  RANDOM_TABLE: emptyFolderSlice(),
+});
 
 export const useWorldEntityStore = create<WorldEntityState>((set, get) => ({
   abilities: emptySlice(),
@@ -79,6 +108,7 @@ export const useWorldEntityStore = create<WorldEntityState>((set, get) => ({
   fateClocks: emptySlice(),
   decks: emptySlice(),
   randomTables: emptySlice(),
+  folders: createEmptyFolderState(),
 
   loadEntities: async (worldId, type) => {
     // 1) 先尝试本地缓存即时渲染（stale-while-revalidate）
@@ -131,6 +161,63 @@ export const useWorldEntityStore = create<WorldEntityState>((set, get) => ({
     void cachePut(worldId, type, nextItems);
   },
 
+  reorderEntities: async (worldId, type, data) => {
+    const res = await http.post(`/worlds/${worldId}/${API_PATHS[type]}/reorder`, data);
+    const items = res.data?.data as EntityRecord[];
+    set((s) => ({ [type]: { ...s[type], items } }));
+    void cachePut(worldId, type, items);
+    return items;
+  },
+
+  loadFolders: async (worldId, type) => {
+    set((s) => ({ folders: { ...s.folders, [type]: { ...s.folders[type], loading: true, error: null } } }));
+    try {
+      const res = await http.get(`/worlds/${worldId}/folders/${type}`);
+      const items = (res.data?.data ?? []) as FolderRecord[];
+      set((s) => ({ folders: { ...s.folders, [type]: { items, loading: false, error: null } } }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "加载目录失败";
+      set((s) => ({ folders: { ...s.folders, [type]: { ...s.folders[type], loading: false, error: msg } } }));
+    }
+  },
+
+  createFolder: async (worldId, type, data) => {
+    const res = await http.post(`/worlds/${worldId}/folders/${type}`, data);
+    const created = res.data?.data as FolderRecord;
+    set((s) => ({
+      folders: { ...s.folders, [type]: { ...s.folders[type], items: [...s.folders[type].items, created] } },
+    }));
+    return created;
+  },
+
+  updateFolder: async (worldId, folderId, data) => {
+    const res = await http.patch(`/worlds/${worldId}/folders/${folderId}`, data);
+    const updated = res.data?.data as FolderRecord;
+    set((s) => ({
+      folders: Object.fromEntries(
+        Object.entries(s.folders).map(([type, slice]) => [
+          type,
+          { ...slice, items: slice.items.map((item) => (item.id === updated.id ? updated : item)) },
+        ]),
+      ) as Record<FolderType, FolderSlice>,
+    }));
+    return updated;
+  },
+
+  deleteFolder: async (worldId, folderId, type) => {
+    await http.delete(`/worlds/${worldId}/folders/${folderId}`);
+    set((s) => ({
+      folders: { ...s.folders, [type]: { ...s.folders[type], items: s.folders[type].items.filter((item) => item.id !== folderId) } },
+    }));
+  },
+
+  reorderFolders: async (worldId, type, data) => {
+    const res = await http.post(`/worlds/${worldId}/folders/${type}/reorder`, data);
+    const items = res.data?.data as FolderRecord[];
+    set((s) => ({ folders: { ...s.folders, [type]: { ...s.folders[type], items } } }));
+    return items;
+  },
+
   advanceFateClock: async (worldId, id, amount, reason) => {
     const res = await http.patch(`/worlds/${worldId}/fate-clocks/${id}/advance`, { amount, reason });
     const updated = res.data?.data as EntityRecord;
@@ -161,6 +248,7 @@ export const useWorldEntityStore = create<WorldEntityState>((set, get) => ({
       fateClocks: emptySlice(),
       decks: emptySlice(),
       randomTables: emptySlice(),
+      folders: createEmptyFolderState(),
     });
   },
 }));

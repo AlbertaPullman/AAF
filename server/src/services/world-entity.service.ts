@@ -1,11 +1,26 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+import type { FolderType } from "../../../shared/types/world-entities";
+import { resolveFolderAssignment } from "./folder.service";
+import {
+  normalizeResourceIconUrl,
+  readResourceIconPackAsset,
+  saveResourceIconPackAsset,
+  type ResourcePackAsset,
+} from "./resource-asset.service";
 
 /* ──── 通用 CRUD 辅助 ──── */
 
 type EntityTable = "abilityDefinition" | "raceDefinition" | "professionDefinition"
   | "backgroundDefinition" | "itemDefinition" | "fateClock"
   | "deckDefinition" | "randomTable";
+
+export type WorldResourceEntityType = "abilities" | "races" | "professions" | "backgrounds" | "items" | "fateClocks" | "decks" | "randomTables";
+
+type SortableDelegate = {
+  findMany(args: { where: Record<string, unknown>; select: { id: true } }): Promise<Array<{ id: string }>>;
+  update(args: { where: { id: string }; data: { sortOrder: number } }): Promise<unknown>;
+};
 
 function asJsonValue(value: unknown, fallback: Prisma.InputJsonValue = []): Prisma.InputJsonValue {
   if (value === undefined || value === null) return fallback;
@@ -31,7 +46,57 @@ function normalizeFolderPath(value: unknown) {
     .join("/");
 }
 
-async function ensureWorldGM(worldId: string, userId: string) {
+async function resolveEntityFolderData(
+  worldId: string,
+  type: FolderType,
+  data: Record<string, unknown>,
+  mode: "create" | "update",
+) {
+  if (Object.prototype.hasOwnProperty.call(data, "folderId")) {
+    return resolveFolderAssignment(worldId, type, data.folderId);
+  }
+  if (mode === "create" || Object.prototype.hasOwnProperty.call(data, "folderPath")) {
+    return { folderPath: normalizeFolderPath(data.folderPath) };
+  }
+  return {};
+}
+
+function normalizeOrderedIds(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return Array.from(new Set(value.map((item) => String(item ?? "").trim()).filter(Boolean)));
+}
+
+function buildResourceSortScope(worldId: string, input: { folderId?: unknown; folderPath?: unknown }) {
+  const where: Record<string, unknown> = { worldId };
+  if (Object.prototype.hasOwnProperty.call(input, "folderId")) {
+    const folderId = String(input.folderId ?? "").trim();
+    where.folderId = folderId || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(input, "folderPath")) {
+    where.folderPath = normalizeFolderPath(input.folderPath);
+  }
+  return where;
+}
+
+async function reorderSortableRecords(
+  delegate: SortableDelegate,
+  worldId: string,
+  input: { folderId?: unknown; folderPath?: unknown; orderedIds?: unknown },
+) {
+  const orderedIds = normalizeOrderedIds(input.orderedIds);
+  if (orderedIds.length === 0) throw new Error("orderedIds is required");
+
+  const where = buildResourceSortScope(worldId, input);
+  const siblings = await delegate.findMany({ where, select: { id: true } });
+  const siblingIds = new Set(siblings.map((item) => item.id));
+  for (const id of orderedIds) {
+    if (!siblingIds.has(id)) throw new Error("resource reorder contains non-sibling resource");
+  }
+
+  await Promise.all(orderedIds.map((id, index) => delegate.update({ where: { id }, data: { sortOrder: index } })));
+}
+
+export async function ensureWorldGM(worldId: string, userId: string) {
   const member = await prisma.worldMember.findUnique({
     where: { worldId_userId: { worldId, userId } },
   });
@@ -41,12 +106,49 @@ async function ensureWorldGM(worldId: string, userId: string) {
   return member;
 }
 
-async function ensureWorldMember(worldId: string, userId: string) {
+export async function ensureWorldMember(worldId: string, userId: string) {
   const member = await prisma.worldMember.findUnique({
     where: { worldId_userId: { worldId, userId } },
   });
   if (!member) throw new Error("not a member of world");
   return member;
+}
+
+export async function reorderEntities(
+  worldId: string,
+  userId: string,
+  type: WorldResourceEntityType,
+  input: { folderId?: unknown; folderPath?: unknown; orderedIds?: unknown },
+) {
+  await ensureWorldGM(worldId, userId);
+  switch (type) {
+    case "abilities":
+      await reorderSortableRecords(prisma.abilityDefinition as unknown as SortableDelegate, worldId, input);
+      return listAbilities(worldId, userId);
+    case "races":
+      await reorderSortableRecords(prisma.raceDefinition as unknown as SortableDelegate, worldId, input);
+      return listRaces(worldId, userId);
+    case "professions":
+      await reorderSortableRecords(prisma.professionDefinition as unknown as SortableDelegate, worldId, input);
+      return listProfessions(worldId, userId);
+    case "backgrounds":
+      await reorderSortableRecords(prisma.backgroundDefinition as unknown as SortableDelegate, worldId, input);
+      return listBackgrounds(worldId, userId);
+    case "items":
+      await reorderSortableRecords(prisma.itemDefinition as unknown as SortableDelegate, worldId, input);
+      return listItems(worldId, userId);
+    case "fateClocks":
+      await reorderSortableRecords(prisma.fateClock as unknown as SortableDelegate, worldId, input);
+      return listFateClocks(worldId, userId);
+    case "decks":
+      await reorderSortableRecords(prisma.deckDefinition as unknown as SortableDelegate, worldId, input);
+      return listDecks(worldId, userId);
+    case "randomTables":
+      await reorderSortableRecords(prisma.randomTable as unknown as SortableDelegate, worldId, input);
+      return listRandomTables(worldId, userId);
+    default:
+      throw new Error("unsupported resource type");
+  }
 }
 
 /* ──── Ability ──── */
@@ -55,7 +157,7 @@ export async function listAbilities(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
   return prisma.abilityDefinition.findMany({
     where: { worldId },
-    orderBy: [{ folderPath: "asc" }, { category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+    orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { category: "asc" }, { name: "asc" }],
   });
 }
 
@@ -66,11 +168,12 @@ export async function getAbility(worldId: string, id: string, userId: string) {
 
 export async function createAbility(worldId: string, userId: string, data: Record<string, unknown>) {
   await ensureWorldGM(worldId, userId);
+  const folderData = await resolveEntityFolderData(worldId, "ABILITY", data, "create");
   return prisma.abilityDefinition.create({
     data: {
       worldId,
       name: String(data.name ?? ""),
-      folderPath: normalizeFolderPath(data.folderPath),
+      ...folderData,
       category: String(data.category ?? "custom"),
       source: String(data.source ?? "custom"),
       sourceName: String(data.sourceName ?? ""),
@@ -103,6 +206,7 @@ export async function createAbility(worldId: string, userId: string, data: Recor
       canUpcast: Boolean(data.canUpcast),
       upcastEffect: data.upcastEffect ? String(data.upcastEffect) : null,
       sortOrder: Number(data.sortOrder ?? 0),
+      permissionMode: String(data.permissionMode ?? "DEFAULT"),
     },
   });
 }
@@ -111,11 +215,12 @@ export async function updateAbility(worldId: string, id: string, userId: string,
   await ensureWorldGM(worldId, userId);
   const existing = await prisma.abilityDefinition.findFirst({ where: { id, worldId } });
   if (!existing) throw new Error("ability not found");
+  const folderData = await resolveEntityFolderData(worldId, "ABILITY", data, "update");
   return prisma.abilityDefinition.update({
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
-      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
+      ...folderData,
       ...(data.category != null && { category: String(data.category) }),
       ...(data.source != null && { source: String(data.source) }),
       ...(data.sourceName != null && { sourceName: String(data.sourceName) }),
@@ -148,6 +253,7 @@ export async function updateAbility(worldId: string, id: string, userId: string,
       ...(data.canUpcast != null && { canUpcast: Boolean(data.canUpcast) }),
       ...(data.upcastEffect !== undefined && { upcastEffect: data.upcastEffect ? String(data.upcastEffect) : null }),
       ...(data.sortOrder != null && { sortOrder: Number(data.sortOrder) }),
+      ...(data.permissionMode != null && { permissionMode: String(data.permissionMode) }),
     },
   });
 }
@@ -163,7 +269,7 @@ export async function deleteAbility(worldId: string, id: string, userId: string)
 
 export async function listRaces(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.raceDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
+  return prisma.raceDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { name: "asc" }] });
 }
 
 export async function createRace(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -185,6 +291,7 @@ export async function createRace(worldId: string, userId: string, data: Record<s
       ageDesc: String(data.ageDesc ?? ""),
       traits: data.traits ?? [],
       subtypes: data.subtypes ?? [],
+      sortOrder: Number(data.sortOrder ?? 0),
     },
   });
 }
@@ -210,6 +317,7 @@ export async function updateRace(worldId: string, id: string, userId: string, da
       ...(data.ageDesc != null && { ageDesc: String(data.ageDesc) }),
       ...(data.traits != null && { traits: data.traits }),
       ...(data.subtypes != null && { subtypes: data.subtypes }),
+      ...(data.sortOrder != null && { sortOrder: Number(data.sortOrder) }),
     },
   });
 }
@@ -225,7 +333,7 @@ export async function deleteRace(worldId: string, id: string, userId: string) {
 
 export async function listProfessions(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.professionDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
+  return prisma.professionDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { name: "asc" }] });
 }
 
 export async function createProfession(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -252,6 +360,7 @@ export async function createProfession(worldId: string, userId: string, data: Re
       furyPerLevel: Number(data.furyPerLevel ?? 0),
       levelFeatures: data.levelFeatures ?? [],
       talentTreeIds: data.talentTreeIds ?? [],
+      sortOrder: Number(data.sortOrder ?? 0),
     },
   });
 }
@@ -282,6 +391,7 @@ export async function updateProfession(worldId: string, id: string, userId: stri
       ...(data.furyPerLevel != null && { furyPerLevel: Number(data.furyPerLevel) }),
       ...(data.levelFeatures != null && { levelFeatures: data.levelFeatures }),
       ...(data.talentTreeIds != null && { talentTreeIds: data.talentTreeIds }),
+      ...(data.sortOrder != null && { sortOrder: Number(data.sortOrder) }),
     },
   });
 }
@@ -297,7 +407,7 @@ export async function deleteProfession(worldId: string, id: string, userId: stri
 
 export async function listBackgrounds(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.backgroundDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
+  return prisma.backgroundDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { name: "asc" }] });
 }
 
 export async function createBackground(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -315,6 +425,7 @@ export async function createBackground(worldId: string, userId: string, data: Re
       toolProficiencies: data.toolProficiencies ?? [],
       startingEquipment: data.startingEquipment ?? [],
       features: data.features ?? [],
+      sortOrder: Number(data.sortOrder ?? 0),
     },
   });
 }
@@ -336,6 +447,7 @@ export async function updateBackground(worldId: string, id: string, userId: stri
       ...(data.toolProficiencies != null && { toolProficiencies: data.toolProficiencies }),
       ...(data.startingEquipment != null && { startingEquipment: data.startingEquipment }),
       ...(data.features != null && { features: data.features }),
+      ...(data.sortOrder != null && { sortOrder: Number(data.sortOrder) }),
     },
   });
 }
@@ -353,17 +465,18 @@ export async function listItems(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
   return prisma.itemDefinition.findMany({
     where: { worldId },
-    orderBy: [{ folderPath: "asc" }, { category: "asc" }, { name: "asc" }],
+    orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { category: "asc" }, { name: "asc" }],
   });
 }
 
 export async function createItem(worldId: string, userId: string, data: Record<string, unknown>) {
   await ensureWorldGM(worldId, userId);
+  const folderData = await resolveEntityFolderData(worldId, "ITEM", data, "create");
   return prisma.itemDefinition.create({
     data: {
       worldId,
       name: String(data.name ?? ""),
-      folderPath: normalizeFolderPath(data.folderPath),
+      ...folderData,
       description: String(data.description ?? ""),
       category: String(data.category ?? "gear"),
       subcategory: data.subcategory ? String(data.subcategory) : null,
@@ -382,6 +495,8 @@ export async function createItem(worldId: string, userId: string, data: Record<s
       enhanceSlots: Number(data.enhanceSlots ?? 0),
       gemSlots: Number(data.gemSlots ?? 0),
       tags: asJsonValue(data.tags),
+      sortOrder: Number(data.sortOrder ?? 0),
+      permissionMode: String(data.permissionMode ?? "DEFAULT"),
     },
   });
 }
@@ -390,11 +505,12 @@ export async function updateItem(worldId: string, id: string, userId: string, da
   await ensureWorldGM(worldId, userId);
   const existing = await prisma.itemDefinition.findFirst({ where: { id, worldId } });
   if (!existing) throw new Error("item not found");
+  const folderData = await resolveEntityFolderData(worldId, "ITEM", data, "update");
   return prisma.itemDefinition.update({
     where: { id },
     data: {
       ...(data.name != null && { name: String(data.name) }),
-      ...(data.folderPath !== undefined && { folderPath: normalizeFolderPath(data.folderPath) }),
+      ...folderData,
       ...(data.description != null && { description: String(data.description) }),
       ...(data.category != null && { category: String(data.category) }),
       ...(data.subcategory !== undefined && { subcategory: data.subcategory ? String(data.subcategory) : null }),
@@ -413,6 +529,8 @@ export async function updateItem(worldId: string, id: string, userId: string, da
       ...(data.enhanceSlots != null && { enhanceSlots: Number(data.enhanceSlots) }),
       ...(data.gemSlots != null && { gemSlots: Number(data.gemSlots) }),
       ...(data.tags != null && { tags: asJsonValue(data.tags) }),
+      ...(data.sortOrder != null && { sortOrder: Number(data.sortOrder) }),
+      ...(data.permissionMode != null && { permissionMode: String(data.permissionMode) }),
     },
   });
 }
@@ -434,7 +552,7 @@ export async function listFateClocks(worldId: string, userId: string) {
   const isGM = member?.role === "GM";
   const clocks = await prisma.fateClock.findMany({
     where: { worldId },
-    orderBy: [{ folderPath: "asc" }, { createdAt: "desc" }],
+    orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
   });
   if (isGM) return clocks;
   return clocks.filter((c) => c.visibleToPlayers);
@@ -534,7 +652,7 @@ export async function deleteFateClock(worldId: string, id: string, userId: strin
 
 export async function listDecks(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.deckDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
+  return prisma.deckDefinition.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { name: "asc" }] });
 }
 
 export async function createDeck(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -580,7 +698,7 @@ export async function deleteDeck(worldId: string, id: string, userId: string) {
 
 export async function listRandomTables(worldId: string, userId: string) {
   await ensureWorldMember(worldId, userId);
-  return prisma.randomTable.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { name: "asc" }] });
+  return prisma.randomTable.findMany({ where: { worldId }, orderBy: [{ folderPath: "asc" }, { sortOrder: "asc" }, { name: "asc" }] });
 }
 
 export async function createRandomTable(worldId: string, userId: string, data: Record<string, unknown>) {
@@ -622,6 +740,42 @@ export async function deleteRandomTable(worldId: string, id: string, userId: str
 
 /* ──── Collection Pack 导入/导出 ──── */
 
+async function collectResourceIconAssets(entityGroups: Array<Array<{ iconUrl?: unknown }>>) {
+  const assetsByUrl = new Map<string, ResourcePackAsset>();
+  for (const records of entityGroups) {
+    for (const record of records) {
+      const asset = await readResourceIconPackAsset(record.iconUrl);
+      if (asset && !assetsByUrl.has(asset.url)) {
+        assetsByUrl.set(asset.url, asset);
+      }
+    }
+  }
+  return [...assetsByUrl.values()];
+}
+
+async function importResourceIconAssets(pack: Record<string, unknown>) {
+  const urlMap = new Map<string, string>();
+  const assets = Array.isArray(pack.assets) ? pack.assets : [];
+  for (const rawAsset of assets) {
+    const source = rawAsset as Record<string, unknown>;
+    const saved = await saveResourceIconPackAsset(source);
+    if (!saved) continue;
+    const sourceUrl = typeof source.url === "string" ? source.url.trim() : "";
+    const normalizedSourceUrl = normalizeResourceIconUrl(sourceUrl);
+    if (sourceUrl) urlMap.set(sourceUrl, saved.url);
+    if (normalizedSourceUrl) urlMap.set(normalizedSourceUrl, saved.url);
+  }
+  return urlMap;
+}
+
+function withImportedIcon(data: Record<string, unknown>, iconUrlMap: Map<string, string>) {
+  const rawIconUrl = typeof data.iconUrl === "string" ? data.iconUrl.trim() : "";
+  if (!rawIconUrl) return data;
+  const normalizedIconUrl = normalizeResourceIconUrl(rawIconUrl);
+  const nextIconUrl = iconUrlMap.get(rawIconUrl) ?? (normalizedIconUrl ? iconUrlMap.get(normalizedIconUrl) : undefined);
+  return nextIconUrl ? { ...data, iconUrl: nextIconUrl } : data;
+}
+
 export async function exportCollectionPack(worldId: string, userId: string) {
   await ensureWorldGM(worldId, userId);
 
@@ -637,12 +791,15 @@ export async function exportCollectionPack(worldId: string, userId: string) {
       prisma.randomTable.findMany({ where: { worldId } }),
     ]);
 
+  const assets = await collectResourceIconAssets([abilities, races, professions, backgrounds, items]);
+
   return {
     id: worldId,
     name: `世界合集包-${new Date().toISOString().slice(0, 10)}`,
     description: "",
     version: "1.0.0",
     author: userId,
+    assets,
     contents: {
       abilities,
       races,
@@ -668,6 +825,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
 
   const contents = pack.contents as Record<string, unknown[]> | undefined;
   if (!contents) throw new Error("invalid pack: missing contents");
+  const iconUrlMap = await importResourceIconAssets(pack);
 
   const results: Record<string, number> = {};
 
@@ -675,7 +833,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
   if (Array.isArray(contents.races)) {
     let count = 0;
     for (const item of contents.races) {
-      const d = item as Record<string, unknown>;
+      const d = withImportedIcon(item as Record<string, unknown>, iconUrlMap);
       await prisma.raceDefinition.create({
         data: {
           worldId,
@@ -703,7 +861,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
   if (Array.isArray(contents.professions)) {
     let count = 0;
     for (const item of contents.professions) {
-      const d = item as Record<string, unknown>;
+      const d = withImportedIcon(item as Record<string, unknown>, iconUrlMap);
       await createProfession(worldId, userId, d);
       count++;
     }
@@ -713,7 +871,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
   if (Array.isArray(contents.backgrounds)) {
     let count = 0;
     for (const item of contents.backgrounds) {
-      const d = item as Record<string, unknown>;
+      const d = withImportedIcon(item as Record<string, unknown>, iconUrlMap);
       await createBackground(worldId, userId, d);
       count++;
     }
@@ -723,7 +881,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
   if (Array.isArray(contents.abilities)) {
     let count = 0;
     for (const item of contents.abilities) {
-      const d = item as Record<string, unknown>;
+      const d = withImportedIcon(item as Record<string, unknown>, iconUrlMap);
       await createAbility(worldId, userId, d);
       count++;
     }
@@ -733,7 +891,7 @@ export async function importCollectionPack(worldId: string, userId: string, pack
   if (Array.isArray(contents.items)) {
     let count = 0;
     for (const item of contents.items) {
-      const d = item as Record<string, unknown>;
+      const d = withImportedIcon(item as Record<string, unknown>, iconUrlMap);
       await createItem(worldId, userId, d);
       count++;
     }

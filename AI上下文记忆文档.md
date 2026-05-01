@@ -100,6 +100,38 @@
 
 **下一步**：实装 workflow 卡片的真实手动应用/撤销接口，多目标 AOE 的逐目标 damage-application，以及 manualOverrides 对掷骰/DC/伤害节点的实际覆盖。
 
+### 2026-04-30 · 资源库守卫
+
+**当前主线变化**：`EntityManager` 已增加运行时 `entityType` 注册校验，`buildInitialFormState` 对缺失 schema 返回空表单；旧 overlay/HMR 残留的无效资源入口会显示未注册提示，不再因 `schema.fields` 为空而炸掉世界页。
+
+**影响规则 / 接口**：资源模板库、系统板实体浮窗；后续新增实体类型必须同步注册 schema，不能只传 tab key。
+
+**下一步**：—
+
+### 2026-04-30 · 资源目录改造
+
+**当前主线变化**：世界页移除“模板库”主 UI 概念，角色管理、能力库、物品库集中到系统板页签；顶部栏统一为“新建XX / 新建目录 / 导入 / 导出”。能力/物品条目左键直接打开 `EntityManager` 编辑弹窗，新建能力/物品使用自定义命名弹窗后自动进入编辑。`SystemPanelContent` 支持右键菜单、拖拽/长按拾取和图标缩略图。
+
+**影响规则 / 接口**：新增 Folder API 路由、角色 `folderId/sortOrder/permissionMode`、资源 `sortOrder/permissionMode`、`reorderEntities` / `reorderFolders` / `characters/reorder`。`Folder.permissionMode` 和条目 `permissionMode` 已持久化，后续要补完整 ACL 继承与移出恢复测试。
+
+**下一步**：补目录权限的真实继承/恢复语义和导入导出粒度；把 `EntityManager` schema/list/editor 拆成 registry + editor-only 组件。
+
+### 2026-04-30 · 编辑窗单层化
+
+**当前主线变化**：资源条目编辑器改为统一复用一个 `overlay-entity-editor` 浮动工具窗；`EntityManager.editorOnly` 直接渲染 `.entity-mgr__editor--single`，不再在外层 `FloatingToolWindow` 里套 `.entity-mgr__editor-dock` 内层浮窗，也去掉重复的头部关闭按钮。
+
+**影响规则 / 接口**：能力/物品等资源条目点击会切换同一个编辑窗口的 `entityType/entityId`，避免多编辑窗叠放；CSS 入口为 `overlay-entity-editor`、`entity-mgr--editor-only`、`entity-mgr__editor--single`。
+
+**下一步**：用浏览器手测不同资源类型连续点击、保存和关闭行为。
+
+### 2026-04-30 · 资源图标资产
+
+**当前主线变化**：能力、种族、职业、背景、物品的 `iconUrl` 编辑改为 `image` 控件，支持本地图标导入；服务端新增 `/worlds/:worldId/resource-icons` 保存到 `data/uploads/resource-icons`，并通过 `/uploads/...` 提供访问。系统配置栏改回《碧空圣典》式分组卡片：世界信息、视角权限、资源·插件、世界操作、记录与日志。
+
+**影响规则 / 接口**：资源包导出新增顶层 `assets[]`（base64/mimeType/sha256/publicUrl），导入先恢复 assets 再重写 races/professions/backgrounds/abilities/items 的 `iconUrl`；上传素材不能锁死在单个世界内部，后续核心资源包/扩展包导出也要沿用这条链路。
+
+**下一步**：用浏览器手测导入图标、保存能力、导出资源包、重新导入资源包后的图标恢复。
+
 ## 7. 角色卡新约定（2026-04-08）
 
 - 角色卡 JSON 导入导出已启用，命名规则固定为：`角色名_人物等级_玩家名_年月日_时分秒.json`。
